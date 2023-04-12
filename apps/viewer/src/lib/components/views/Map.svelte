@@ -9,7 +9,6 @@
   } from '$lib/shared/stores/render-options.js'
   import {
     ol,
-    xyzLayer,
     warpedMapSource
   } from '$lib/shared/stores/openlayers.js'
   import { sourceLoading, sourcesCount } from '$lib/shared/stores/sources.js'
@@ -22,18 +21,17 @@
   } from '$lib/shared/stores/selected.js'
 
   import OLMap from 'ol/Map.js'
-  import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer'
-  import XYZ from 'ol/source/XYZ.js'
+  import { Vector as VectorLayer } from 'ol/layer'
   import View from 'ol/View.js'
   import { GeoJSON } from 'ol/format'
   import { Vector as VectorSource } from 'ol/source'
   import Select, { SelectEvent } from 'ol/interaction/Select.js'
   import { click } from 'ol/events/condition.js'
 
-  import { applyStyle } from 'ol-mapbox-style';
-  import { VectorTile } from 'ol/layer.js';
-  import protomaps from 'protomaps-themes-base';
-  import {Attribution} from 'ol/control.js';
+  import { applyStyle } from 'ol-mapbox-style'
+  import { VectorTile } from 'ol/layer.js'
+  import protomaps from 'protomaps-themes-base'
+  import { Attribution } from 'ol/control.js'
 
   import {
     invisiblePolygonStyle,
@@ -58,7 +56,6 @@
 
   let select: Select
 
-  let xyz: XYZ
   let baseLayer
 
   let showContextMenu: ShowContextMenu | undefined
@@ -107,12 +104,6 @@
           padding: [25, 25, 25, 25]
         })
       }
-    }
-  }
-
-  $: {
-    if (xyz) {
-      xyz.setUrl($xyzLayer.url)
     }
   }
 
@@ -176,24 +167,27 @@
   onMount(async () => {
     // TODO: set attribution
 
-    baseLayer = new VectorTile({declutter: true});
+    baseLayer = new VectorTile({ declutter: true })
 
     applyStyle(baseLayer, {
-      version:"8",
-      layers:protomaps("protomaps","white"),
-      sources:{
+      version: '8',
+      layers: protomaps('protomaps', 'white'),
+      sources: {
         protomaps: {
-          type: "vector",
-          tiles: ["https://api.protomaps.com/tiles/v2/{z}/{x}/{y}.pbf?key=507ade1803ce471c"],
-          attribution: 'base layer © <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>',
+          type: 'vector',
+          tiles: [
+            'https://api.protomaps.com/tiles/v2/{z}/{x}/{y}.pbf?key=507ade1803ce471c'
+          ],
+          attribution:
+            'base layer © <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>',
           maxzoom: 14
         }
       }
-    });
+    })
 
     const attribution = new Attribution({
-      collapsible: false,
-    });
+      collapsible: false
+    })
 
     warpedMapLayer = new WarpedMapLayer({
       source: $warpedMapSource
