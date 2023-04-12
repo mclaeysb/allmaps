@@ -318,8 +318,8 @@ importers:
         specifier: ^1.0.0-beta.13
         version: link:../../packages/ui
       flowbite:
-        specifier: ^1.6.2
-        version: 1.6.3
+        specifier: ^1.6.4
+        version: 1.6.4
       ol:
         specifier: ^6.15.1
         version: 6.15.1
@@ -595,6 +595,16 @@ importers:
         version: 4.1.1(@types/node@18.14.2)
 
   packages/stdlib:
+    dependencies:
+      '@allmaps/annotation':
+        specifier: ^1.0.0-beta.12
+        version: link:../annotation
+      '@allmaps/iiif-parser':
+        specifier: ^1.0.0-beta.22
+        version: link:../iiif-parser
+      '@allmaps/types':
+        specifier: 1.0.0-beta.0
+        version: link:../types
     devDependencies:
       chai:
         specifier: ^4.3.6
@@ -643,7 +653,20 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
 
+  packages/types:
+    devDependencies:
+      eslint:
+        specifier: ^8.35.0
+        version: 8.35.0
+      typescript:
+        specifier: ^4.9.5
+        version: 4.9.5
+
   packages/ui:
+    dependencies:
+      flowbite:
+        specifier: ^1.6.4
+        version: 1.6.4
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: ^1.0.0
@@ -4447,8 +4470,8 @@ packages:
     resolution: {integrity: sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==}
     dev: true
 
-  /flowbite@1.6.3:
-    resolution: {integrity: sha512-wTtAzZBLrUYqUBoTSNcMAeJrZNAcdx04EDgXWnkQ7gkKoAPFvLaq/H/Zw0JKZLVKFpKxqJ7PlvocfDApSHjhvw==}
+  /flowbite@1.6.4:
+    resolution: {integrity: sha512-//kSaigwERCcE3udumadB3+xfOXeN/ZQzcub2qVCHuB7uscB4XIm3yP9R8zL0XsEOnYG2lnroq/dydQZbzvESw==}
     dependencies:
       '@popperjs/core': 2.11.6
       mini-svg-data-uri: 1.4.4
