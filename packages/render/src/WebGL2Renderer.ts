@@ -145,6 +145,7 @@ export default class WebGL2Renderer extends EventTarget {
     let possibleVisibleWarpedMapIds: Iterable<string> = []
     const possibleInvisibleWarpedMapIds = new Set(this.visibleWarpedMapIds)
 
+    // TODO: change to geoBbox if we make RTree store geoBbox instead of projectedGeoBbox
     possibleVisibleWarpedMapIds = this.warpedMapList.getMapsByBbox(
       this.viewport.projectedGeoBbox
     )
@@ -159,12 +160,12 @@ export default class WebGL2Renderer extends EventTarget {
 
       // Don't show maps when they're too small
       const topLeft: Point = [
-        warpedMap.geoMaskBbox[0],
-        warpedMap.geoMaskBbox[1]
+        warpedMap.projectedGeoMaskBbox[0],
+        warpedMap.projectedGeoMaskBbox[1]
       ]
       const bottomRight: Point = [
-        warpedMap.geoMaskBbox[2],
-        warpedMap.geoMaskBbox[3]
+        warpedMap.projectedGeoMaskBbox[2],
+        warpedMap.projectedGeoMaskBbox[3]
       ]
 
       const pixelTopLeft = applyTransform(
