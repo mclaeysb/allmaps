@@ -186,10 +186,11 @@ export default class WebGL2Renderer extends EventTarget {
         continue
       }
 
-      const geoBboxResourcePolygon = getProjectedGeoBboxResourcePolygon(
-        warpedMap.projectedTransformer,
-        this.viewport.projectedGeoBbox
-      )
+      const projectedGeoBboxResourcePolygon =
+        getProjectedGeoBboxResourcePolygon(
+          warpedMap.projectedTransformer,
+          this.viewport.projectedGeoBbox
+        )
 
       if (!hasImageInfo(warpedMap)) {
         this.dispatchEvent(
@@ -201,7 +202,7 @@ export default class WebGL2Renderer extends EventTarget {
       const zoomLevel = getBestZoomLevel(
         warpedMap.parsedImage,
         this.viewport.canvasSize,
-        geoBboxResourcePolygon
+        projectedGeoBboxResourcePolygon
       )
 
       // TODO: remove maps from this list when they're removed from WarpedMapList
@@ -211,7 +212,7 @@ export default class WebGL2Renderer extends EventTarget {
       // TODO: rename function
       const tiles = computeIiifTilesForPolygonAndZoomLevel(
         warpedMap.parsedImage,
-        geoBboxResourcePolygon,
+        projectedGeoBboxResourcePolygon,
         zoomLevel
       )
 
