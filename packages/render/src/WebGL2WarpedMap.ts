@@ -38,7 +38,7 @@ export default class WebGL2WarpedMap {
   packedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null
   packedTilesScaleFactorsTexture: WebGLTexture | null
 
-  projectedGeoToWebGL2Transform: Transform | undefined
+  projectedGeoToClipTransform: Transform | undefined
 
   private throttledUpdateTextures: () => void | undefined
 
@@ -66,8 +66,8 @@ export default class WebGL2WarpedMap {
     )
   }
 
-  updateVertexBuffers(projectedGeoToWebGL2Transform: Transform) {
-    this.projectedGeoToWebGL2Transform = projectedGeoToWebGL2Transform
+  updateVertexBuffers(projectedGeoToClipTransform: Transform) {
+    this.projectedGeoToClipTransform = projectedGeoToClipTransform
     this.updateVertexBuffersInternal()
   }
 
@@ -92,7 +92,7 @@ export default class WebGL2WarpedMap {
   private updateVertexBuffersInternal() {
     // This is a costly function, so it's throttled in render as part of throttledPrepareRender()
     // And it's called once at the end off a transformation transition
-    if (!this.vao || !this.projectedGeoToWebGL2Transform) {
+    if (!this.vao || !this.projectedGeoToClipTransform) {
       return
     }
 
@@ -106,32 +106,32 @@ export default class WebGL2WarpedMap {
       'a_resourceTrianglePoint'
     )
 
-    const webGL2CurrentTrianglePoints =
+    const clipCurrentTrianglePoints =
       this.warpedMap.projectedGeoCurrentTrianglePoints.map((point) => {
         return applyTransform(
-          this.projectedGeoToWebGL2Transform as Transform,
+          this.projectedGeoToClipTransform as Transform,
           point
         )
       })
     createBuffer(
       this.gl,
       this.program,
-      new Float32Array(webGL2CurrentTrianglePoints.flat()),
+      new Float32Array(clipCurrentTrianglePoints.flat()),
       2,
       'a_clipCurrentTrianglePoint'
     )
 
-    const webGL2NewTrianglePoints =
+    const clipNewTrianglePoints =
       this.warpedMap.projectedGeoNewTrianglePoints.map((point) => {
         return applyTransform(
-          this.projectedGeoToWebGL2Transform as Transform,
+          this.projectedGeoToClipTransform as Transform,
           point
         )
       })
     createBuffer(
       this.gl,
       this.program,
-      new Float32Array(webGL2NewTrianglePoints.flat()),
+      new Float32Array(clipNewTrianglePoints.flat()),
       2,
       'a_clipNewTrianglePoint'
     )

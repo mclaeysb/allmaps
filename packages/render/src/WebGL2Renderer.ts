@@ -385,7 +385,7 @@ export default class WebGL2Renderer extends EventTarget {
     }
 
     this.invertedRenderTransform = invertTransform(
-      this.viewport.projectedGeoToWebGL2Transform
+      this.viewport.projectedGeoToClipTransform
     )
 
     for (const mapId of this.mapsInViewport) {
@@ -396,7 +396,7 @@ export default class WebGL2Renderer extends EventTarget {
       }
 
       webgl2WarpedMap.updateVertexBuffers(
-        this.viewport.projectedGeoToWebGL2Transform
+        this.viewport.projectedGeoToClipTransform
       )
     }
   }
@@ -553,13 +553,13 @@ export default class WebGL2Renderer extends EventTarget {
     }
 
     // renderTransform is the product of:
-    // - the viewport's projectedGeoToWebGL2Transform (projected geo coordinates -> webgl2 coordinates)
-    // - the saved invertedRenderTransform (projected webgl2 coordinates -> geo coordinates)
+    // - the viewport's projectedGeoToClipTransform (projected geo coordinates -> clip coordinates)
+    // - the saved invertedRenderTransform (projected clip coordinates -> geo coordinates)
     // since updateVertexBuffers ('where to draw triangles') run with possibly a different Viewport then renderInternal ('drawing the triangles'), a difference caused by throttling, there needs to be an adjustment.
-    // this adjustment is minimal: indeed, since invertedRenderTransform is set as the inverse of the viewport's projectedGeoToWebGL2Transform in updateVertexBuffers()
+    // this adjustment is minimal: indeed, since invertedRenderTransform is set as the inverse of the viewport's projectedGeoToClipTransform in updateVertexBuffers()
     // this renderTransform is almost the identity transform [1, 0, 0, 1, 0, 0].
     const renderTransform = multiplyTransform(
-      this.viewport.projectedGeoToWebGL2Transform,
+      this.viewport.projectedGeoToClipTransform,
       this.invertedRenderTransform
     )
 

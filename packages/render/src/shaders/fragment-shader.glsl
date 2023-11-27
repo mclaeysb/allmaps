@@ -53,6 +53,9 @@ void main() {
     ivec4 packedTileResourcePositionAndDimension = texelFetch(u_packedTilesResourcePositionsAndDimensionsTexture, ivec2(0, index), 0);
     int packedTileScaleFactor = texelFetch(u_packedTilesScaleFactorsTexture, ivec2(0, index), 0).r;
 
+    float packedTilePositionX = float(packedTilePosition.r);
+    float packedTilePositionY = float(packedTilePosition.g);
+
     int packedTileResourcePositionX = packedTileResourcePositionAndDimension.r;
     int packedTileResourcePositionY = packedTileResourcePositionAndDimension.g;
 
@@ -76,11 +79,11 @@ void main() {
         smallestScaleFactorDiff = scaleFactorDiff;
         bestScaleFactor = packedTileScaleFactor;
 
-        float packedTileScaledResourcePointX = float(resourceTrianglePointX - packedTileResourcePositionX) / float(bestScaleFactor);
-        float packedTileScaledResourcePointY = float(resourceTrianglePointY - packedTileResourcePositionY) / float(bestScaleFactor);
+        float packedTilePointX = float(resourceTrianglePointX - packedTileResourcePositionX) / float(bestScaleFactor);
+        float packedTilePointY = float(resourceTrianglePointY - packedTileResourcePositionY) / float(bestScaleFactor);
 
-        float packedTilesPointX = float(packedTilePosition.r) + packedTileScaledResourcePointX;
-        float packedTilesPointY = float(packedTilePosition.g) + packedTileScaledResourcePointY;
+        float packedTilesPointX = packedTilePositionX + packedTilePointX;
+        float packedTilesPointY = packedTilePositionY + packedTilePointY;
 
         float packedTilesTexturePointX = round(packedTilesPointX) / float(packedTilesTextureSize.x);
         float packedTilesTexturePointY = round(packedTilesPointY) / float(packedTilesTextureSize.y);
