@@ -38,9 +38,8 @@ void main() {
   int smallestScaleFactorDiff = 256 * 256; // Starting with very high number
   int bestScaleFactor = 0;
 
-  // Prepare storage for the resulting packed tiles texture coordinate of the treated triangle point
-  float packedTilesTexturePointX = 0.0f;
-  float packedTilesTexturePointY = 0.0f;
+  // Prepare storage for the resulting packed tiles texture point that corresponds to the treated triangle point
+  vec2 packedTilesTexturePoint = vec2(0.0f, 0.0f);
 
   color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -83,15 +82,17 @@ void main() {
         float packedTilesPointX = float(packedTilePosition.r) + packedTileScaledResourcePointX;
         float packedTilesPointY = float(packedTilePosition.g) + packedTileScaledResourcePointY;
 
-        packedTilesTexturePointX = round(packedTilesPointX) / float(packedTilesTextureSize.x);
-        packedTilesTexturePointY = round(packedTilesPointY) / float(packedTilesTextureSize.y);
+        float packedTilesTexturePointX = round(packedTilesPointX) / float(packedTilesTextureSize.x);
+        float packedTilesTexturePointY = round(packedTilesPointY) / float(packedTilesTextureSize.y);
+
+        packedTilesTexturePoint = vec2(packedTilesTexturePointX, packedTilesTexturePointY);
       }
     }
   }
 
   if(found == true) {
     // Read color of the treated point from packed tiles texture
-    color = texture(u_packedTilesTexture, vec2(packedTilesTexturePointX, packedTilesTexturePointY));
+    color = texture(u_packedTilesTexture, packedTilesTexturePoint);
 
     // Remove background color
     if(u_backgroundColorThreshold > 0.0f) {
@@ -116,6 +117,7 @@ void main() {
     color = vec4(color.rgb * u_opacity, color.a * u_opacity);
 
     // Debugging: uncomment to override texture color with triangle index show triangles
-    // color = vec4(abs(sin(v_triangleIndex)), abs(sin(v_triangleIndex + 1.0f)), abs(sin(v_triangleIndex + 2.0f)), 1);
+    vec4 debugColor = vec4(abs(sin(v_triangleIndex)), abs(sin(v_triangleIndex + 1.0f)), abs(sin(v_triangleIndex + 2.0f)), 1);
+    // color = debugColor;
   }
 }
