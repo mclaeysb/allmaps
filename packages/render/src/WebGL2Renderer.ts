@@ -575,7 +575,7 @@ export default class WebGL2Renderer extends EventTarget {
 
     const renderTransformLocation = gl.getUniformLocation(
       this.program,
-      'u_render_transform'
+      'u_renderTransform'
     )
     gl.uniformMatrix4fv(
       renderTransformLocation,
@@ -587,7 +587,7 @@ export default class WebGL2Renderer extends EventTarget {
 
     const animationProgressLocation = gl.getUniformLocation(
       this.program,
-      'u_animation_progress'
+      'u_animationProgress'
     )
     gl.uniform1f(animationProgressLocation, this.animationProgress)
 
@@ -625,7 +625,7 @@ export default class WebGL2Renderer extends EventTarget {
 
       const bestScaleFactorLocation = gl.getUniformLocation(
         this.program,
-        'u_best_scale_factor'
+        'u_bestScaleFactor'
       )
       const bestScaleFactor = webgl2WarpedMap.warpedMap.bestScaleFactor
       gl.uniform1i(bestScaleFactorLocation, bestScaleFactor)
@@ -634,7 +634,7 @@ export default class WebGL2Renderer extends EventTarget {
 
       const packedTilesTextureLocation = gl.getUniformLocation(
         this.program,
-        'u_packed_tiles_texture'
+        'u_packedTilesTexture'
       )
       gl.uniform1i(packedTilesTextureLocation, 0)
       gl.activeTexture(gl.TEXTURE0)
@@ -644,7 +644,7 @@ export default class WebGL2Renderer extends EventTarget {
 
       const packedTilesPositionsTextureLocation = gl.getUniformLocation(
         this.program,
-        'u_packed_tiles_positions_texture'
+        'u_packedTilesPositionsTexture'
       )
       gl.uniform1i(packedTilesPositionsTextureLocation, 1)
       gl.activeTexture(gl.TEXTURE1)
@@ -655,7 +655,7 @@ export default class WebGL2Renderer extends EventTarget {
       const packedTilesResourcePositionsAndDimensionsLocation =
         gl.getUniformLocation(
           this.program,
-          'u_packed_tiles_resource_positions_and_dimensions_texture'
+          'u_packedTilesResourcePositionsAndDimensionsTexture'
         )
       gl.uniform1i(packedTilesResourcePositionsAndDimensionsLocation, 2)
       gl.activeTexture(gl.TEXTURE2)
@@ -668,7 +668,7 @@ export default class WebGL2Renderer extends EventTarget {
 
       const packedTileScaleFactorsTextureLocation = gl.getUniformLocation(
         this.program,
-        'u_packed_tiles_scale_factors_texture'
+        'u_packedTilesScaleFactorsTexture'
       )
       gl.uniform1i(packedTileScaleFactorsTextureLocation, 3)
       gl.activeTexture(gl.TEXTURE3)
@@ -722,7 +722,7 @@ export default class WebGL2Renderer extends EventTarget {
 
     const removeBackgroundColorLocation = gl.getUniformLocation(
       this.program,
-      'u_remove_background_color'
+      'u_removeBackgroundColor'
     )
     gl.uniform1f(removeBackgroundColorLocation, removeBackgroundColor ? 1 : 0)
 
@@ -735,7 +735,7 @@ export default class WebGL2Renderer extends EventTarget {
 
       const backgroundColorThresholdLocation = gl.getUniformLocation(
         this.program,
-        'u_background_color_threshold'
+        'u_background_colorThreshold'
       )
 
       gl.uniform1f(
@@ -746,7 +746,7 @@ export default class WebGL2Renderer extends EventTarget {
 
       const backgroundColorHardnessLocation = gl.getUniformLocation(
         this.program,
-        'u_background_color_hardness'
+        'u_background_colorHardness'
       )
       gl.uniform1f(
         backgroundColorHardnessLocation,
@@ -765,7 +765,7 @@ export default class WebGL2Renderer extends EventTarget {
     if (colorizeColor) {
       const colorizeColorLocation = gl.getUniformLocation(
         this.program,
-        'u_colorize_color'
+        'u_colorizeColor'
       )
       gl.uniform3fv(colorizeColorLocation, colorizeColor)
     }

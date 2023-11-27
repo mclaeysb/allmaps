@@ -103,7 +103,7 @@ export default class WebGL2WarpedMap {
       this.program,
       new Float32Array(this.warpedMap.resourceTrianglePoints.flat()),
       2,
-      'a_resource_triangle_coordinates'
+      'a_resourceTrianglePoint'
     )
 
     const webGL2CurrentTrianglePoints =
@@ -118,7 +118,7 @@ export default class WebGL2WarpedMap {
       this.program,
       new Float32Array(webGL2CurrentTrianglePoints.flat()),
       2,
-      'a_webgl2_current_triangle_coordinates'
+      'a_clipCurrentTrianglePoint'
     )
 
     const webGL2NewTrianglePoints =
@@ -133,7 +133,7 @@ export default class WebGL2WarpedMap {
       this.program,
       new Float32Array(webGL2NewTrianglePoints.flat()),
       2,
-      'a_webgl2_new_triangle_coordinates'
+      'a_clipNewTrianglePoint'
     )
 
     // For debugging purposes, a triangle index is passed.
@@ -143,7 +143,7 @@ export default class WebGL2WarpedMap {
     triangleIndex = triangleIndex.map((v, i) => {
       return Math.round((i - 1) / 3)
     })
-    createBuffer(this.gl, this.program, triangleIndex, 1, 'a_triangle_index')
+    createBuffer(this.gl, this.program, triangleIndex, 1, 'a_triangleIndex')
   }
 
   private updateTextures() {
@@ -162,15 +162,15 @@ export default class WebGL2WarpedMap {
       w: tile.imageBitmap?.width || 0,
       h: tile.imageBitmap?.height || 0,
       // Calling potpack will add x and y properties
+      // with the position of the tile's origin in the pack
       // By adding them here already, we'll make TypeScript happy!
       x: 0,
       y: 0,
       index
     }))
 
-    // Potpack modifies the tiles array and overwrites the x, y row/column
-    // values with the texture position in pixel values
-    const { w: textureWidth, h: textureHeight } = potpack(packedTiles)
+    const { w: packedTilesTextureWidth, h: packedTilesTextureHeight } =
+      potpack(packedTiles)
 
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4)
 
@@ -185,8 +185,8 @@ export default class WebGL2WarpedMap {
       gl.TEXTURE_2D,
       0,
       gl.RGBA,
-      textureWidth,
-      textureHeight,
+      packedTilesTextureWidth,
+      packedTilesTextureHeight,
       0,
       gl.RGBA,
       gl.UNSIGNED_BYTE,

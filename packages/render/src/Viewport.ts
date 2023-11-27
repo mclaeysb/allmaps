@@ -69,7 +69,7 @@ export default class Viewport extends EventTarget {
    * @param {Size} viewportSize - Size of the viewport in viewport pixels, as [width, height].
    * @param {number} rotation - Rotation of the viewport with respect to the project coordinate system.
    * @param {number} projectedGeoPerViewportScale - Resolution of the viewport, in projection coordinates per viewport pixel.
-   * @param {number} devicePixelRatio - The devicePixelRatio of the viewport.
+   * @param {number} [devicePixelRatio=1] - The devicePixelRatio of the viewport.
    */
   constructor(
     projectedGeoCenter: Point,
