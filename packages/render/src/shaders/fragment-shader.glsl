@@ -61,7 +61,7 @@ void main() {
 
     // If the treated triangle point is inside the tile, consider to use the tile:
     // if the scale factor is closer to the best scale factor for this map then currently known one
-    // document it's scale factor as the best available scale factor in the packed tiles
+    // update the smallest scale factor diff
     // and compute the packed tiles texture point that corresponds to the treated triangle point
     if(resourceTrianglePointX >= packedTileResourcePositionX &&
       resourceTrianglePointX < packedTileResourcePositionX + packedTileDimensionWidth &&
@@ -91,7 +91,7 @@ void main() {
   }
 
   if(found == true) {
-    // Read color of the treated point from packed tiles texture
+    // Read color of the treated point at it's packed tiles texture point coordinates in the packed tiles texture
     color = texture(u_packedTilesTexture, packedTilesTexturePoint);
 
     // Remove background color
@@ -116,7 +116,7 @@ void main() {
     // Opacity
     color = vec4(color.rgb * u_opacity, color.a * u_opacity);
 
-    // Debugging: uncomment to override texture color with triangle index show triangles
+    // Debugging: uncomment to override color of the treated point with a color made from the point's triangle index
     vec4 debugColor = vec4(abs(sin(v_triangleIndex)), abs(sin(v_triangleIndex + 1.0f)), abs(sin(v_triangleIndex + 2.0f)), 1);
     // color = debugColor;
   }
