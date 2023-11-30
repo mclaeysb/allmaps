@@ -13,7 +13,7 @@ export default class TileCache extends EventTarget {
 
   protected tilesFetchingCount = 0
 
-  protected requestHistory: FetchableMapTile[] = []
+  protected requestedTilesHistory: FetchableMapTile[] = []
 
   getCacheableTile(tileUrl: string) {
     return this.tilesByTileUrl.get(tileUrl)
@@ -50,28 +50,32 @@ export default class TileCache extends EventTarget {
     // so we don't expect doubles of (mapId, tileUrl) cominations, but that could change.
 
     // Make set of unique (mapId, tileUrl) cominations that are part of this request
-    const requestKeys = new Set(
+    const requestedTilesKeys = new Set(
       requestedTiles.map((fetchableMapTile) =>
         this.createKey(fetchableMapTile.mapId, fetchableMapTile.tileUrl)
       )
     )
     // Make set of unique (mapId, tileUrl) cominations that are part of the historic requests
-    const requestHistoryKeys = new Set(
-      this.requestHistory.map((fetchableMapTile) =>
+    const requestedTilesHistoryKeys = new Set(
+      this.requestedTilesHistory.map((fetchableMapTile) =>
         this.createKey(fetchableMapTile.mapId, fetchableMapTile.tileUrl)
       )
     )
     // Make set of unique (mapId, tileUrl) cominations that are part of this request but not of the historic requests
-    const requestAndRequestHistoryKeys = new Set([
-      ...requestKeys,
-      ...requestHistoryKeys
+    const requestedTilesAndRequestedTilesHistoryKeys = new Set([
+      ...requestedTilesKeys,
+      ...requestedTilesHistoryKeys
     ]) // TODO: use union() when it becomes official
     // Make set of unique (mapId, tileUrl) cominations that are new in the request compared to the historic requests
-    const requestKeysNotInRequestHistory = Array.from(requestKeys).filter(
-      (key) => !Array.from(requestHistoryKeys).includes(key)
-    )
+    const requestedTilesKeysNotInHistory = Array.from(
+      requestedTilesKeys
+    ).filter((key) => !Array.from(requestedTilesHistoryKeys).includes(key))
 
-    console.log(requestKeys, requestHistoryKeys, requestKeysNotInRequestHistory)
+    console.log(
+      requestedTilesKeys,
+      requestedTilesHistoryKeys,
+      requestedTilesKeysNotInHistory
+    )
 
     // Remove tiles from cache if not in request (or historic request)
     // Loop over all tileUrl's in cache, and the mapId's they are for
@@ -79,7 +83,11 @@ export default class TileCache extends EventTarget {
       for (const mapId of mapIds) {
         // If the requests (and historic requests) tiles don't include the (mapId, tileUrl) combination of the loop
         // remove that (mapId, tileUrl) combination from the cache
-        if (!requestAndRequestHistoryKeys.has(this.createKey(mapId, tileUrl))) {
+        if (
+          !requestedTilesAndRequestedTilesHistoryKeys.has(
+            this.createKey(mapId, tileUrl)
+          )
+        ) {
           this.removeMapTile(mapId, tileUrl)
         }
       }
@@ -99,33 +107,33 @@ export default class TileCache extends EventTarget {
     }
 
     // Update historic requests
-    const requestedTilesNotInRequestHistory = requestedTiles.filter(
+    const requestedTilesNotInHistory = requestedTiles.filter(
       (fetchableMapTile) =>
-        Array.from(requestKeysNotInRequestHistory).includes(
+        Array.from(requestedTilesKeysNotInHistory).includes(
           this.createKey(fetchableMapTile.mapId, fetchableMapTile.tileUrl)
         )
     )
-    this.updateRequestHistory(requestedTilesNotInRequestHistory)
+    this.updateRequestedTilesHistory(requestedTilesNotInHistory)
   }
 
-  updateRequestHistory(requestedTilesNotInRequestHistory: FetchableMapTile[]) {
+  updateRequestedTilesHistory(requestedTilesNotInHistory: FetchableMapTile[]) {
     // Add fetchableMapTiles to history:
     // adding items to the front and
     // adding the last requested tiles first
     // such that the first requested tiles are at the start of the array
     for (
-      let index = requestedTilesNotInRequestHistory.length - 1;
+      let index = requestedTilesNotInHistory.length - 1;
       index >= 0;
       index--
     ) {
-      const fetchableMapTile = requestedTilesNotInRequestHistory[index]
-      this.requestHistory.unshift(fetchableMapTile)
+      const fetchableMapTile = requestedTilesNotInHistory[index]
+      this.requestedTilesHistory.unshift(fetchableMapTile)
     }
 
     // Trim history based on maximum amounts
     let count = 0
     let size = 0
-    for (const fetchableMapTile of this.requestHistory) {
+    for (const fetchableMapTile of this.requestedTilesHistory) {
       count += 1
       size +=
         (fetchableMapTile.imageRequest.size?.height || 0) *
@@ -138,7 +146,7 @@ export default class TileCache extends EventTarget {
         break
       }
     }
-    this.requestHistory = this.requestHistory.slice(0, count)
+    this.requestedTilesHistory = this.requestedTilesHistory.slice(0, count)
   }
 
   clear() {
