@@ -71,12 +71,6 @@ export default class TileCache extends EventTarget {
       requestedTilesKeys
     ).filter((key) => !Array.from(requestedTilesHistoryKeys).includes(key))
 
-    console.log(
-      requestedTilesKeys,
-      requestedTilesHistoryKeys,
-      requestedTilesKeysNotInHistory
-    )
-
     // Remove tiles from cache if not in request (or historic request)
     // Loop over all tileUrl's in cache, and the mapId's they are for
     for (const [tileUrl, mapIds] of this.mapIdsByTileUrl) {
