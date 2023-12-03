@@ -32,30 +32,28 @@ import { WarpedMapLayer } from '@allmaps/openlayers'
 Alternatively, ESM and UMD bundled versions of the code are also provided under `/dist/bundled`. You can load them directly in a HTML script tag using a CDN.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@allmaps/openlayers@1.0.0-beta.38/dist/bundled/allmaps-openlayers-8.umd.cjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@allmaps/openlayers/dist/bundled/allmaps-openlayers-8.umd.cjs"></script>
 ```
 
-*Note: Replace the version number and openLayer version number to the later (or appropriate) version.*
+*Note: Replace the openLayer version number to the appropriate version for your use-case.*
 
 When loading as bundled code, the package's functions are available under the `Allmaps` global variable:
 
 ```js
 // ... (see 'Usage' below)
-const warpedMapLayer = new Allmaps.WarpedMapLayer(annotationUrl)
+const warpedMapSource = new Allmaps.WarpedMapSource()
 // ...
 ```
 
-See [the vite config](./vite.config.ts) for more information about globals, and the OpenLayers version for which it has been compiled.
-
 ## Usage
 
-Built for OpenLayers 8, but should work with OpenLayers 6 and OpenLayers 7 as well.
+Built for OpenLayers 8, but should work with OpenLayers 6 and OpenLayers 7 as well. See [the vite config](./vite.config.ts) for more information about globals, and the OpenLayers version for which it has been compiled.
 
 ### Loading an annotation
 
 As is custom in OpenLayers, this package differentiates 'source' and 'layer'. In the Allmaps Leaflet package, this distinction is not made.
 
-A first way to add an annotation to a WarpedMapLayer is to specify the annotation or annotationUrl when creating the WarpedMapLayer.
+Create a source and layer and adding them to map looks like this:
 
 ```js
 import { WarpedMapLayer, WarpedMapSource } from '@allmaps/openlayers'
@@ -82,7 +80,7 @@ const map = new ol.Map({
 })
 ```
 
-A Georeference Annotation can be added to a WarpedMapSource using the functions `addGeoreferenceAnnotation()` or `addGeoreferenceAnnotationByUrl()`, which will render it as part as the WarpedMapLayer on the OpenLayers map. Here's an example of the first using `fetch()` and `then()`.
+A Georeference Annotation can be added to a WarpedMapSource using the functions `addGeoreferenceAnnotation()` or `addGeoreferenceAnnotationByUrl()`, which will render it as part of the WarpedMapLayer on the OpenLayers map. Here's an example of the first using `fetch()` and `then()`.
 
 ```js
 const annotationUrl = 'https://annotations.allmaps.org/images/813b0579711371e2@2c1d7e89d8c309e8'
@@ -108,11 +106,11 @@ asyncAddGeoreferenceAnnotationByUrl()
 
 <a href="https://codepen.io/mclaeysb/pen/RwvqNpe"><img src="thumbnail.png" height="400" alt="Allmaps OpenLayers Thumbnail"></a>
 
-Click the image above to see a live CodePen example of a minimal html file that loads a OpenLayers maps and adds a Georeference Annotation.
+Click the image above to see a live CodePen example of a minimal html file that loads an OpenLayers map, creates a Source and Layer and adds a Georeference Annotation to the Source to display it's Georeferenced Map on the OpenLayers map.
 
 ### Events
 
-The following OpenLayers events are emitted to inform you of the state of the WarpedMapLayer, WarpedMapSource and rendering.
+The following events are emitted to inform you of the state of the WarpedMapLayer, WarpedMapSource and rendering.
 
 | Description                                                   | Type                      | Data                               |
 |---------------------------------------------------------------|---------------------------|------------------------------------|
@@ -130,7 +128,7 @@ You can listen to them in the typical OpenLayers way. Here's an example:
 map.on('warpedmapadded', (event) => {console.log(event.mapId, warpedMapSource.getTotalBounds())}, map)
 ```
 
-Some of the functions specified in the API only make sense once a map is loaded into the WarpedMapSource. You can use such listeners to make sure function are run e.g. only after a warped map has been added.
+Some of the functions specified in the API only make sense once a warped map is loaded into the WarpedMapSource. You can use such listeners to make sure function are run e.g. only after a warped map has been added.
 
 ### What is a 'map'?
 

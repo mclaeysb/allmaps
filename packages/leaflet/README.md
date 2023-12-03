@@ -35,8 +35,6 @@ Alternatively, ESM and UMD bundled versions of the code are also provided under 
 <script src="https://cdn.jsdelivr.net/npm/@allmaps/leaflet/dist/bundled/allmaps-leaflet-1.9.umd.js"></script>
 ```
 
-*Note: Replace the version number to the later (or appropriate) version.*
-
 When loading as bundled code, the package's functions are available under the `Allmaps` global variable:
 
 ```js
@@ -69,7 +67,7 @@ const warpedMapLayer = new WarpedMapLayer(annotationUrl)
 map.addLayer(warpedMapLayer)
 ```
 
-When adding this WarpedMapLayer to the Leaflet map, the Georeference Annotation will be Georeferenced Map specified by the Georeference Annotation will be rendered as part as the WarpedMapLayer on the Leaflet map.
+When adding this WarpedMapLayer to the Leaflet map, the Georeferenced Map specified by the Georeference Annotation will be rendered as part of the WarpedMapLayer on the Leaflet map.
 
 Specifying a Georeference Annotation when creating a WarpedMapLayer (as is done above) is optional. A Georeference Annotation can also be added at a later stage using the functions `addGeoreferenceAnnotation()` or `addGeoreferenceAnnotationByUrl()`. Here's an example of the first using `fetch()` and `then()`.
 
@@ -95,11 +93,12 @@ asyncAddGeoreferenceAnnotationByUrl()
 
 <a href="https://codepen.io/mclaeysb/pen/vYbXGjo"><img src="thumbnail.png" height="400" alt="Allmaps OpenLayers Thumbnail"></a>
 
-Click the image above to see a live CodePen example of a minimal html file that loads a Leaflet maps and adds a Georeference Annotation.
+Click the image above to see a live CodePen example of a minimal html file that loads a Leaflet map, creates a Layer and adds a Georeference Annotation to the Layer to display it's Georeferenced Map on the Leaflet map.
+
 
 ### Events
 
-The following Leaflet events are emitted to inform you of the state of the WarpedMapLayer.
+The following events are emitted to inform you of the state of the WarpedMapLayer.
 
 | Description                                                   | Type                      | Data                               |
 |---------------------------------------------------------------|---------------------------|------------------------------------|
@@ -117,7 +116,7 @@ You can listen to them in the typical Leaflet way. Here's an example:
 map.on('warpedmapadded', (event) => {console.log(event.mapId, warpedMapSource.getTotalBounds())}, map)
 ```
 
-Some of the functions specified in the API only make sense once a map is loaded into the WarpedMapLayer. You can use such listeners to make sure function are run e.g. only after a warped map has been added.
+Some of the functions specified in the API only make sense once a warped map is loaded into the WarpedMapLayer. You can use such listeners to make sure function are run e.g. only after a warped map has been added.
 
 ### What is a 'map'?
 
