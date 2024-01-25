@@ -167,8 +167,7 @@ export default class WarpedMap extends EventTarget {
 
     this.visible = visible
 
-    this.transformationType =
-      this.georeferencedMap.transformation?.type || 'polynomial'
+    this.transformationType = 'helmert'
 
     this.updateTransformerProperties()
   }
@@ -477,13 +476,16 @@ export default class WarpedMap extends EventTarget {
   }
 
   private updateTransformer(): void {
-    this.transformer = new GcpTransformer(this.gcps, this.transformationType)
+    this.transformer = new GcpTransformer(this.gcps, this.transformationType, {
+      differentHandedness: true
+    })
   }
 
   private updateProjectedTransformer(): void {
     this.projectedTransformer = new GcpTransformer(
       this.projectedGcps,
-      this.transformationType
+      this.transformationType,
+      { differentHandedness: true }
     )
   }
 

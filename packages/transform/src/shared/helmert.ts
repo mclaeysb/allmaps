@@ -1,20 +1,46 @@
 import { Matrix, pseudoInverse } from 'ml-matrix'
 
-import type { Transformation } from './types'
+import { flipY } from '@allmaps/stdlib'
+
+import type { PartialTransformOptions, Transformation } from './types'
 
 import type { Point } from '@allmaps/types'
 
 export default class Helmert implements Transformation {
   sourcePoints: Point[]
   destinationPoints: Point[]
+  options?: PartialTransformOptions
 
   helmertParametersMatrix: Matrix
 
   pointCount: number
 
-  constructor(sourcePoints: Point[], destinationPoints: Point[]) {
-    this.sourcePoints = sourcePoints
-    this.destinationPoints = destinationPoints
+  constructor(
+    sourcePoints: Point[],
+    destinationPoints: Point[],
+    options?: PartialTransformOptions
+  ) {
+    if (options) {
+      this.options = options
+    }
+    this.sourcePoints = sourcePoints.map((point) => {
+      return this.options?.differentHandedness && !this.options?.isBackwards
+        ? flipY(point)
+        : point
+    })
+    this.destinationPoints = destinationPoints.map((point) => {
+      return this.options?.differentHandedness && this.options?.isBackwards
+        ? flipY(point)
+        : point
+    })
+
+    console.log(
+      'Creating new',
+      sourcePoints[0],
+      this.sourcePoints[0],
+      destinationPoints[0],
+      this.destinationPoints[0]
+    )
 
     this.pointCount = this.sourcePoints.length
 
@@ -67,15 +93,29 @@ export default class Helmert implements Transformation {
       throw new Error('Helmert parameters not computed')
     }
 
+    newSourcePoint =
+      this.options?.differentHandedness && !this.options?.isBackwards
+        ? flipY(newSourcePoint)
+        : newSourcePoint
+
     // Compute the interpolated value by applying the helmert coefficients to the input point
-    const newDestinationPoint: Point = [
+    let newDestinationPoint: Point = [
       this.helmertParametersMatrix.get(0, 0) +
         this.helmertParametersMatrix.get(2, 0) * newSourcePoint[0] -
         this.helmertParametersMatrix.get(3, 0) * newSourcePoint[1],
       this.helmertParametersMatrix.get(1, 0) +
-        this.helmertParametersMatrix.get(3, 0) * newSourcePoint[0] +
-        this.helmertParametersMatrix.get(2, 0) * newSourcePoint[1]
+        this.helmertParametersMatrix.get(2, 0) * newSourcePoint[1] +
+        this.helmertParametersMatrix.get(3, 0) * newSourcePoint[0]
     ]
+
+    newDestinationPoint =
+      this.options?.differentHandedness && this.options?.isBackwards
+        ? flipY(newDestinationPoint)
+        : newDestinationPoint
+
+    // if (Math.random() < 0.1) {
+    console.log('Evaluating', newSourcePoint, newDestinationPoint)
+    // }
 
     return newDestinationPoint
   }

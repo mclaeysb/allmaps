@@ -1,18 +1,3 @@
-import Helmert from './shared/helmert.js'
-import Polynomial from './shared/polynomial.js'
-import Projective from './shared/projective.js'
-import RBF from './shared/radial-basis-function.js'
-
-import { thinPlateKernel } from './shared/kernel-functions.js'
-import { euclideanNorm } from './shared/norm-functions.js'
-
-import {
-  transformLineStringForwardToLineString,
-  transformLineStringBackwardToLineString,
-  transformPolygonForwardToPolygon,
-  transformPolygonBackwardToPolygon
-} from './shared/transform-helper-functions.js'
-
 import {
   convertPointToGeojsonPoint,
   convertLineStringToGeojsonLineString,
@@ -28,13 +13,20 @@ import {
   isGeojsonPolygon
 } from '@allmaps/stdlib'
 
-import type {
-  TransformGcp,
-  TransformationType,
-  PartialTransformOptions,
-  GcpTransformerInterface,
-  Transformation
-} from './shared/types.js'
+import Helmert from './shared/helmert.js'
+import Polynomial from './shared/polynomial.js'
+import Projective from './shared/projective.js'
+import RBF from './shared/radial-basis-function.js'
+
+import { thinPlateKernel } from './shared/kernel-functions.js'
+import { euclideanNorm } from './shared/norm-functions.js'
+
+import {
+  transformLineStringForwardToLineString,
+  transformLineStringBackwardToLineString,
+  transformPolygonForwardToPolygon,
+  transformPolygonBackwardToPolygon
+} from './shared/transform-helper-functions.js'
 
 import type {
   Point,
@@ -49,6 +41,14 @@ import type {
   SvgGeometry
 } from '@allmaps/types'
 
+import type {
+  TransformGcp,
+  TransformationType,
+  PartialTransformOptions,
+  GcpTransformerInterface,
+  Transformation
+} from './shared/types.js'
+
 /**
  * A Ground Control Point Transformer, containing a forward and backward transformation and
  * specifying functions to transform geometries using these transformations.
@@ -58,6 +58,7 @@ export default class GcpTransformer implements GcpTransformerInterface {
   sourcePoints: Point[]
   destinationPoints: Point[]
   type: TransformationType
+  options?: PartialTransformOptions
 
   forwardTransformation?: Transformation
   backwardTransformation?: Transformation
@@ -68,8 +69,12 @@ export default class GcpTransformer implements GcpTransformerInterface {
    * @param {TransformationType} [type='polynomial'] - The transformation type
    */ constructor(
     gcps: TransformGcp[] | Gcp[],
-    type: TransformationType = 'polynomial'
+    type: TransformationType = 'polynomial',
+    options?: PartialTransformOptions
   ) {
+    if (options) {
+      this.options = options
+    }
     if (gcps.length == 0) {
       throw new Error('No control points.')
     }
@@ -91,19 +96,28 @@ export default class GcpTransformer implements GcpTransformerInterface {
   }
 
   #createForwardTransformation(): Transformation {
-    return this.#createTransformation(this.sourcePoints, this.destinationPoints)
+    return this.#createTransformation(
+      this.sourcePoints,
+      this.destinationPoints,
+      this.options
+    )
   }
 
   #createBackwardTransformation(): Transformation {
-    return this.#createTransformation(this.destinationPoints, this.sourcePoints)
+    return this.#createTransformation(
+      this.destinationPoints,
+      this.sourcePoints,
+      { ...this.options, isBackwards: true }
+    )
   }
 
   #createTransformation(
     sourcePoints: Point[],
-    destinationPoints: Point[]
+    destinationPoints: Point[],
+    options?: PartialTransformOptions
   ): Transformation {
     if (this.type === 'helmert') {
-      return new Helmert(sourcePoints, destinationPoints)
+      return new Helmert(sourcePoints, destinationPoints, options)
     } else if (this.type === 'polynomial1' || this.type === 'polynomial') {
       return new Polynomial(sourcePoints, destinationPoints)
     } else if (this.type === 'polynomial2') {
