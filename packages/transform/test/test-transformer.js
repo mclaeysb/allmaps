@@ -3,8 +3,7 @@ import { expect } from 'chai'
 
 import {
   geometriesToFeatureCollection,
-  geometryToGeojsonGeometry,
-  mergeOptions
+  geometryToGeojsonGeometry
 } from '@allmaps/stdlib'
 
 import {
@@ -13,11 +12,6 @@ import {
 } from '../../stdlib/test/helper-functions.js'
 
 import { GcpTransformer } from '../dist/index.js'
-
-import {
-  transformRectangleForwardToRectangles,
-  defaultTransformOptions
-} from '../dist/shared/transform-helper-functions.js'
 
 import { generalGcps6, gcps6, generalGcps7 } from './input/gcps-test.js'
 
@@ -610,8 +604,6 @@ describe('Transform Rectangle Forward To GcpGrid', async () => {
     maxOffsetRatio: 0.001,
     maxDepth: 1
   }
-  transformOptions = mergeOptions(defaultTransformOptions, transformOptions)
-  // Make sure to merge options to apply default. The other tests are on methods of the Transformer class, where this is done automatically
   const transformer = new GcpTransformer(generalGcps6, 'thinPlateSpline')
   const input = [
     [1000, 1000],
@@ -648,9 +640,8 @@ describe('Transform Rectangle Forward To GcpGrid', async () => {
 
   it(`should split the rectangle in four`, () => {
     expectToBeCloseToArrayArrayArray(
-      transformRectangleForwardToRectangles(
+      transformer.transformRectangleForwardToRectangles(
         input,
-        transformer,
         transformOptions
       ),
       output
@@ -663,8 +654,6 @@ describe('Transform Rectangle Forward To Rectangles, with polynomial transform',
     maxOffsetRatio: 0.001,
     maxDepth: 1
   }
-  transformOptions = mergeOptions(defaultTransformOptions, transformOptions)
-  // Make sure to merge options to apply default. The other tests are on methods of the Transformer class, where this is done automatically
   const transformer = new GcpTransformer(generalGcps6, 'polynomial')
   const input = [
     [1000, 1000],
@@ -683,9 +672,8 @@ describe('Transform Rectangle Forward To Rectangles, with polynomial transform',
 
   it(`should not split the rectangle in four`, () => {
     expectToBeCloseToArrayArrayArray(
-      transformRectangleForwardToRectangles(
+      transformer.transformRectangleForwardToRectangles(
         input,
-        transformer,
         transformOptions
       ),
       output

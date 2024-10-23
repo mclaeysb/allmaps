@@ -1,19 +1,23 @@
 import { Map as GeoreferencedMap } from '@allmaps/annotation'
 import { triangulateToUnique } from '@allmaps/triangulate'
-import { computeDistortionFromPartialDerivatives } from '@allmaps/transform'
+import {
+  computeDistortionFromPartialDerivatives,
+  forEachGcpGridRecursively
+} from '@allmaps/transform'
 import {
   geometryToDiameter,
   mixNumbers,
   mixPoints,
   getPropertyFromCacheOrComputation,
-  getPropertyFromDoubleCacheOrComputation
+  getPropertyFromDoubleCacheOrComputation,
+  rectangleToTriangles
 } from '@allmaps/stdlib'
 
 import WarpedMap from './WarpedMap.js'
 
 import type { WarpedMapOptions } from '../shared/types.js'
 
-import type { Point, Ring } from '@allmaps/types'
+import type { Point, Rectangle, Ring, Triangle } from '@allmaps/types'
 import type { TransformationType } from '@allmaps/transform'
 
 // TODO: Consider making this tunable by the user.
@@ -188,6 +192,29 @@ export default class TriangulatedWarpedMap extends WarpedMap {
             (geometryToDiameter(this.resourceMask) *
               this.currentBestScaleFactor) /
             DIAMETER_FRACTION
+
+          // Trying out custom triangulation
+          const gcpGrid =
+            this.projectedTransformer.transformRectangleForwardToGcpGrid(
+              this.resourceMaskRectangle,
+              {
+                maxOffsetRatio: 0.001,
+                maxDepth: 3
+              }
+            )
+          const triangles: Triangle[] = []
+          forEachGcpGridRecursively(
+            gcpGrid,
+            () => {},
+            (gcpRectangle) => {
+              triangles.push(
+                ...rectangleToTriangles(
+                  gcpRectangle.map((gcp) => gcp.resource) as Rectangle
+                )
+              )
+            }
+          )
+          console.log(triangles)
 
           // TODO: make this obsolete by cleaning mask using conformPolygon() in @allmaps/annotation or in WarpedMap constructor
           try {

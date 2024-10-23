@@ -14,7 +14,11 @@ import {
 } from './distortion.js'
 
 import { defaultTransformOptions } from './shared/transform-helper-functions.js'
-import { defaultRefinementOptions } from './shared/refinement-helper-functions.js'
+import {
+  defaultRefinementOptions,
+  forEachGcpGridRecursively,
+  mapGcpGridRecursively
+} from './shared/refinement-helper-functions.js'
 
 /** @module allmaps/transform */
 
@@ -30,7 +34,9 @@ export {
   supportedDistortionMeasures,
   computeDistortionFromPartialDerivatives,
   defaultTransformOptions,
-  defaultRefinementOptions
+  defaultRefinementOptions,
+  mapGcpGridRecursively,
+  forEachGcpGridRecursively
 }
 
 export * from './shared/types.js'

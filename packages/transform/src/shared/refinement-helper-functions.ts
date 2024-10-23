@@ -323,7 +323,7 @@ export function refineGcpGridRecursively(
 
 export function mapGcpGridRecursively<P0, P1>(
   gcpGrid: TypedGrid<P0>,
-  gcpMapFunction: (gcp: P0) => P1,
+  gcpMapFunction: (p0: P0) => P1,
   cornerGcpsFromParent?: TypedGrid<P1>
 ): TypedGrid<P1> {
   const newGcpGrid: TypedGrid<P1> = {
@@ -405,8 +405,8 @@ export function mapGcpGridRecursively<P0, P1>(
 
 export function forEachGcpGridRecursively<P>(
   gcpGrid: TypedGrid<P>,
-  gcpForEachFunction: (gcp: P) => void,
-  gcpRectangleForEachFunction: (rectangle: TypedRectangle<P>) => void,
+  gcpForEachFunction: (p: P) => void,
+  gcpRectangleForEachFunction: (typedRectangle: TypedRectangle<P>) => void,
   onlyFinest = true,
   doOuter = true
 ): void {

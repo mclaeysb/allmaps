@@ -533,14 +533,18 @@ The benchmark can be run with `pnpm run bench`.
     *   [transformToGeoAsGeojson](#transformtogeoasgeojson)
     *   [transformToResource](#transformtoresource)
     *   [transformToResourceAsGeojson](#transformtoresourceasgeojson)
+    *   [transformRectangleForwardToRectangles](#transformrectangleforwardtorectangles)
+    *   [transformRectangleBackwardToRectangles](#transformrectanglebackwardtorectangles)
+    *   [transformRectangleForwardToGcpGrid](#transformrectangleforwardtogcpgrid)
+    *   [transformRectangleBackwardToGcpGrid](#transformrectanglebackwardtogcpgrid)
     *   [transformSvgToGeojson](#transformsvgtogeojson)
     *   [transformSvgStringToGeojsonFeatureCollection](#transformsvgstringtogeojsonfeaturecollection)
     *   [transformGeojsonToSvg](#transformgeojsontosvg)
     *   [transformGeojsonFeatureCollectionToSvgString](#transformgeojsonfeaturecollectiontosvgstring)
 *   [Transformation](#transformation)
-    *   [Parameters](#parameters-13)
+    *   [Parameters](#parameters-17)
 *   [computeDistortionFromPartialDerivatives](#computedistortionfrompartialderivatives)
-    *   [Parameters](#parameters-14)
+    *   [Parameters](#parameters-18)
 
 ### allmaps/transform
 
@@ -650,6 +654,50 @@ Transforms a Geometry or a GeoJSON geometry backward, to a GeoJSON geometry
 *   `options` **Partial\<TransformOptions>?** Transform options
 
 Returns **GeojsonGeometry** Backward transform of input, as a GeoJSON geometry
+
+#### transformRectangleForwardToRectangles
+
+Transforms a rectangle an array of rectangles, refined using forward transform
+
+##### Parameters
+
+*   `rectangle` **Rectangle** Rectangle to transform
+*   `options` **Partial\<TransformOptions>?** Transform options
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Rectangle>** Refined array of rectangle
+
+#### transformRectangleBackwardToRectangles
+
+Transforms a rectangle an array of rectangles, refined using backward transform
+
+##### Parameters
+
+*   `rectangle` **Rectangle** Rectangle to transform
+*   `options` **Partial\<TransformOptions>?** Transform options
+
+Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Rectangle>** Refined array of rectangle
+
+#### transformRectangleForwardToGcpGrid
+
+Transforms a rectangle a grid and refines the grid using forward transform
+
+##### Parameters
+
+*   `rectangle` **Rectangle** Rectangle to transform
+*   `options` **Partial\<TransformOptions>?** Transform options
+
+Returns **TypedGrid\<Gcp>** Refined grid from rectangle
+
+#### transformRectangleBackwardToGcpGrid
+
+Transforms a rectangle a grid and refines the grid using backward transform
+
+##### Parameters
+
+*   `rectangle` **Rectangle** Rectangle to transform
+*   `options` **Partial\<TransformOptions>?** Transform options
+
+Returns **TypedGrid\<Gcp>** Refined grid from rectangle
 
 #### transformSvgToGeojson
 

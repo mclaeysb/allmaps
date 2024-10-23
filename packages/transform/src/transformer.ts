@@ -47,7 +47,11 @@ import {
   transformLineStringForwardToLineString,
   transformLineStringBackwardToLineString,
   transformPolygonForwardToPolygon,
-  transformPolygonBackwardToPolygon
+  transformPolygonBackwardToPolygon,
+  transformRectangleForwardToRectangles,
+  transformRectangleBackwardToRectangles,
+  transformRectangleForwardToGcpGrid,
+  transformRectangleBackwardToGcpGrid
 } from './shared/transform-helper-functions.js'
 
 import type {
@@ -67,6 +71,8 @@ import type {
   GeojsonMultiPolygon,
   GeojsonGeometry,
   GeojsonFeatureCollection,
+  Rectangle,
+  TypedGrid,
   SvgGeometry
 } from '@allmaps/types'
 
@@ -956,6 +962,68 @@ export default class GcpTransformer {
     } else {
       throw new Error('Input type not supported')
     }
+  }
+
+  // Transform Rectangle > Rectangles or Rectangle > Grid
+
+  /**
+   * Transforms a rectangle an array of rectangles, refined using forward transform
+   * @param {Rectangle} rectangle - Rectangle to transform
+   * @param {Partial<TransformOptions>} [options] - Transform options
+   * @returns {Rectangle[]} Refined array of rectangle
+   */
+  transformRectangleForwardToRectangles(
+    rectangle: Rectangle,
+    options?: Partial<TransformOptions>
+  ): Rectangle[] {
+    const mergedOptions = mergeOptions(this.options, options)
+    return transformRectangleForwardToRectangles(rectangle, this, mergedOptions)
+  }
+
+  /**
+   * Transforms a rectangle an array of rectangles, refined using backward transform
+   * @param {Rectangle} rectangle - Rectangle to transform
+   * @param {Partial<TransformOptions>} [options] - Transform options
+   * @returns {Rectangle[]} Refined array of rectangle
+   */
+  transformRectangleBackwardToRectangles(
+    rectangle: Rectangle,
+    options?: Partial<TransformOptions>
+  ): Rectangle[] {
+    const mergedOptions = mergeOptions(this.options, options)
+    return transformRectangleBackwardToRectangles(
+      rectangle,
+      this,
+      mergedOptions
+    )
+  }
+
+  /**
+   * Transforms a rectangle a grid and refines the grid using forward transform
+   * @param {Rectangle} rectangle - Rectangle to transform
+   * @param {Partial<TransformOptions>} [options] - Transform options
+   * @returns {TypedGrid<Gcp>} Refined grid from rectangle
+   */
+  transformRectangleForwardToGcpGrid(
+    rectangle: Rectangle,
+    options?: Partial<TransformOptions>
+  ): TypedGrid<Gcp> {
+    const mergedOptions = mergeOptions(this.options, options)
+    return transformRectangleForwardToGcpGrid(rectangle, this, mergedOptions)
+  }
+
+  /**
+   * Transforms a rectangle a grid and refines the grid using backward transform
+   * @param {Rectangle} rectangle - Rectangle to transform
+   * @param {Partial<TransformOptions>} [options] - Transform options
+   * @returns {TypedGrid<Gcp>} Refined grid from rectangle
+   */
+  transformRectangleBackwardToGcpGrid(
+    rectangle: Rectangle,
+    options?: Partial<TransformOptions>
+  ): TypedGrid<Gcp> {
+    const mergedOptions = mergeOptions(this.options, options)
+    return transformRectangleBackwardToGcpGrid(rectangle, this, mergedOptions)
   }
 
   // Shortcuts for SVG <> GeoJSON

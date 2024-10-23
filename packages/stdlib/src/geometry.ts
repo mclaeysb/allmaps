@@ -18,7 +18,9 @@ import type {
   GeojsonMultiLineString,
   GeojsonMultiPolygon,
   GeojsonGeometry,
-  Size
+  Size,
+  Triangle,
+  Rectangle
 } from '@allmaps/types'
 
 // Assert
@@ -214,6 +216,17 @@ export function geometryToGeojsonGeometry(geometry: Geometry): GeojsonGeometry {
   } else {
     throw new Error('Geometry type not supported')
   }
+}
+
+// Convert other
+
+export function rectangleToTriangles(
+  rectangle: Rectangle
+): [Triangle, Triangle] {
+  return [
+    [rectangle[0], rectangle[1], rectangle[3]],
+    [rectangle[1], rectangle[2], rectangle[3]]
+  ]
 }
 
 // Check
