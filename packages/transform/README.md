@@ -27,7 +27,7 @@ npm install @allmaps/transform
 ```js
 import { GcpTransformer } from '@allmaps/transform'
 
-const transformGcps3 = [
+const generalGcps3 = [
   {
     source: [518, 991],
     destination: [4.9516614, 52.4633102]
@@ -42,7 +42,7 @@ const transformGcps3 = [
   }
 ]
 
-const transformer = new GcpTransformer(transformGcps3, 'helmert')
+const transformer = new GcpTransformer(generalGcps3, 'helmert')
 
 const transformedPoint = transformer.transformForward([100, 100])
 // transformedPoint = [4.9385700843392435, 52.46580484503631]
@@ -58,7 +58,7 @@ const roundtripTransformedPoint = transformer.transformBackward([
 In this example we transform backward, and from a GeoJSON Geometry.
 
 ```js
-const transformGcps7 = [
+const generalGcps7 = [
   {
     source: [0, 0],
     destination: [0, 0]
@@ -96,7 +96,7 @@ const options = {
 // We transform backward (from destination to source) and have GeoJSON input.
 // Hence `destinationIsGeographic: true` will be set automatically
 
-const transformer = new GcpTransformer(transformGcps7, 'polynomial')
+const transformer = new GcpTransformer(generalGcps7, 'polynomial')
 
 const lineStringGeoJSON = {
   type: 'LineString',
@@ -128,7 +128,7 @@ const transformedLineString = transformer.transformBackward(
 In this example we transform to a GeoJSON Geometry.
 
 ```js
-const transformGcps6 = [
+const generalGcps6 = [
   {
     source: [1344, 4098],
     destination: [4.4091165, 51.9017125]
@@ -160,7 +160,7 @@ const options = {
   maxDepth: 1
 }
 
-const transformer = new GcpTransformer(transformGcps6, 'thinPlateSpline')
+const transformer = new GcpTransformer(generalGcps6, 'thinPlateSpline')
 
 const polygon = [
   [
@@ -198,7 +198,7 @@ const transformedPolygonGeoJSON = transformer.transformForwardAsGeojson(
 In this example we transform a MultiPoint to a MultiPoint.
 
 ```js
-const transformGcps7 = [
+const generalGcps7 = [
   {
     source: [0, 0],
     destination: [0, 0]
@@ -233,7 +233,7 @@ const options = {
   inputIsMultiGeometry: true // this assures the transform method recognises the input as a multiPoint, not a LineString
 }
 
-const transformer = new GcpTransformer(transformGcps7, 'polynomial')
+const transformer = new GcpTransformer(generalGcps7, 'polynomial')
 
 const multiPoint = [
   [10, 50],
@@ -341,13 +341,13 @@ Here's an example on how to compute local distortion.
 ```js
 import { GcpTransformer, computeDistortionFromPartialDerivatives } from '@allmaps/transform'
 
-const transformGcps6 = ... // See above
+const generalGcps6 = ... // See above
 
-const helmertTransformer = new GcpTransformer(transformGcps6, 'helmert')
+const helmertTransformer = new GcpTransformer(generalGcps6, 'helmert')
 helmertTransformer.createForwardTransformation()
 const referenceScale = helmertTransformer.forwardTransformation.scale
 
-const transformer = new GcpTransformer(transformGcps6, 'thinPlateSpline')
+const transformer = new GcpTransformer(generalGcps6, 'thinPlateSpline')
 const input = [1000, 1000]
 const partialDerivativeX = transformer.transformForward(input, {
   evaluationType: 'partialDerivativeX'
@@ -374,7 +374,7 @@ const distortion = computeDistortionFromPartialDerivatives(
 GCPs can be supplied as an array of objects containing `source` and `destination` coordinates:
 
 ```ts
-type TransformGcp = {
+type GeneralGcp = {
   source: [number, number]
   destination: [number, number]
 }
@@ -551,7 +551,7 @@ specifying functions to transform geometries using these transformations.
 
 #### Parameters
 
-*   `gcps` **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<TransformGcp> | [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Gcp>)** An array of Ground Control Points (GCPs)
+*   `gcps` **([Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<GeneralGcp> | [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Gcp>)** An array of Ground Control Points (GCPs)
 *   `type` **TransformationType** The transformation type (optional, default `'polynomial'`)
 *   `options` &#x20;
 

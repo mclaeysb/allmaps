@@ -4,7 +4,10 @@ import getWorldDistance from '@turf/distance'
 
 import GcpTransformer from '../transformer'
 import {
+  generalGcpToGcp,
+  mapGcpGridRecursively,
   refineLineString,
+  refineRectangleToGcpGrid,
   refineRectangleToRectangles,
   refineRing
 } from './refinement-helper-functions.js'
@@ -16,7 +19,9 @@ import type {
   LineString,
   Ring,
   Polygon,
-  Rectangle
+  Rectangle,
+  TypedGrid,
+  Gcp
 } from '@allmaps/types'
 
 export const defaultTransformOptions: TransformOptions = {
@@ -177,4 +182,30 @@ export function transformRectangleBackwardToRectangles(
     (p) => transformer.transformForward(p),
     refinementOptionsFromBackwardTransformOptions(transformOptions)
   )
+}
+
+export function transformRectangleForwardToGcpGrid(
+  rectangle: Rectangle,
+  transformer: GcpTransformer,
+  transformOptions: TransformOptions
+): TypedGrid<Gcp> {
+  const generalGcpGrid = refineRectangleToGcpGrid(
+    rectangle,
+    (p) => transformer.transformForward(p),
+    refinementOptionsFromForwardTransformOptions(transformOptions)
+  )
+  return mapGcpGridRecursively(generalGcpGrid, generalGcpToGcp)
+}
+
+export function transformRectangleBackwardToGcpGrid(
+  rectangle: Rectangle,
+  transformer: GcpTransformer,
+  transformOptions: TransformOptions
+): TypedGrid<Gcp> {
+  const generalGcpGrid = refineRectangleToGcpGrid(
+    rectangle,
+    (p) => transformer.transformBackward(p),
+    refinementOptionsFromBackwardTransformOptions(transformOptions)
+  )
+  return mapGcpGridRecursively(generalGcpGrid, generalGcpToGcp)
 }

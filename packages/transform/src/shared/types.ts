@@ -4,15 +4,7 @@ import type { Point } from '@allmaps/types'
  * Ground Control Point (GCP).
  * A GCP contains a mapping between a source and destination point.
  */
-export type TransformGcp = { source: Point; destination: Point }
-
-export type TransformGcpLine = [TransformGcp, TransformGcp]
-export type TransformGcpRectangle = [
-  TransformGcp,
-  TransformGcp,
-  TransformGcp,
-  TransformGcp
-]
+export type GeneralGcp = { source: Point; destination: Point }
 
 export type RefinementOptions = {
   maxOffsetRatio: number

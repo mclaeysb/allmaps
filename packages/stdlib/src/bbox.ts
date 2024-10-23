@@ -1,7 +1,4 @@
-import {
-  isGeojsonGeometry,
-  convertGeojsonGeometryToGeometry
-} from './geojson.js'
+import { isGeojsonGeometry, geojsonGeometryToGeometry } from './geojson.js'
 import { isPoint, isPolygon, distance } from './geometry.js'
 
 import type {
@@ -44,7 +41,7 @@ export function computeBbox(points: Geometry | GeojsonGeometry): Bbox {
     points = points.flat()
   }
   if (isGeojsonGeometry(points)) {
-    return computeBbox(convertGeojsonGeometryToGeometry(points))
+    return computeBbox(geojsonGeometryToGeometry(points))
   }
 
   // TODO: do this without making two new arrays

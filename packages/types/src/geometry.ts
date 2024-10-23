@@ -65,6 +65,29 @@ export type Geometry =
   | MultiLineString
   | MultiPolygon
 
+export type TypedLine<P> = [P, P]
+export type TypedRectangle<P> = [P, P, P, P]
+
+export type TypedGrid<P> = {
+  tl: P
+  tr: P
+  bl: P
+  br: P
+
+  parent?: TypedGrid<P>
+
+  tc?: P
+  cl?: P
+  cc?: P
+  cr?: P
+  bc?: P
+
+  tlGrid?: TypedGrid<P>
+  trGrid?: TypedGrid<P>
+  blGrid?: TypedGrid<P>
+  brGrid?: TypedGrid<P>
+}
+
 export type Gcp = { resource: Point; geo: Point }
 
 /**
