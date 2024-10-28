@@ -1,29 +1,22 @@
 import { Map as GeoreferencedMap } from '@allmaps/annotation'
-import { triangulateToUnique } from '@allmaps/triangulate'
 import {
   computeDistortionFromPartialDerivatives,
-  forEachGcpGridRecursively
+  getQuadTreeTriangles,
+  mapQuadTreeRecursively
 } from '@allmaps/transform'
 import {
-  geometryToDiameter,
+  bboxesIntersect,
+  bboxToRectangle,
+  bufferBboxByRatio,
   mixNumbers,
-  mixPoints,
-  getPropertyFromCacheOrComputation,
-  getPropertyFromDoubleCacheOrComputation,
-  rectangleToTriangles
+  mixPoints
 } from '@allmaps/stdlib'
 
 import WarpedMap from './WarpedMap.js'
 
 import type { WarpedMapOptions } from '../shared/types.js'
 
-import type { Point, Rectangle, Ring, Triangle } from '@allmaps/types'
-import type { TransformationType } from '@allmaps/transform'
-
-// TODO: Consider making this tunable by the user.
-const DIAMETER_FRACTION = 80
-
-const MAX_TRIANGULATE_ERROR_COUNT = 10
+import type { Gcp, Point, Ring, QuadTree, Rectangle } from '@allmaps/types'
 
 function createDefaultTriangulatedWarpedMapOptions(): Partial<WarpedMapOptions> {
   return {}
@@ -42,8 +35,9 @@ export function createTriangulatedWarpedMapFactory() {
  *
  * @export
  * @class TriangulatedWarpedMap
- * @param {Point[]} resourceTrianglepoints - Triangle points of the triangles the triangulated resourceMask (at the current bestScaleFactor)
- * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask (at the current bestScaleFactor)
+ * @param {QuadTree<Gcp>} projectedGeoQuadTree - QuadTree used to triangulate the map (at the current viewport)
+ * @param {Point[]} resourceTrianglepoints - Triangle points of the triangles the triangulated resourceMask (at the current scaleFactor)
+ * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask (at the current scaleFactor)
  * @param {number[]} trianglePointsUniquePointsIndex - Index in resourceUniquepoints where a specific resourceTrianglepoint can be found
  * @param {number} triangulateErrorCount - Number of time the triangulation has resulted in an error
  * @param {Point[]} projectedGeoPreviousTrianglePoints - The projectedGeoTrianglePoints of the previous transformation type, used during transformation transitions
@@ -56,37 +50,21 @@ export function createTriangulatedWarpedMapFactory() {
  * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
+  projectedGcpQuadTree?: QuadTree<{
+    geo: Point
+    resource: Point
+    partialDerivativeX?: Point
+    partialDerivativeY?: Point
+    distortionMeasure?: number
+  }>
+
   resourceTrianglePoints: Point[] = []
-  resourceUniquePoints: Point[] = []
-  trianglePointsUniquePointsIndex: number[] = []
-  private triangulationByBestScaleFactor: Map<
-    number,
-    { trianglePointsUniquePointsIndex: number[]; resourceUniquePoints: Point[] }
-  > = new Map()
-  triangulateErrorCount = 0
 
   projectedGeoPreviousTrianglePoints: Point[] = []
   projectedGeoTrianglePoints: Point[] = []
-  projectedGeoUniquePoints: Point[] = []
-  private projectedGeoUniquePointsByBestScaleFactorAndTransformationType: Map<
-    number,
-    Map<TransformationType, Point[]>
-  > = new Map()
-
-  projectedGeoUniquePointsPartialDerivativeX: Point[] = []
-  projectedGeoUniquePointsPartialDerivativeY: Point[] = []
-  private projectedGeoUniquePointsPartialDerivativeXByBestScaleFactorAndTransformationType: Map<
-    number,
-    Map<TransformationType, Point[]>
-  > = new Map()
-  private projectedGeoUniquePointsPartialDerivativeYByBestScaleFactorAndTransformationType: Map<
-    number,
-    Map<TransformationType, Point[]>
-  > = new Map()
 
   previousTrianglePointsDistortion: number[] = []
   trianglePointsDistortion: number[] = []
-  uniquePointsDistortion: number[] = []
 
   /**
    * Creates an instance of a TriangulatedWarpedMap.
@@ -116,28 +94,20 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   setResourceMask(resourceMask: Ring): void {
     super.setResourceMask(resourceMask)
-    this.triangulationByBestScaleFactor = new Map()
-    this.projectedGeoUniquePointsByBestScaleFactorAndTransformationType =
-      new Map()
-    this.projectedGeoUniquePointsPartialDerivativeXByBestScaleFactorAndTransformationType =
-      new Map()
-    this.projectedGeoUniquePointsPartialDerivativeYByBestScaleFactorAndTransformationType =
-      new Map()
     this.updateTriangulation()
   }
 
   /**
-   * Set the bestScaleFactor for the current viewport
+   * Set projectedGeoViewportRectangle of current viewport. Triggers triangulation update if needed.
    *
-   * @param {number} scaleFactor - scale factor
-   * @returns {boolean}
+   * @param {Rectangle} [projectedGeoViewportRectangle]
    */
-  setCurrentBestScaleFactor(scaleFactor: number): boolean {
-    const updating = super.setCurrentBestScaleFactor(scaleFactor)
-    if (updating) {
-      this.updateTriangulation(true)
-    }
-    return updating
+  setCurrentProjectedGeoViewportRectangle(
+    projectedGeoViewportRectangle?: Rectangle
+  ) {
+    super.setCurrentProjectedGeoViewportRectangle(projectedGeoViewportRectangle)
+    // TODO: check if changed significantly
+    this.updateTriangulation(true)
   }
 
   /**
@@ -176,85 +146,38 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the triangulation of the resourceMask, at the current bestScaleFactor. Use cache if available.
+   * Update the triangulation of the resourceMask.
    *
    * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same - true by default, false during a transformation transition
    */
   private updateTriangulation(previousIsNew = false) {
-    if (!this.currentBestScaleFactor) return
+    if (!this.currentProjectedGeoViewportRectangleBbox) return
 
-    const { trianglePointsUniquePointsIndex, resourceUniquePoints } =
-      getPropertyFromCacheOrComputation(
-        this.triangulationByBestScaleFactor,
-        this.currentBestScaleFactor,
-        () => {
-          const diameter =
-            (geometryToDiameter(this.resourceMask) *
-              this.currentBestScaleFactor) /
-            DIAMETER_FRACTION
+    console.log('updateTriangulation')
 
-          // Trying out custom triangulation
-          const gcpGrid =
-            this.projectedTransformer.transformRectangleForwardToGcpGrid(
-              this.resourceMaskRectangle,
-              {
-                maxOffsetRatio: 0.001,
-                maxDepth: 3
-              }
-            )
-          const triangles: Triangle[] = []
-          forEachGcpGridRecursively(
-            gcpGrid,
-            () => {},
-            (gcpRectangle) => {
-              triangles.push(
-                ...rectangleToTriangles(
-                  gcpRectangle.map((gcp) => gcp.resource) as Rectangle
-                )
-              )
-            }
-          )
-          console.log(triangles)
+    const projectedGeoMaskInViewportBbox = bboxesIntersect(
+      bufferBboxByRatio(this.currentProjectedGeoViewportRectangleBbox, 1),
+      this.projectedGeoMaskBbox
+    )
 
-          // TODO: make this obsolete by cleaning mask using conformPolygon() in @allmaps/annotation or in WarpedMap constructor
-          try {
-            const { uniquePointsIndexTriangles, uniquePoints } =
-              triangulateToUnique(this.resourceMask, diameter)
+    if (!projectedGeoMaskInViewportBbox) return
 
-            return {
-              trianglePointsUniquePointsIndex:
-                uniquePointsIndexTriangles.flat(),
-              resourceUniquePoints: uniquePoints
-            }
-          } catch (err) {
-            this.triangulateErrorCount++
-
-            if (this.triangulateErrorCount <= MAX_TRIANGULATE_ERROR_COUNT) {
-              // TODO: use function to get Allmaps Editor URL
-              console.error(
-                `Error computing triangulation for map ${this.mapId}.`,
-                `Fix this map with Allmaps Editor: https://editor.allmaps.org/#/collection?url=${this.parsedImage?.uri}/info.json`
-              )
-
-              if (this.triangulateErrorCount === 1) {
-                console.error(err)
-              }
-            }
-            return {
-              trianglePointsUniquePointsIndex:
-                this.trianglePointsUniquePointsIndex,
-              resourceUniquePoints: this.resourceUniquePoints
-            }
-          }
+    this.projectedGcpQuadTree =
+      this.projectedTransformer.transformRectangleBackwardToGcpQuadTree(
+        // this.resourceMaskRectangle,
+        // bboxToRectangle(this.currentResourceViewportRingBbox),
+        // this.currentProjectedGeoViewportRectangle,
+        bboxToRectangle(projectedGeoMaskInViewportBbox),
+        {
+          maxOffsetRatio: 0.001,
+          maxDepth: 4
         }
       )
-
-    this.resourceTrianglePoints = trianglePointsUniquePointsIndex.map(
-      (index) => resourceUniquePoints[index]
+    this.resourceTrianglePoints = getQuadTreeTriangles(
+      this.projectedGcpQuadTree
     )
-    this.resourceUniquePoints = resourceUniquePoints as Point[]
-    this.trianglePointsUniquePointsIndex =
-      trianglePointsUniquePointsIndex as number[]
+      .flat(1)
+      .map((projectedGcp) => projectedGcp.resource)
 
     this.updateProjectedGeoTrianglePoints(previousIsNew)
   }
@@ -265,22 +188,17 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew=false]
    */
   private updateProjectedGeoTrianglePoints(previousIsNew = false) {
-    if (!this.currentBestScaleFactor) return
+    if (!this.projectedGcpQuadTree) return
+    console.log('setting current')
 
-    this.projectedGeoUniquePoints = getPropertyFromDoubleCacheOrComputation(
-      this.projectedGeoUniquePointsByBestScaleFactorAndTransformationType,
-      this.currentBestScaleFactor,
-      this.transformationType,
-      () =>
-        this.resourceUniquePoints.map((point) =>
-          this.projectedTransformer.transformToGeo(point)
-        )
+    this.projectedGeoTrianglePoints = getQuadTreeTriangles(
+      this.projectedGcpQuadTree
     )
-    this.projectedGeoTrianglePoints = this.trianglePointsUniquePointsIndex.map(
-      (i) => this.projectedGeoUniquePoints[i]
-    )
+      .flat(1)
+      .map((projectedGcp) => projectedGcp.geo)
 
     if (previousIsNew || !this.projectedGeoPreviousTrianglePoints.length) {
+      console.log('setting previous')
       this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     }
 
@@ -293,50 +211,57 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew=false]
    */
   private updateTrianglePointsDistortion(previousIsNew = false) {
-    if (!this.currentBestScaleFactor) return
+    if (!this.projectedGcpQuadTree) return
 
     if (this.distortionMeasure) {
-      this.projectedGeoUniquePointsPartialDerivativeX =
-        getPropertyFromDoubleCacheOrComputation(
-          this
-            .projectedGeoUniquePointsPartialDerivativeXByBestScaleFactorAndTransformationType,
-          this.currentBestScaleFactor,
-          this.transformationType,
-          () =>
-            this.resourceUniquePoints.map((point) =>
-              this.projectedTransformer.transformToGeo(point, {
-                evaluationType: 'partialDerivativeX'
-              })
-            )
-        )
-
-      this.projectedGeoUniquePointsPartialDerivativeY =
-        getPropertyFromDoubleCacheOrComputation(
-          this
-            .projectedGeoUniquePointsPartialDerivativeYByBestScaleFactorAndTransformationType,
-          this.currentBestScaleFactor,
-          this.transformationType,
-          () =>
-            this.resourceUniquePoints.map((point) =>
-              this.projectedTransformer.transformToGeo(point, {
-                evaluationType: 'partialDerivativeY'
-              })
-            )
-        )
+      this.projectedGcpQuadTree = mapQuadTreeRecursively(
+        this.projectedGcpQuadTree,
+        (projectedGcp) => {
+          const partialDerivativeX = this.projectedTransformer.transformToGeo(
+            projectedGcp.resource,
+            {
+              evaluationType: 'partialDerivativeX'
+            }
+          )
+          const partialDerivativeY = this.projectedTransformer.transformToGeo(
+            projectedGcp.resource,
+            {
+              evaluationType: 'partialDerivativeY'
+            }
+          )
+          return {
+            ...projectedGcp,
+            partialDerivativeX,
+            partialDerivativeY
+          }
+        }
+      )
     }
 
-    this.uniquePointsDistortion = this.projectedGeoUniquePoints.map(
-      (_point, index) =>
-        computeDistortionFromPartialDerivatives(
-          this.projectedGeoUniquePointsPartialDerivativeX[index],
-          this.projectedGeoUniquePointsPartialDerivativeY[index],
-          this.distortionMeasure!,
+    this.projectedGcpQuadTree = mapQuadTreeRecursively(
+      this.projectedGcpQuadTree,
+      (projectedGcpAndPartialDerivatives) => {
+        const distortionMeasure = computeDistortionFromPartialDerivatives(
+          projectedGcpAndPartialDerivatives.partialDerivativeX,
+          projectedGcpAndPartialDerivatives.partialDerivativeY,
+          this.distortionMeasure,
           this.getReferenceScale()
         )
+        return {
+          ...projectedGcpAndPartialDerivatives,
+          distortionMeasure
+        }
+      }
     )
-    this.trianglePointsDistortion = this.trianglePointsUniquePointsIndex.map(
-      (i) => this.uniquePointsDistortion[i]
+
+    this.trianglePointsDistortion = getQuadTreeTriangles(
+      this.projectedGcpQuadTree
     )
+      .flat(1)
+      .map(
+        (projectedGcpAndDistortion) =>
+          projectedGcpAndDistortion.distortionMeasure as number
+      )
 
     if (previousIsNew || !this.previousTrianglePointsDistortion.length) {
       this.previousTrianglePointsDistortion = this.trianglePointsDistortion
@@ -344,12 +269,20 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   protected updateTransformerProperties(useCache = true): void {
+    console.log('updateTransformerProperties')
     super.updateTransformerProperties(useCache)
-    this.updateProjectedGeoTrianglePoints(false)
+    this.updateTriangulation(false)
   }
 
   protected updateDistortionProperties(): void {
     super.updateDistortionProperties()
     this.updateTrianglePointsDistortion(false)
+  }
+
+  // TODO: move to stdlib
+  protected objectDepth = (o: Object): number => {
+    return Object(o) === o
+      ? 1 + Math.max(-1, ...Object.values(o).map(this.objectDepth))
+      : 0
   }
 }

@@ -66,15 +66,16 @@ export type Geometry =
   | MultiPolygon
 
 export type TypedLine<P> = [P, P]
+export type TypedTriangle<P> = [P, P, P]
 export type TypedRectangle<P> = [P, P, P, P]
 
-export type TypedGrid<P> = {
+export type QuadTree<P> = {
   tl: P
   tr: P
   bl: P
   br: P
 
-  parent?: TypedGrid<P>
+  parent?: QuadTree<P>
 
   tc?: P
   cl?: P
@@ -82,10 +83,10 @@ export type TypedGrid<P> = {
   cr?: P
   bc?: P
 
-  tlGrid?: TypedGrid<P>
-  trGrid?: TypedGrid<P>
-  blGrid?: TypedGrid<P>
-  brGrid?: TypedGrid<P>
+  tlQuadTree?: QuadTree<P>
+  trQuadTree?: QuadTree<P>
+  blQuadTree?: QuadTree<P>
+  brQuadTree?: QuadTree<P>
 }
 
 export type Gcp = { resource: Point; geo: Point }

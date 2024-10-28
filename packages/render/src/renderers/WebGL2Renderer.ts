@@ -856,12 +856,14 @@ export default class WebGL2Renderer
 
       // Best scale factor
 
-      const currentBestScaleFactorLocation = gl.getUniformLocation(
+      const currentScaleFactorLocation = gl.getUniformLocation(
         program,
-        'u_currentBestScaleFactor'
+        'u_currentScaleFactor'
       )
-      const currentBestScaleFactor = warpedMap.currentBestScaleFactor
-      gl.uniform1i(currentBestScaleFactorLocation, currentBestScaleFactor)
+      const currentScaleFactor = warpedMap.currentTileZoomLevel
+        ? warpedMap.currentTileZoomLevel.scaleFactor
+        : 1
+      gl.uniform1i(currentScaleFactorLocation, currentScaleFactor)
 
       // Cached tiles texture array
 

@@ -68,15 +68,28 @@ export function combineBboxes(bbox0: Bbox, bbox1: Bbox): Bbox {
   ]
 }
 
-export function isOverlapping(bbox0: Bbox, bbox1: Bbox): boolean {
+export function doBboxesIntersect(bbox0: Bbox, bbox1: Bbox): boolean {
   const isOverlappingInX = bbox0[2] >= bbox1[0] && bbox1[2] >= bbox0[0]
   const isOverlappingInY = bbox0[3] >= bbox1[1] && bbox1[3] >= bbox0[1]
 
   return isOverlappingInX && isOverlappingInY
 }
 
+export function bboxesIntersect(bbox0: Bbox, bbox1: Bbox): Bbox | undefined {
+  const minX = Math.max(bbox0[0], bbox1[0])
+  const maxX = Math.min(bbox0[2], bbox1[2])
+  const minY = Math.max(bbox0[1], bbox1[1])
+  const maxY = Math.min(bbox0[3], bbox1[3])
+
+  if (minX < maxX && minY < maxY) {
+    return [minX, minY, maxX, maxY]
+  } else {
+    return undefined
+  }
+}
+
 export function pointInBbox(point: Point, bbox: Bbox): boolean {
-  return isOverlapping([point[0], point[1], point[0], point[1]], bbox)
+  return doBboxesIntersect([point[0], point[1], point[0], point[1]], bbox)
 }
 
 export function bufferBbox(bbox: Bbox, dist0: number, dist1: number): Bbox {

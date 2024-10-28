@@ -21,12 +21,12 @@ export const supportedDistortionMeasures = [
  * @returns {number} - the distortion measure at the set point
  */
 export function computeDistortionFromPartialDerivatives(
-  partialDerivativeX: Point,
-  partialDerivativeY: Point,
+  partialDerivativeX?: Point,
+  partialDerivativeY?: Point,
   distortionMeasure?: DistortionMeasure,
   referenceScale = 1
 ): number {
-  if (!distortionMeasure) {
+  if (!partialDerivativeX || !partialDerivativeY || !distortionMeasure) {
     return 0
   }
   const E = partialDerivativeX[0] ** 2 + partialDerivativeX[1] ** 2

@@ -16,8 +16,9 @@ import {
 import { defaultTransformOptions } from './shared/transform-helper-functions.js'
 import {
   defaultRefinementOptions,
-  forEachGcpGridRecursively,
-  mapGcpGridRecursively
+  forEachQuadTreeRecursively,
+  mapQuadTreeRecursively,
+  getQuadTreeTriangles
 } from './shared/refinement-helper-functions.js'
 
 /** @module allmaps/transform */
@@ -35,8 +36,9 @@ export {
   computeDistortionFromPartialDerivatives,
   defaultTransformOptions,
   defaultRefinementOptions,
-  mapGcpGridRecursively,
-  forEachGcpGridRecursively
+  mapQuadTreeRecursively,
+  forEachQuadTreeRecursively,
+  getQuadTreeTriangles
 }
 
 export * from './shared/types.js'

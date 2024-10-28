@@ -4,10 +4,11 @@ import getWorldDistance from '@turf/distance'
 
 import GcpTransformer from '../transformer'
 import {
-  generalGcpToGcp,
-  mapGcpGridRecursively,
+  generalGcpToGcpForForward,
+  generalGcpToGcpForBackward,
+  mapQuadTreeRecursively,
   refineLineString,
-  refineRectangleToGcpGrid,
+  refineRectangleToGcpQuadTree,
   refineRectangleToRectangles,
   refineRing
 } from './refinement-helper-functions.js'
@@ -20,7 +21,7 @@ import type {
   Ring,
   Polygon,
   Rectangle,
-  TypedGrid,
+  QuadTree,
   Gcp
 } from '@allmaps/types'
 
@@ -184,28 +185,28 @@ export function transformRectangleBackwardToRectangles(
   )
 }
 
-export function transformRectangleForwardToGcpGrid(
+export function transformRectangleForwardToGcpQuadTree(
   rectangle: Rectangle,
   transformer: GcpTransformer,
   transformOptions: TransformOptions
-): TypedGrid<Gcp> {
-  const generalGcpGrid = refineRectangleToGcpGrid(
+): QuadTree<Gcp> {
+  const generalGcpQuadTree = refineRectangleToGcpQuadTree(
     rectangle,
     (p) => transformer.transformForward(p),
     refinementOptionsFromForwardTransformOptions(transformOptions)
   )
-  return mapGcpGridRecursively(generalGcpGrid, generalGcpToGcp)
+  return mapQuadTreeRecursively(generalGcpQuadTree, generalGcpToGcpForForward)
 }
 
-export function transformRectangleBackwardToGcpGrid(
+export function transformRectangleBackwardToGcpQuadTree(
   rectangle: Rectangle,
   transformer: GcpTransformer,
   transformOptions: TransformOptions
-): TypedGrid<Gcp> {
-  const generalGcpGrid = refineRectangleToGcpGrid(
+): QuadTree<Gcp> {
+  const generalGcpQuadTree = refineRectangleToGcpQuadTree(
     rectangle,
     (p) => transformer.transformBackward(p),
     refinementOptionsFromBackwardTransformOptions(transformOptions)
   )
-  return mapGcpGridRecursively(generalGcpGrid, generalGcpToGcp)
+  return mapQuadTreeRecursively(generalGcpQuadTree, generalGcpToGcpForBackward)
 }

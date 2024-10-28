@@ -25,7 +25,7 @@ uniform float u_saturation;
 uniform bool u_distortion;
 uniform int u_distortionOptionsdistortionMeasure;
 
-uniform int u_currentBestScaleFactor;
+uniform int u_currentScaleFactor;
 
 uniform lowp sampler2DArray u_cachedTilesTextureArray;
 uniform isampler2D u_cachedTilesResourcePositionsAndDimensionsTexture;

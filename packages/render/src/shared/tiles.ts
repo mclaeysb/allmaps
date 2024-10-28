@@ -2,7 +2,7 @@ import {
   computeBbox,
   bboxToCenter,
   distance,
-  isOverlapping,
+  doBboxesIntersect,
   bufferBboxByRatio,
   squaredDistance
 } from '@allmaps/stdlib'
@@ -31,7 +31,7 @@ import type {
  * @param {number} resourceToCanvasScale - The resource to canvas scale, relating resource pixels to canvas pixels.
  * @returns {TileZoomLevel}
  */
-export function getBestTileZoomLevelForScale(
+export function getTileZoomLevelForScale(
   tileZoomLevels: TileZoomLevel[],
   resourceToCanvasScale: number,
   scaleFactorCorrection: number,
@@ -463,7 +463,7 @@ export function getTileZoomLevelOriginalResolution(
 export function getTilesAtOtherScaleFactors(
   tile: Tile,
   parsedImage: Image,
-  currentBestScaleFactor: number,
+  currentScaleFactor: number,
   TEXTURES_MAX_LOWER_LOG2_SCALE_FACTOR_DIFF: number,
   TEXTURES_MAX_HIGHER_LOG2_SCALE_FACTOR_DIFF: number,
   validTile?: (tile: Tile) => boolean
@@ -473,7 +473,7 @@ export function getTilesAtOtherScaleFactors(
   const tilesAtLowerScaleFactor = recursivelyGetTilesAtLowerScaleFactor(
     tile,
     parsedImage,
-    currentBestScaleFactor,
+    currentScaleFactor,
     TEXTURES_MAX_LOWER_LOG2_SCALE_FACTOR_DIFF,
     validTile
   )
@@ -486,7 +486,7 @@ export function getTilesAtOtherScaleFactors(
     const tileAtHigherScaleFactor = recursivelyGetTilesAtHigherScaleFactor(
       tile,
       parsedImage,
-      currentBestScaleFactor,
+      currentScaleFactor,
       TEXTURES_MAX_HIGHER_LOG2_SCALE_FACTOR_DIFF,
       validTile
     )
@@ -501,17 +501,17 @@ export function getTilesAtOtherScaleFactors(
 export function recursivelyGetTilesAtHigherScaleFactor(
   tile: Tile,
   parsedImage: Image,
-  currentBestScaleFactor: number,
+  currentScaleFactor: number,
   log2ScaleFactorDiff: number,
   validTile?: (tile: Tile) => boolean
 ): Tile | undefined {
-  const higherScaleFactor = 2 ** (Math.log2(currentBestScaleFactor) + 1)
+  const higherScaleFactor = 2 ** (Math.log2(currentScaleFactor) + 1)
   if (
     higherScaleFactor >
       parsedImage.tileZoomLevels
         .map((tileZoomLevel) => tileZoomLevel.scaleFactor)
         .reduce((a, c) => a + c, 0) -
-        currentBestScaleFactor ||
+        currentScaleFactor ||
     log2ScaleFactorDiff == 0
   ) {
     return undefined
@@ -538,11 +538,11 @@ export function recursivelyGetTilesAtHigherScaleFactor(
 export function recursivelyGetTilesAtLowerScaleFactor(
   tile: Tile,
   parsedImage: Image,
-  currentBestScaleFactor: number,
+  currentScaleFactor: number,
   log2ScaleFactorDiff: number,
   validTile?: (tile: Tile) => boolean
 ): (Tile | undefined)[] {
-  const lowerScaleFactor = 2 ** (Math.log2(currentBestScaleFactor) - 1)
+  const lowerScaleFactor = 2 ** (Math.log2(currentScaleFactor) - 1)
   if (lowerScaleFactor <= 0 || log2ScaleFactorDiff == 0) {
     return []
   }
@@ -713,7 +713,7 @@ export function shouldPruneTile(
   // This allows us to keep all tiles that would be needed if we zoom out again
   // Even if they currently don't overlap with the viewport ring bbox
   if (
-    !isOverlapping(
+    !doBboxesIntersect(
       bufferBboxByRatio(
         computeBboxTile(tile),
         Math.max(0, log2ScaleFactorDiff)

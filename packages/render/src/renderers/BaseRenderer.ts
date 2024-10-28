@@ -4,7 +4,7 @@ import FetchableTile from '../tilecache/FetchableTile.js'
 
 import { WarpedMapEvent, WarpedMapEventType } from '../shared/events.js'
 import {
-  getBestTileZoomLevelForScale,
+  getTileZoomLevelForScale,
   computeTilesCoveringRingAtTileZoomLevel,
   getTilesResolution,
   getTilesAtScaleFactor,
@@ -285,18 +285,17 @@ export default abstract class BaseRenderer<
       return []
     }
 
-    // Find bestTileZoomLevel for current viewport
-    const bestTileZoomLevel = getBestTileZoomLevelForScale(
+    // Find TileZoomLevel for current viewport
+    // Note the equivalence of the following two:
+    // - warpedMap.getApproxResourceToCanvasScale(this.viewport)
+    // - warpedMap.resourceToProjectedGeoScale * this.viewport.projectedGeoPerCanvasScale
+    const tileZoomLevel = getTileZoomLevelForScale(
       warpedMap.parsedImage.tileZoomLevels,
       warpedMap.getResourceToCanvasScale(viewport),
       SCALE_FACTOR_CORRECTION,
       LOG2_SCALE_FACTOR_CORRECTION
     )
-    warpedMap.setCurrentTileZoomLevel(bestTileZoomLevel)
-    warpedMap.setCurrentBestScaleFactor(bestTileZoomLevel.scaleFactor)
-    // Note the equivalence of the following two:
-    // - warpedMap.getApproxResourceToCanvasScale(this.viewport)
-    // - warpedMap.resourceToProjectedGeoScale * this.viewport.projectedGeoPerCanvasScale
+    warpedMap.setCurrentTileZoomLevel(tileZoomLevel)
 
     // Transforming the viewport back to resource
     const transformerOptions = {
@@ -309,17 +308,18 @@ export default abstract class BaseRenderer<
     // This can be expensive at high maxDepth and seems to work fine with maxDepth = 0
     // TODO: Consider recusive refinement via options like {maxOffsetRatio: 0.00001, maxDepth: 2}
     // Note: if recursive refinement, use geographic distances and midpoints for lon-lat destination points
+    const projectedGeoViewportRectangle =
+      viewport.getProjectedGeoBufferedRectangle(
+        this.shouldAnticipateInteraction() ? REQUEST_VIEWPORT_BUFFER_RATIO : 0
+      )
     const resourceViewportRing =
       warpedMap.projectedTransformer.transformBackward(
-        [
-          viewport.getProjectedGeoBufferedRectangle(
-            this.shouldAnticipateInteraction()
-              ? REQUEST_VIEWPORT_BUFFER_RATIO
-              : 0
-          )
-        ],
+        [projectedGeoViewportRectangle],
         transformerOptions
       )[0]
+    warpedMap.setCurrentProjectedGeoViewportRectangle(
+      projectedGeoViewportRectangle
+    )
     warpedMap.setCurrentResourceViewportRing(resourceViewportRing)
     // TODO: consider to transform viewport.projectedGeoRectable backward using projectedTransform
 
@@ -334,7 +334,7 @@ export default abstract class BaseRenderer<
     // This returns tiles sorted by distance from center of resourceViewportRing
     const tiles = computeTilesCoveringRingAtTileZoomLevel(
       resourceViewportRing,
-      bestTileZoomLevel,
+      tileZoomLevel,
       [warpedMap.parsedImage.width, warpedMap.parsedImage.height]
     )
 

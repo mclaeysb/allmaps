@@ -109,11 +109,10 @@ export function createWarpedMapFactory() {
  * @param {Rectangle} projectedGeoFullMaskRectangle - resourceFullMaskRectangle in projected geospatial coordinates
  * @param {number} resourceToProjectedGeoScale - Scale of the warped map, in resource pixels per projected geospatial coordinates
  * @param {DistortionMeasure} [distortionMeasure] - Distortion measure displayed for this map
- * @param {number} currentBestScaleFactor - The best tile scale factor for displaying this map, at the current viewport
  * @param {TileZoomLevel} [currentTileZoomLevel] - The tile zoom level, at the current viewport
  * @param {TileZoomLevel} [currentOverviewTileZoomLevel] - The overview tile zoom level, at the current viewport
- * @param {Ring} currentResourceViewportRing - The (buffered) viewport transformed back to resource coordinates
- * @param {Bbox} currentResourceViewportRingBbox - Bbox of the resourceViewportRing
+ * @param {Ring} [currentResourceViewportRing] - The (buffered) viewport transformed back to resource coordinates
+ * @param {Bbox} [currentResourceViewportRingBbox] - Bbox of the resourceViewportRing
  * @param {Tile[]} currentFetchableTiles - The fetchable tiles for displaying this map, at the current viewport
  * @param {Tile[]} currentOverviewFetchableTiles - The overview fetchable tiles, at the current viewport
  */
@@ -182,11 +181,13 @@ export default class WarpedMap extends EventTarget {
 
   // The properties below are for the current viewport
 
-  currentBestScaleFactor!: number
   currentTileZoomLevel?: TileZoomLevel
   currentOverviewTileZoomLevel?: TileZoomLevel
 
-  currentResourceViewportRing?: Ring = []
+  currentProjectedGeoViewportRectangle?: Rectangle
+  currentProjectedGeoViewportRectangleBbox?: Bbox
+
+  currentResourceViewportRing?: Ring
   currentResourceViewportRingBbox?: Bbox
 
   currentFetchableTiles: FetchableTile[] = []
@@ -407,24 +408,6 @@ export default class WarpedMap extends EventTarget {
     this.updateTransformerProperties(false)
   }
 
-  // TODO: connect/merge setCurrentBestScaleFactor and setCurrentTileZoomLevel
-  // Once triangulation will not be updated directly after setting best scale factor
-  // This also includes allowing undefined
-  // TODO: change 'current best' to 'current' scale factor
-  /**
-   * Set the bestScaleFactor for the current viewport
-   *
-   * @param {number} scaleFactor - scale factor
-   * @returns {boolean}
-   */
-  setCurrentBestScaleFactor(scaleFactor: number): boolean {
-    const updating = this.currentBestScaleFactor != scaleFactor
-    if (updating) {
-      this.currentBestScaleFactor = scaleFactor
-    }
-    return updating
-  }
-
   /**
    * Set the tile zoom level for the current viewport
    *
@@ -441,6 +424,21 @@ export default class WarpedMap extends EventTarget {
    */
   setCurrentOverviewTileZoomLevel(tileZoomLevel?: TileZoomLevel) {
     this.currentOverviewTileZoomLevel = tileZoomLevel
+  }
+
+  /**
+   * Set projectedGeoViewportRectangle of current viewport
+   *
+   * @param {Rectangle} [projectedGeoViewportRectangle]
+   */
+  setCurrentProjectedGeoViewportRectangle(
+    projectedGeoViewportRectangle?: Rectangle
+  ) {
+    this.currentProjectedGeoViewportRectangle = projectedGeoViewportRectangle
+    this.currentProjectedGeoViewportRectangleBbox =
+      projectedGeoViewportRectangle
+        ? computeBbox(projectedGeoViewportRectangle)
+        : undefined
   }
 
   /**

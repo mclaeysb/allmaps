@@ -13,8 +13,9 @@ import type {
   Rectangle,
   Gcp,
   TypedLine,
+  TypedTriangle,
   TypedRectangle,
-  TypedGrid
+  QuadTree
 } from '@allmaps/types'
 
 import type { GeneralGcp, RefinementOptions } from './types.js'
@@ -111,15 +112,15 @@ export function refineRectangleToRectangles(
     partialRefinementOptions
   )
 
-  const gcpGrid = refineRectangleToGcpGrid(
+  const gcpQuadTree = refineRectangleToGcpQuadTree(
     rectangle,
     refinementFunction,
     partialRefinementOptions
   )
 
   const rectangles: Rectangle[] = []
-  forEachGcpGridRecursively(
-    gcpGrid,
+  forEachQuadTreeRecursively(
+    gcpQuadTree,
     () => {},
     (rectangle) => {
       rectangles.push(
@@ -135,34 +136,38 @@ export function refineRectangleToRectangles(
   return rectangles
 }
 
-export function refineRectangleToGcpGrid(
+export function refineRectangleToGcpQuadTree(
   rectangle: Rectangle,
   refinementFunction: (p: Point) => Point,
   partialRefinementOptions: Partial<RefinementOptions>
-): TypedGrid<GeneralGcp> {
+): QuadTree<GeneralGcp> {
   rectangle = conformRing(rectangle) as Rectangle
   // Not treating partialRefinementOptions because happens in next function
 
-  const gcpGrid = rectangleToGcpGrid(rectangle, (point) => ({
+  const gcpQuadTree = rectangleToGcpQuadTree(rectangle, (point) => ({
     source: point,
     destination: refinementFunction(point)
   }))
 
-  return refineGcpGrid(gcpGrid, refinementFunction, partialRefinementOptions)
+  return refineGcpQuadTree(
+    gcpQuadTree,
+    refinementFunction,
+    partialRefinementOptions
+  )
 }
 
-export function refineGcpGrid(
-  gcpGrid: TypedGrid<GeneralGcp>,
+export function refineGcpQuadTree(
+  gcpQuadTree: QuadTree<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   partialRefinementOptions: Partial<RefinementOptions>
-): TypedGrid<GeneralGcp> {
+): QuadTree<GeneralGcp> {
   const refinementOptions = mergeOptions(
     defaultRefinementOptions,
     partialRefinementOptions
   )
 
-  return refineGcpGridRecursively(
-    gcpGrid,
+  return refineGcpQuadTreeRecursively(
+    gcpQuadTree,
     refinementFunction,
     refinementOptions,
     0
@@ -238,17 +243,17 @@ function splitGcpLineRecursively(
   }
 }
 
-export function refineGcpGridRecursively(
-  gcpGrid: TypedGrid<GeneralGcp>,
+export function refineGcpQuadTreeRecursively(
+  gcpQuadTree: QuadTree<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   refinementOptions: RefinementOptions,
   depth: number
-): TypedGrid<GeneralGcp> {
+): QuadTree<GeneralGcp> {
   if (depth >= refinementOptions.maxDepth || refinementOptions.maxDepth <= 0) {
-    return gcpGrid
+    return gcpQuadTree
   }
 
-  const gcpLine = [gcpGrid.tr, gcpGrid.bl] as TypedLine<GeneralGcp>
+  const gcpLine = [gcpQuadTree.tr, gcpQuadTree.bl] as TypedLine<GeneralGcp>
   const refinedGcpLines = splitGcpLineRecursively(
     gcpLine,
     refinementFunction,
@@ -257,217 +262,277 @@ export function refineGcpGridRecursively(
   )
 
   if (refinedGcpLines.length > 1) {
-    gcpGrid.cc = refinedGcpLines[0][1]
+    gcpQuadTree.cc = refinedGcpLines[0][1]
 
     const sourceTcPoint = refinementOptions.sourceMidPointFunction(
-      gcpGrid.tl.source,
-      gcpGrid.tr.source
+      gcpQuadTree.tl.source,
+      gcpQuadTree.tr.source
     )
-    gcpGrid.tc = {
+    gcpQuadTree.tc = {
       source: sourceTcPoint,
       destination: refinementFunction(sourceTcPoint)
     }
     const sourceCrPoint = refinementOptions.sourceMidPointFunction(
-      gcpGrid.tr.source,
-      gcpGrid.br.source
+      gcpQuadTree.tr.source,
+      gcpQuadTree.br.source
     )
-    gcpGrid.cr = {
+    gcpQuadTree.cr = {
       source: sourceCrPoint,
       destination: refinementFunction(sourceCrPoint)
     }
     const sourceBcPoint = refinementOptions.sourceMidPointFunction(
-      gcpGrid.br.source,
-      gcpGrid.bl.source
+      gcpQuadTree.br.source,
+      gcpQuadTree.bl.source
     )
-    gcpGrid.bc = {
+    gcpQuadTree.bc = {
       source: sourceBcPoint,
       destination: refinementFunction(sourceBcPoint)
     }
     const sourceClPoint = refinementOptions.sourceMidPointFunction(
-      gcpGrid.bl.source,
-      gcpGrid.tl.source
+      gcpQuadTree.bl.source,
+      gcpQuadTree.tl.source
     )
-    gcpGrid.cl = {
+    gcpQuadTree.cl = {
       source: sourceClPoint,
       destination: refinementFunction(sourceClPoint)
     }
 
-    gcpGrid.tlGrid = refineGcpGridRecursively(
-      { tl: gcpGrid.tl, tr: gcpGrid.tc, br: gcpGrid.cc, bl: gcpGrid.cl },
+    gcpQuadTree.tlQuadTree = refineGcpQuadTreeRecursively(
+      {
+        tl: gcpQuadTree.tl,
+        tr: gcpQuadTree.tc,
+        br: gcpQuadTree.cc,
+        bl: gcpQuadTree.cl
+      },
       refinementFunction,
       refinementOptions,
       depth + 1
     )
-    gcpGrid.trGrid = refineGcpGridRecursively(
-      { tl: gcpGrid.tc, tr: gcpGrid.tr, br: gcpGrid.cr, bl: gcpGrid.cc },
+    gcpQuadTree.trQuadTree = refineGcpQuadTreeRecursively(
+      {
+        tl: gcpQuadTree.tc,
+        tr: gcpQuadTree.tr,
+        br: gcpQuadTree.cr,
+        bl: gcpQuadTree.cc
+      },
       refinementFunction,
       refinementOptions,
       depth + 1
     )
-    gcpGrid.brGrid = refineGcpGridRecursively(
-      { tl: gcpGrid.cc, tr: gcpGrid.cr, br: gcpGrid.br, bl: gcpGrid.bc },
+    gcpQuadTree.brQuadTree = refineGcpQuadTreeRecursively(
+      {
+        tl: gcpQuadTree.cc,
+        tr: gcpQuadTree.cr,
+        br: gcpQuadTree.br,
+        bl: gcpQuadTree.bc
+      },
       refinementFunction,
       refinementOptions,
       depth + 1
     )
-    gcpGrid.blGrid = refineGcpGridRecursively(
-      { tl: gcpGrid.cl, tr: gcpGrid.cc, br: gcpGrid.bc, bl: gcpGrid.bl },
+    gcpQuadTree.blQuadTree = refineGcpQuadTreeRecursively(
+      {
+        tl: gcpQuadTree.cl,
+        tr: gcpQuadTree.cc,
+        br: gcpQuadTree.bc,
+        bl: gcpQuadTree.bl
+      },
       refinementFunction,
       refinementOptions,
       depth + 1
     )
   }
 
-  return gcpGrid
+  return gcpQuadTree
 }
 
-export function mapGcpGridRecursively<P0, P1>(
-  gcpGrid: TypedGrid<P0>,
-  gcpMapFunction: (p0: P0) => P1,
-  cornerGcpsFromParent?: TypedGrid<P1>
-): TypedGrid<P1> {
-  const newGcpGrid: TypedGrid<P1> = {
+// QuadTree functions
+
+export function mapQuadTreeRecursively<P0, P1>(
+  quadTree: QuadTree<P0>,
+  mapFunction: (p0: P0) => P1,
+  cornerGcpsFromParent?: QuadTree<P1>
+): QuadTree<P1> {
+  const newQuadTree: QuadTree<P1> = {
     tl: cornerGcpsFromParent
       ? cornerGcpsFromParent.tl
-      : gcpMapFunction(gcpGrid.tl),
+      : mapFunction(quadTree.tl),
     tr: cornerGcpsFromParent
       ? cornerGcpsFromParent.tr
-      : gcpMapFunction(gcpGrid.tr),
+      : mapFunction(quadTree.tr),
     br: cornerGcpsFromParent
       ? cornerGcpsFromParent.br
-      : gcpMapFunction(gcpGrid.br),
+      : mapFunction(quadTree.br),
     bl: cornerGcpsFromParent
       ? cornerGcpsFromParent.bl
-      : gcpMapFunction(gcpGrid.bl)
+      : mapFunction(quadTree.bl)
   }
 
-  if (gcpGrid.cc) newGcpGrid.cc = gcpMapFunction(gcpGrid.cc)
-  if (gcpGrid.tc) newGcpGrid.tc = gcpMapFunction(gcpGrid.tc)
-  if (gcpGrid.cr) newGcpGrid.cr = gcpMapFunction(gcpGrid.cr)
-  if (gcpGrid.bc) newGcpGrid.bc = gcpMapFunction(gcpGrid.bc)
-  if (gcpGrid.cl) newGcpGrid.cl = gcpMapFunction(gcpGrid.cl)
+  if (quadTree.cc) newQuadTree.cc = mapFunction(quadTree.cc)
+  if (quadTree.tc) newQuadTree.tc = mapFunction(quadTree.tc)
+  if (quadTree.cr) newQuadTree.cr = mapFunction(quadTree.cr)
+  if (quadTree.bc) newQuadTree.bc = mapFunction(quadTree.bc)
+  if (quadTree.cl) newQuadTree.cl = mapFunction(quadTree.cl)
 
   if (
-    newGcpGrid.cc &&
-    newGcpGrid.tc &&
-    newGcpGrid.cr &&
-    newGcpGrid.bc &&
-    newGcpGrid.cl
+    newQuadTree.cc &&
+    newQuadTree.tc &&
+    newQuadTree.cr &&
+    newQuadTree.bc &&
+    newQuadTree.cl
   ) {
-    if (gcpGrid.tlGrid)
-      newGcpGrid.tlGrid = mapGcpGridRecursively<P0, P1>(
-        gcpGrid.tlGrid,
-        gcpMapFunction,
+    if (quadTree.tlQuadTree)
+      newQuadTree.tlQuadTree = mapQuadTreeRecursively<P0, P1>(
+        quadTree.tlQuadTree,
+        mapFunction,
         {
-          tl: newGcpGrid.tl,
-          tr: newGcpGrid.tc,
-          br: newGcpGrid.cc,
-          bl: newGcpGrid.cl
+          tl: newQuadTree.tl,
+          tr: newQuadTree.tc,
+          br: newQuadTree.cc,
+          bl: newQuadTree.cl
         }
       )
-    if (gcpGrid.trGrid)
-      newGcpGrid.trGrid = mapGcpGridRecursively<P0, P1>(
-        gcpGrid.trGrid,
-        gcpMapFunction,
+    if (quadTree.trQuadTree)
+      newQuadTree.trQuadTree = mapQuadTreeRecursively<P0, P1>(
+        quadTree.trQuadTree,
+        mapFunction,
         {
-          tl: newGcpGrid.tc,
-          tr: newGcpGrid.tr,
-          br: newGcpGrid.cr,
-          bl: newGcpGrid.cc
+          tl: newQuadTree.tc,
+          tr: newQuadTree.tr,
+          br: newQuadTree.cr,
+          bl: newQuadTree.cc
         }
       )
-    if (gcpGrid.brGrid)
-      newGcpGrid.brGrid = mapGcpGridRecursively<P0, P1>(
-        gcpGrid.brGrid,
-        gcpMapFunction,
+    if (quadTree.brQuadTree)
+      newQuadTree.brQuadTree = mapQuadTreeRecursively<P0, P1>(
+        quadTree.brQuadTree,
+        mapFunction,
         {
-          tl: newGcpGrid.cc,
-          tr: newGcpGrid.cr,
-          br: newGcpGrid.br,
-          bl: newGcpGrid.bc
+          tl: newQuadTree.cc,
+          tr: newQuadTree.cr,
+          br: newQuadTree.br,
+          bl: newQuadTree.bc
         }
       )
-    if (gcpGrid.blGrid)
-      newGcpGrid.blGrid = mapGcpGridRecursively<P0, P1>(
-        gcpGrid.blGrid,
-        gcpMapFunction,
+    if (quadTree.blQuadTree)
+      newQuadTree.blQuadTree = mapQuadTreeRecursively<P0, P1>(
+        quadTree.blQuadTree,
+        mapFunction,
         {
-          tl: newGcpGrid.cl,
-          tr: newGcpGrid.cc,
-          br: newGcpGrid.bc,
-          bl: newGcpGrid.bl
+          tl: newQuadTree.cl,
+          tr: newQuadTree.cc,
+          br: newQuadTree.bc,
+          bl: newQuadTree.bl
         }
       )
   }
 
-  return newGcpGrid
+  return newQuadTree
 }
 
-export function forEachGcpGridRecursively<P>(
-  gcpGrid: TypedGrid<P>,
-  gcpForEachFunction: (p: P) => void,
-  gcpRectangleForEachFunction: (typedRectangle: TypedRectangle<P>) => void,
-  onlyFinest = true,
-  doOuter = true
+export function forEachQuadTreeRecursively<P>(
+  quadTree: QuadTree<P>,
+  forEachFunction: (p: P) => void,
+  rectangleForEachFunction: (rectangle: TypedRectangle<P>) => void,
+  onlyLeaves = true,
+  alsoOuter = true
 ): void {
-  if (doOuter) {
-    gcpForEachFunction(gcpGrid.tl)
-    gcpForEachFunction(gcpGrid.tr)
-    gcpForEachFunction(gcpGrid.br)
-    gcpForEachFunction(gcpGrid.bl)
+  if (alsoOuter) {
+    forEachFunction(quadTree.tl)
+    forEachFunction(quadTree.tr)
+    forEachFunction(quadTree.br)
+    forEachFunction(quadTree.bl)
   }
 
-  if (gcpGrid.cc) gcpForEachFunction(gcpGrid.cc)
-  if (gcpGrid.tc) gcpForEachFunction(gcpGrid.tc)
-  if (gcpGrid.cr) gcpForEachFunction(gcpGrid.cr)
-  if (gcpGrid.bc) gcpForEachFunction(gcpGrid.bc)
-  if (gcpGrid.cl) gcpForEachFunction(gcpGrid.cl)
+  if (quadTree.cc) forEachFunction(quadTree.cc)
+  if (quadTree.tc) forEachFunction(quadTree.tc)
+  if (quadTree.cr) forEachFunction(quadTree.cr)
+  if (quadTree.bc) forEachFunction(quadTree.bc)
+  if (quadTree.cl) forEachFunction(quadTree.cl)
 
   if (
-    !onlyFinest ||
-    (!gcpGrid.tlGrid && !gcpGrid.trGrid && !gcpGrid.brGrid && !gcpGrid.blGrid)
+    !onlyLeaves ||
+    (!quadTree.tlQuadTree &&
+      !quadTree.trQuadTree &&
+      !quadTree.brQuadTree &&
+      !quadTree.blQuadTree)
   ) {
-    gcpRectangleForEachFunction(gcpGridToGcpRectangle<P>(gcpGrid))
+    rectangleForEachFunction(gcpQuadTreeToTypedRectangle<P>(quadTree))
   }
 
-  if (gcpGrid.tlGrid)
-    forEachGcpGridRecursively(
-      gcpGrid.tlGrid,
-      gcpForEachFunction,
-      gcpRectangleForEachFunction,
-      onlyFinest,
-      !onlyFinest
+  if (quadTree.tlQuadTree)
+    forEachQuadTreeRecursively(
+      quadTree.tlQuadTree,
+      forEachFunction,
+      rectangleForEachFunction,
+      onlyLeaves,
+      !onlyLeaves
     )
-  if (gcpGrid.trGrid)
-    forEachGcpGridRecursively(
-      gcpGrid.trGrid,
-      gcpForEachFunction,
-      gcpRectangleForEachFunction,
-      onlyFinest,
-      !onlyFinest
+  if (quadTree.trQuadTree)
+    forEachQuadTreeRecursively(
+      quadTree.trQuadTree,
+      forEachFunction,
+      rectangleForEachFunction,
+      onlyLeaves,
+      !onlyLeaves
     )
-  if (gcpGrid.brGrid)
-    forEachGcpGridRecursively(
-      gcpGrid.brGrid,
-      gcpForEachFunction,
-      gcpRectangleForEachFunction,
-      onlyFinest,
-      !onlyFinest
+  if (quadTree.brQuadTree)
+    forEachQuadTreeRecursively(
+      quadTree.brQuadTree,
+      forEachFunction,
+      rectangleForEachFunction,
+      onlyLeaves,
+      !onlyLeaves
     )
-  if (gcpGrid.blGrid)
-    forEachGcpGridRecursively(
-      gcpGrid.blGrid,
-      gcpForEachFunction,
-      gcpRectangleForEachFunction,
-      onlyFinest,
-      !onlyFinest
+  if (quadTree.blQuadTree)
+    forEachQuadTreeRecursively(
+      quadTree.blQuadTree,
+      forEachFunction,
+      rectangleForEachFunction,
+      onlyLeaves,
+      !onlyLeaves
     )
+}
+
+export function getQuadTreeTriangles<P>(
+  quadTree: QuadTree<P>,
+  onlyLeaves = true,
+  alsoOuter = true
+): TypedTriangle<P>[] {
+  const triangles: TypedTriangle<P>[] = []
+  forEachQuadTreeRecursively(
+    quadTree,
+    () => {},
+    (typedRectangle) => {
+      triangles.push(
+        ...[
+          [
+            typedRectangle[0],
+            typedRectangle[1],
+            typedRectangle[3]
+          ] as TypedTriangle<P>,
+          [
+            typedRectangle[1],
+            typedRectangle[2],
+            typedRectangle[3]
+          ] as TypedTriangle<P>
+        ]
+      )
+    },
+    onlyLeaves,
+    alsoOuter
+  )
+  return triangles
 }
 
 // Convert
 
-export function generalGcpToGcp(generalGcp: GeneralGcp): Gcp {
+export function generalGcpToGcpForForward(generalGcp: GeneralGcp): Gcp {
   return { resource: generalGcp.source, geo: generalGcp.destination }
+}
+
+export function generalGcpToGcpForBackward(generalGcp: GeneralGcp): Gcp {
+  return { resource: generalGcp.destination, geo: generalGcp.source }
 }
 
 export function gcpsToGcpLines(
@@ -495,10 +560,10 @@ export function gcpLinesToGcps(
   return gcps
 }
 
-export function rectangleToGcpGrid(
+export function rectangleToGcpQuadTree(
   rectangle: Rectangle,
   pointToGcp: (point: Point) => GeneralGcp
-): TypedGrid<GeneralGcp> {
+): QuadTree<GeneralGcp> {
   return {
     tl: pointToGcp(rectangle[0]),
     tr: pointToGcp(rectangle[1]),
@@ -507,8 +572,8 @@ export function rectangleToGcpGrid(
   }
 }
 
-export function gcpGridToGcpRectangle<P>(
-  gcpGrid: TypedGrid<P>
+export function gcpQuadTreeToTypedRectangle<P>(
+  gcpQuadTree: QuadTree<P>
 ): TypedRectangle<P> {
-  return [gcpGrid.tl, gcpGrid.tr, gcpGrid.br, gcpGrid.bl]
+  return [gcpQuadTree.tl, gcpQuadTree.tr, gcpQuadTree.br, gcpQuadTree.bl]
 }

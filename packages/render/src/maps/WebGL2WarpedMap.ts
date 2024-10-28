@@ -3,11 +3,20 @@ import { throttle } from 'lodash-es'
 import {
   hexToFractionalRgb,
   lineStringToLines,
+  multiPointToGeojsonMultiPoint,
   pointsAndPointsToLines,
   subSetArray
 } from '@allmaps/stdlib'
 import { Map as GeoreferencedMap } from '@allmaps/annotation'
-import { black, blue, green, pink, white } from '@allmaps/tailwind'
+import {
+  black,
+  blue,
+  gray,
+  green,
+  pink,
+  white,
+  yellow
+} from '@allmaps/tailwind'
 
 import TriangulatedWarpedMap from './TriangulatedWarpedMap.js'
 import { WarpedMapEvent, WarpedMapEventType } from '../shared/events.js'
@@ -43,7 +52,7 @@ const THROTTLE_UPDATE_TEXTURES_OPTIONS = {
 const DEBUG = false // TODO: set using options
 const RENDER_MAPS = true // TODO: set using options
 const RENDER_LINES = false // TODO: set using options
-const RENDER_POINTS = false // TODO: set using options
+const RENDER_POINTS = true // TODO: set using options
 
 const DEFAULT_OPACITY = 1
 const DEFAULT_SATURATION = 1
@@ -294,6 +303,10 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
         projectedGeoPreviousPoints:
           this.projectedGeoPreviousTransformedResourcePoints,
         color: [...hexToFractionalRgb(pink), 1]
+      },
+      {
+        projectedGeoPoints: this.projectedGeoTrianglePoints,
+        color: [...hexToFractionalRgb(yellow), 1]
       }
     ]
   }
@@ -918,12 +931,15 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     if (this.cachedTilesByTileUrl.size == 0) {
       return []
     }
+    if (!this.currentTileZoomLevel) {
+      return []
+    }
 
     const cachedTiles = []
     for (tile of getTilesAtOtherScaleFactors(
       tile,
       this.parsedImage,
-      this.currentBestScaleFactor,
+      this.currentTileZoomLevel.scaleFactor,
       TEXTURES_MAX_LOWER_LOG2_SCALE_FACTOR_DIFF,
       TEXTURES_MAX_HIGHER_LOG2_SCALE_FACTOR_DIFF,
       this.tileInCachedTiles.bind(this) // Only consider tiles in cache,

@@ -32,8 +32,8 @@ if(u_distortion) {
 
 // Grid
 if(u_grid) {
-  float gridSize = 20.0f * float(u_currentBestScaleFactor);
-  float gridWidth = 2.0f * float(u_currentBestScaleFactor);
+  float gridSize = 20.0f * float(u_currentScaleFactor);
+  float gridWidth = 2.0f * float(u_currentScaleFactor);
   if(mod(float(resourceTrianglePointX) + gridWidth / 2.0f, gridSize) < gridWidth || mod(float(resourceTrianglePointY) + gridWidth / 2.0f, gridSize) < gridWidth) {
     color = u_colorGrid;
   }
