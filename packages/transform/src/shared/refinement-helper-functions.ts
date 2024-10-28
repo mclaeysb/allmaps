@@ -494,6 +494,97 @@ export function forEachQuadTreeRecursively<P>(
     )
 }
 
+export function mixQuadTreesRecursively<P0, P1, P2>(
+  quadTree0: QuadTree<P0>,
+  quadTree1: QuadTree<P1>,
+  mixFunction: (p0: P0, p1: P1) => P2,
+  cornerGcpsFromParent?: QuadTree<P2>
+): QuadTree<P2> {
+  const newQuadTree: QuadTree<P2> = {
+    tl: cornerGcpsFromParent
+      ? cornerGcpsFromParent.tl
+      : mixFunction(quadTree0.tl, quadTree1.tl),
+    tr: cornerGcpsFromParent
+      ? cornerGcpsFromParent.tr
+      : mixFunction(quadTree0.tr, quadTree1.tr),
+    br: cornerGcpsFromParent
+      ? cornerGcpsFromParent.br
+      : mixFunction(quadTree0.br, quadTree1.br),
+    bl: cornerGcpsFromParent
+      ? cornerGcpsFromParent.bl
+      : mixFunction(quadTree0.bl, quadTree1.bl)
+  }
+
+  if (quadTree0.cc && quadTree1.cc)
+    newQuadTree.cc = mixFunction(quadTree0.cc, quadTree1.cc)
+  if (quadTree0.tc && quadTree1.tc)
+    newQuadTree.tc = mixFunction(quadTree0.tc, quadTree1.tc)
+  if (quadTree0.cr && quadTree1.cr)
+    newQuadTree.cr = mixFunction(quadTree0.cr, quadTree1.cr)
+  if (quadTree0.bc && quadTree1.bc)
+    newQuadTree.bc = mixFunction(quadTree0.bc, quadTree1.bc)
+  if (quadTree0.cl && quadTree1.cl)
+    newQuadTree.cl = mixFunction(quadTree0.cl, quadTree1.cl)
+
+  if (
+    newQuadTree.cc &&
+    newQuadTree.tc &&
+    newQuadTree.cr &&
+    newQuadTree.bc &&
+    newQuadTree.cl
+  ) {
+    if (quadTree0.tlQuadTree && quadTree1.tlQuadTree)
+      newQuadTree.tlQuadTree = mixQuadTreesRecursively<P0, P1, P2>(
+        quadTree0.tlQuadTree,
+        quadTree1.tlQuadTree,
+        mixFunction,
+        {
+          tl: newQuadTree.tl,
+          tr: newQuadTree.tc,
+          br: newQuadTree.cc,
+          bl: newQuadTree.cl
+        }
+      )
+    if (quadTree0.trQuadTree && quadTree1.trQuadTree)
+      newQuadTree.trQuadTree = mixQuadTreesRecursively<P0, P1, P2>(
+        quadTree0.trQuadTree,
+        quadTree1.trQuadTree,
+        mixFunction,
+        {
+          tl: newQuadTree.tc,
+          tr: newQuadTree.tr,
+          br: newQuadTree.cr,
+          bl: newQuadTree.cc
+        }
+      )
+    if (quadTree0.brQuadTree && quadTree1.brQuadTree)
+      newQuadTree.brQuadTree = mixQuadTreesRecursively<P0, P1, P2>(
+        quadTree0.brQuadTree,
+        quadTree1.brQuadTree,
+        mixFunction,
+        {
+          tl: newQuadTree.cc,
+          tr: newQuadTree.cr,
+          br: newQuadTree.br,
+          bl: newQuadTree.bc
+        }
+      )
+    if (quadTree0.blQuadTree && quadTree1.blQuadTree)
+      newQuadTree.blQuadTree = mixQuadTreesRecursively<P0, P1, P2>(
+        quadTree0.blQuadTree,
+        quadTree1.blQuadTree,
+        mixFunction,
+        {
+          tl: newQuadTree.cl,
+          tr: newQuadTree.cc,
+          br: newQuadTree.bc,
+          bl: newQuadTree.bl
+        }
+      )
+  }
+  return newQuadTree
+}
+
 export function getQuadTreeTriangles<P>(
   quadTree: QuadTree<P>,
   onlyLeaves = true,

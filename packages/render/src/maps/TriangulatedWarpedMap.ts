@@ -2,7 +2,8 @@ import { Map as GeoreferencedMap } from '@allmaps/annotation'
 import {
   computeDistortionFromPartialDerivatives,
   getQuadTreeTriangles,
-  mapQuadTreeRecursively
+  mapQuadTreeRecursively,
+  mixQuadTreesRecursively
 } from '@allmaps/transform'
 import {
   bboxesIntersect,
@@ -16,7 +17,7 @@ import WarpedMap from './WarpedMap.js'
 
 import type { WarpedMapOptions } from '../shared/types.js'
 
-import type { Gcp, Point, Ring, QuadTree, Rectangle } from '@allmaps/types'
+import type { Point, Ring, QuadTree, Rectangle, Gcp } from '@allmaps/types'
 
 function createDefaultTriangulatedWarpedMapOptions(): Partial<WarpedMapOptions> {
   return {}
@@ -30,11 +31,18 @@ export function createTriangulatedWarpedMapFactory() {
   ) => new TriangulatedWarpedMap(mapId, georeferencedMap, options)
 }
 
+type GcpWithDistortionMeasure = Gcp & {
+  partialDerivativeX?: Point
+  partialDerivativeY?: Point
+  distortionMeasure?: number
+}
+
 /**
  * Class for triangulated WarpedMaps.
  *
  * @export
  * @class TriangulatedWarpedMap
+ * @param {QuadTree<Gcp>} projectedPreviousGeoQuadTree - QuadTree of the previous transformation type used to triangulate the map (at the current viewport)
  * @param {QuadTree<Gcp>} projectedGeoQuadTree - QuadTree used to triangulate the map (at the current viewport)
  * @param {Point[]} resourceTrianglepoints - Triangle points of the triangles the triangulated resourceMask (at the current scaleFactor)
  * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask (at the current scaleFactor)
@@ -50,13 +58,10 @@ export function createTriangulatedWarpedMapFactory() {
  * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
-  projectedGcpQuadTree?: QuadTree<{
-    geo: Point
-    resource: Point
-    partialDerivativeX?: Point
-    partialDerivativeY?: Point
-    distortionMeasure?: number
-  }>
+  projectedPreviousGcpQuadTree?: QuadTree<GcpWithDistortionMeasure>
+  projectedGcpQuadTree?: QuadTree<GcpWithDistortionMeasure>
+  projectedPreviousFinerGcpQuadTree?: QuadTree<GcpWithDistortionMeasure>
+  projectedFinerGcpQuadTree?: QuadTree<GcpWithDistortionMeasure>
 
   resourceTrianglePoints: Point[] = []
 
@@ -98,14 +103,12 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Set projectedGeoViewportRectangle of current viewport. Triggers triangulation update if needed.
+   * Set currentResourceViewportRing at current viewport. Triggers triangulation update if needed.
    *
-   * @param {Rectangle} [projectedGeoViewportRectangle]
+   * @param {Ring} [resourceViewportRing]
    */
-  setCurrentProjectedGeoViewportRectangle(
-    projectedGeoViewportRectangle?: Rectangle
-  ) {
-    super.setCurrentProjectedGeoViewportRectangle(projectedGeoViewportRectangle)
+  setCurrentResourceViewportRing(resourceViewportRing?: Ring) {
+    super.setCurrentResourceViewportRing(resourceViewportRing)
     // TODO: check if changed significantly
     this.updateTriangulation(true)
   }
@@ -115,6 +118,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   resetPrevious() {
     super.resetPrevious()
+    this.projectedPreviousGcpQuadTree = this.projectedGcpQuadTree
+    this.projectedPreviousFinerGcpQuadTree = this.projectedGcpQuadTree // Note: no 'Finer'!
     this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     this.previousTrianglePointsDistortion = this.trianglePointsDistortion
   }
@@ -126,23 +131,41 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   mixPreviousAndNew(t: number) {
     super.mixPreviousAndNew(t)
-    this.projectedGeoPreviousTrianglePoints =
-      this.projectedGeoTrianglePoints.map((point, index) => {
-        return mixPoints(
-          point,
-          this.projectedGeoPreviousTrianglePoints[index],
-          t
-        )
-      })
-    this.previousTrianglePointsDistortion = this.trianglePointsDistortion.map(
-      (distortion, index) => {
-        return mixNumbers(
-          distortion,
-          this.previousTrianglePointsDistortion[index],
-          t
-        )
-      }
-    )
+    if (
+      this.projectedFinerGcpQuadTree &&
+      this.projectedPreviousFinerGcpQuadTree
+    ) {
+      this.projectedPreviousFinerGcpQuadTree = mixQuadTreesRecursively(
+        this.projectedFinerGcpQuadTree,
+        this.projectedPreviousFinerGcpQuadTree,
+        (
+          projectedGcpWithDistortion0: GcpWithDistortionMeasure,
+          projectedGcpWithDistortion1: GcpWithDistortionMeasure
+        ) => {
+          return {
+            resource: mixPoints(
+              projectedGcpWithDistortion0.resource,
+              projectedGcpWithDistortion1.resource,
+              t
+            ),
+            geo: mixPoints(
+              projectedGcpWithDistortion0.geo,
+              projectedGcpWithDistortion1.geo,
+              t
+            ),
+            distortionMeasure:
+              projectedGcpWithDistortion0.distortionMeasure &&
+              projectedGcpWithDistortion1.distortionMeasure
+                ? mixNumbers(
+                    projectedGcpWithDistortion0.distortionMeasure,
+                    projectedGcpWithDistortion1.distortionMeasure,
+                    t
+                  )
+                : undefined
+          }
+        }
+      )
+    }
   }
 
   /**
@@ -151,30 +174,68 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same - true by default, false during a transformation transition
    */
   private updateTriangulation(previousIsNew = false) {
-    if (!this.currentProjectedGeoViewportRectangleBbox) return
+    if (!this.currentResourceViewportRingBbox) return
 
-    console.log('updateTriangulation')
-
-    const projectedGeoMaskInViewportBbox = bboxesIntersect(
-      bufferBboxByRatio(this.currentProjectedGeoViewportRectangleBbox, 1),
-      this.projectedGeoMaskBbox
+    const resourceMaskInViewportBbox = bboxesIntersect(
+      bufferBboxByRatio(this.currentResourceViewportRingBbox, 1),
+      this.resourceMaskBbox
     )
 
-    if (!projectedGeoMaskInViewportBbox) return
+    if (!resourceMaskInViewportBbox) return
 
     this.projectedGcpQuadTree =
-      this.projectedTransformer.transformRectangleBackwardToGcpQuadTree(
-        // this.resourceMaskRectangle,
-        // bboxToRectangle(this.currentResourceViewportRingBbox),
-        // this.currentProjectedGeoViewportRectangle,
-        bboxToRectangle(projectedGeoMaskInViewportBbox),
+      this.projectedTransformer.transformRectangleForwardToGcpQuadTree(
+        bboxToRectangle(resourceMaskInViewportBbox),
         {
           maxOffsetRatio: 0.001,
-          maxDepth: 4
+          maxDepth: 5
         }
       )
+
+    this.projectedFinerGcpQuadTree = this.projectedGcpQuadTree
+
+    if (!this.projectedPreviousFinerGcpQuadTree) {
+      this.projectedPreviousFinerGcpQuadTree = this.projectedFinerGcpQuadTree
+    }
+    // Make previous and current GcpQuadTree be of same fineness
+    // Note: don't do anything if they already are
+    if (
+      this.objectDepth(this.projectedPreviousFinerGcpQuadTree!) >
+        this.objectDepth(this.projectedFinerGcpQuadTree!) &&
+      !previousIsNew // TODO: check
+    ) {
+      this.projectedFinerGcpQuadTree = mapQuadTreeRecursively(
+        this.projectedPreviousFinerGcpQuadTree,
+        (projectedGcp) => {
+          return {
+            ...projectedGcp,
+            geo: this.projectedTransformer.transformForward(
+              projectedGcp.resource
+            )
+          }
+        }
+      )
+    }
+    if (
+      this.objectDepth(this.projectedPreviousFinerGcpQuadTree!) <
+        this.objectDepth(this.projectedFinerGcpQuadTree!) &&
+      !previousIsNew // TODO: check
+    ) {
+      this.projectedPreviousFinerGcpQuadTree = mapQuadTreeRecursively(
+        this.projectedFinerGcpQuadTree,
+        (projectedGcp) => {
+          return {
+            ...projectedGcp,
+            geo: this.projectedPreviousTransformer.transformForward(
+              projectedGcp.resource
+            )
+          }
+        }
+      )
+    }
+
     this.resourceTrianglePoints = getQuadTreeTriangles(
-      this.projectedGcpQuadTree
+      this.projectedFinerGcpQuadTree
     )
       .flat(1)
       .map((projectedGcp) => projectedGcp.resource)
@@ -188,18 +249,23 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew=false]
    */
   private updateProjectedGeoTrianglePoints(previousIsNew = false) {
-    if (!this.projectedGcpQuadTree) return
-    console.log('setting current')
-
+    if (!this.projectedFinerGcpQuadTree) return
     this.projectedGeoTrianglePoints = getQuadTreeTriangles(
-      this.projectedGcpQuadTree
+      this.projectedFinerGcpQuadTree
     )
       .flat(1)
       .map((projectedGcp) => projectedGcp.geo)
 
     if (previousIsNew || !this.projectedGeoPreviousTrianglePoints.length) {
-      console.log('setting previous')
       this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
+    } else {
+      if (this.projectedPreviousFinerGcpQuadTree) {
+        this.projectedGeoPreviousTrianglePoints = getQuadTreeTriangles(
+          this.projectedPreviousFinerGcpQuadTree
+        )
+          .flat(1)
+          .map((projectedGcp) => projectedGcp.geo)
+      }
     }
 
     this.updateTrianglePointsDistortion(previousIsNew)
@@ -211,11 +277,11 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew=false]
    */
   private updateTrianglePointsDistortion(previousIsNew = false) {
-    if (!this.projectedGcpQuadTree) return
+    if (!this.projectedFinerGcpQuadTree) return
 
     if (this.distortionMeasure) {
-      this.projectedGcpQuadTree = mapQuadTreeRecursively(
-        this.projectedGcpQuadTree,
+      this.projectedFinerGcpQuadTree = mapQuadTreeRecursively(
+        this.projectedFinerGcpQuadTree,
         (projectedGcp) => {
           const partialDerivativeX = this.projectedTransformer.transformToGeo(
             projectedGcp.resource,
@@ -238,8 +304,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       )
     }
 
-    this.projectedGcpQuadTree = mapQuadTreeRecursively(
-      this.projectedGcpQuadTree,
+    this.projectedFinerGcpQuadTree = mapQuadTreeRecursively(
+      this.projectedFinerGcpQuadTree,
       (projectedGcpAndPartialDerivatives) => {
         const distortionMeasure = computeDistortionFromPartialDerivatives(
           projectedGcpAndPartialDerivatives.partialDerivativeX,
@@ -255,7 +321,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     )
 
     this.trianglePointsDistortion = getQuadTreeTriangles(
-      this.projectedGcpQuadTree
+      this.projectedFinerGcpQuadTree
     )
       .flat(1)
       .map(
@@ -265,11 +331,21 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     if (previousIsNew || !this.previousTrianglePointsDistortion.length) {
       this.previousTrianglePointsDistortion = this.trianglePointsDistortion
+    } else {
+      if (this.projectedPreviousFinerGcpQuadTree) {
+        this.previousTrianglePointsDistortion = getQuadTreeTriangles(
+          this.projectedPreviousFinerGcpQuadTree
+        )
+          .flat(1)
+          .map(
+            (projectedGcpAndDistortion) =>
+              projectedGcpAndDistortion.distortionMeasure as number
+          )
+      }
     }
   }
 
   protected updateTransformerProperties(useCache = true): void {
-    console.log('updateTransformerProperties')
     super.updateTransformerProperties(useCache)
     this.updateTriangulation(false)
   }
@@ -280,6 +356,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   // TODO: move to stdlib
+  // Or use same as for longer line
   protected objectDepth = (o: Object): number => {
     return Object(o) === o
       ? 1 + Math.max(-1, ...Object.values(o).map(this.objectDepth))

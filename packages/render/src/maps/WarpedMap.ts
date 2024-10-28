@@ -477,6 +477,7 @@ export default class WarpedMap extends EventTarget {
   resetCurrent() {
     this.setCurrentTileZoomLevel()
     this.setCurrentOverviewTileZoomLevel()
+    this.setCurrentProjectedGeoViewportRectangle()
     this.setCurrentResourceViewportRing()
     this.setCurrentFetchableTiles([])
     this.setCurrentOverviewFetchableTiles([])

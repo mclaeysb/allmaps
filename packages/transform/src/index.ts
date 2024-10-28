@@ -16,8 +16,9 @@ import {
 import { defaultTransformOptions } from './shared/transform-helper-functions.js'
 import {
   defaultRefinementOptions,
-  forEachQuadTreeRecursively,
   mapQuadTreeRecursively,
+  forEachQuadTreeRecursively,
+  mixQuadTreesRecursively,
   getQuadTreeTriangles
 } from './shared/refinement-helper-functions.js'
 
@@ -38,6 +39,7 @@ export {
   defaultRefinementOptions,
   mapQuadTreeRecursively,
   forEachQuadTreeRecursively,
+  mixQuadTreesRecursively,
   getQuadTreeTriangles
 }
 

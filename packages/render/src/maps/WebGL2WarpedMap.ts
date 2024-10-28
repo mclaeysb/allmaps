@@ -51,7 +51,7 @@ const THROTTLE_UPDATE_TEXTURES_OPTIONS = {
 
 const DEBUG = false // TODO: set using options
 const RENDER_MAPS = true // TODO: set using options
-const RENDER_LINES = false // TODO: set using options
+const RENDER_LINES = true // TODO: set using options
 const RENDER_POINTS = true // TODO: set using options
 
 const DEFAULT_OPACITY = 1
@@ -303,6 +303,10 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
         projectedGeoPreviousPoints:
           this.projectedGeoPreviousTransformedResourcePoints,
         color: [...hexToFractionalRgb(pink), 1]
+      },
+      {
+        projectedGeoPoints: this.projectedGeoPreviousTrianglePoints,
+        color: [...hexToFractionalRgb(gray), 1]
       },
       {
         projectedGeoPoints: this.projectedGeoTrianglePoints,
