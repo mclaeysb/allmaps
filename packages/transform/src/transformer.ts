@@ -47,11 +47,7 @@ import {
   transformLineStringForwardToLineString,
   transformLineStringBackwardToLineString,
   transformPolygonForwardToPolygon,
-  transformPolygonBackwardToPolygon,
-  transformRectangleForwardToRectangles,
-  transformRectangleBackwardToRectangles,
-  transformRectangleForwardToGcpQuadTree,
-  transformRectangleBackwardToGcpQuadTree
+  transformPolygonBackwardToPolygon
 } from './shared/transform-helper-functions.js'
 
 import type {
@@ -71,8 +67,6 @@ import type {
   GeojsonMultiPolygon,
   GeojsonGeometry,
   GeojsonFeatureCollection,
-  Rectangle,
-  QuadTree,
   SvgGeometry
 } from '@allmaps/types'
 
@@ -962,76 +956,6 @@ export default class GcpTransformer {
     } else {
       throw new Error('Input type not supported')
     }
-  }
-
-  // Transform Rectangle > Rectangles or Rectangle > QuadTree
-
-  /**
-   * Transforms a Rectangle an array of Rectangles, refined using forward transform
-   * @param {Rectangle} rectangle - Rectangle to transform
-   * @param {Partial<TransformOptions>} [options] - Transform options
-   * @returns {Rectangle[]} Refined array of Rectangle
-   */
-  transformRectangleForwardToRectangles(
-    rectangle: Rectangle,
-    options?: Partial<TransformOptions>
-  ): Rectangle[] {
-    const mergedOptions = mergeOptions(this.options, options)
-    return transformRectangleForwardToRectangles(rectangle, this, mergedOptions)
-  }
-
-  /**
-   * Transforms a Rectangle an array of Rectangles, refined using backward transform
-   * @param {Rectangle} rectangle - Rectangle to transform
-   * @param {Partial<TransformOptions>} [options] - Transform options
-   * @returns {Rectangle[]} Refined array of Rectangle
-   */
-  transformRectangleBackwardToRectangles(
-    rectangle: Rectangle,
-    options?: Partial<TransformOptions>
-  ): Rectangle[] {
-    const mergedOptions = mergeOptions(this.options, options)
-    return transformRectangleBackwardToRectangles(
-      rectangle,
-      this,
-      mergedOptions
-    )
-  }
-
-  /**
-   * Transforms a Rectangle a QuadTree and refines the QuadTree using forward transform
-   * @param {Rectangle} rectangle - Rectangle to transform
-   * @param {Partial<TransformOptions>} [options] - Transform options
-   * @returns {QuadTree<Gcp>} Refined QuadTree from rectangle
-   */
-  transformRectangleForwardToGcpQuadTree(
-    rectangle: Rectangle,
-    options?: Partial<TransformOptions>
-  ): QuadTree<Gcp> {
-    const mergedOptions = mergeOptions(this.options, options)
-    return transformRectangleForwardToGcpQuadTree(
-      rectangle,
-      this,
-      mergedOptions
-    )
-  }
-
-  /**
-   * Transforms a rectangle a QuadTree and refines the QuadTree using backward transform
-   * @param {Rectangle} rectangle - Rectangle to transform
-   * @param {Partial<TransformOptions>} [options] - Transform options
-   * @returns {QuadTree<Gcp>} Refined QuadTree from rectangle
-   */
-  transformRectangleBackwardToGcpQuadTree(
-    rectangle: Rectangle,
-    options?: Partial<TransformOptions>
-  ): QuadTree<Gcp> {
-    const mergedOptions = mergeOptions(this.options, options)
-    return transformRectangleBackwardToGcpQuadTree(
-      rectangle,
-      this,
-      mergedOptions
-    )
   }
 
   // Shortcuts for SVG <> GeoJSON

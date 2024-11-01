@@ -6,14 +6,16 @@ import GcpTransformer from '../transformer'
 import {
   generalGcpToGcpForForward,
   generalGcpToGcpForBackward,
-  mapQuadTreeRecursively,
+  gcpToGeneralGcpForForward,
+  gcpToGeneralGcpForBackward,
   refineLineString,
-  refineRectangleToGcpQuadTree,
-  refineRectangleToRectangles,
-  refineRing
+  refineRectangleToGcpGrid,
+  refineGcpGrid,
+  refineRing,
+  splitInfoIfShouldRefineGcpGrid
 } from './refinement-helper-functions.js'
 
-import type { TransformOptions, RefinementOptions } from './types.js'
+import type { TransformOptions, RefinementOptions, SplitInfo } from './types.js'
 
 import type {
   Point,
@@ -21,9 +23,13 @@ import type {
   Ring,
   Polygon,
   Rectangle,
-  QuadTree,
-  Gcp
+  Gcp,
+  TypedGrid,
+  TypedGridWithDepth
 } from '@allmaps/types'
+import { mergeOptions } from '@allmaps/stdlib'
+
+// Options
 
 export const defaultTransformOptions: TransformOptions = {
   maxOffsetRatio: 0,
@@ -91,6 +97,8 @@ export function refinementOptionsFromBackwardTransformOptions(
   }
   return refinementOptions
 }
+
+// Geometries
 
 export function transformLineStringForwardToLineString(
   lineString: LineString,
@@ -160,53 +168,142 @@ export function transformPolygonBackwardToPolygon(
   })
 }
 
-// TODO: consider to add these as methods on transformer class
-export function transformRectangleForwardToRectangles(
+// GcpGrid
+
+export function transformRectangleForwardToGcpGrid(
   rectangle: Rectangle,
   transformer: GcpTransformer,
-  transformOptions: TransformOptions
-): Rectangle[] {
-  return refineRectangleToRectangles(
+  partialTransformOptions: Partial<TransformOptions>
+): TypedGridWithDepth<Gcp> {
+  const transformOptions = mergeOptions(
+    transformer.options,
+    partialTransformOptions
+  )
+  const generalGcpGridWithDepth = refineRectangleToGcpGrid(
     rectangle,
     (p) => transformer.transformForward(p),
     refinementOptionsFromForwardTransformOptions(transformOptions)
   )
+  return {
+    depth: generalGcpGridWithDepth.depth,
+    grid: generalGcpGridWithDepth.grid.map((typedRow) =>
+      typedRow.map(generalGcpToGcpForForward)
+    )
+  }
 }
 
-export function transformRectangleBackwardToRectangles(
+export function transformRectangleBackwardToGcpGrid(
   rectangle: Rectangle,
   transformer: GcpTransformer,
-  transformOptions: TransformOptions
-): Rectangle[] {
-  return refineRectangleToRectangles(
-    rectangle,
-    (p) => transformer.transformForward(p),
-    refinementOptionsFromBackwardTransformOptions(transformOptions)
+  partialTransformOptions: Partial<TransformOptions>
+): TypedGridWithDepth<Gcp> {
+  const transformOptions = mergeOptions(
+    transformer.options,
+    partialTransformOptions
   )
-}
-
-export function transformRectangleForwardToGcpQuadTree(
-  rectangle: Rectangle,
-  transformer: GcpTransformer,
-  transformOptions: TransformOptions
-): QuadTree<Gcp> {
-  const generalGcpQuadTree = refineRectangleToGcpQuadTree(
-    rectangle,
-    (p) => transformer.transformForward(p),
-    refinementOptionsFromForwardTransformOptions(transformOptions)
-  )
-  return mapQuadTreeRecursively(generalGcpQuadTree, generalGcpToGcpForForward)
-}
-
-export function transformRectangleBackwardToGcpQuadTree(
-  rectangle: Rectangle,
-  transformer: GcpTransformer,
-  transformOptions: TransformOptions
-): QuadTree<Gcp> {
-  const generalGcpQuadTree = refineRectangleToGcpQuadTree(
+  const generalGcpGridWithDepth = refineRectangleToGcpGrid(
     rectangle,
     (p) => transformer.transformBackward(p),
     refinementOptionsFromBackwardTransformOptions(transformOptions)
   )
-  return mapQuadTreeRecursively(generalGcpQuadTree, generalGcpToGcpForBackward)
+  return {
+    depth: generalGcpGridWithDepth.depth,
+    grid: generalGcpGridWithDepth.grid.map((typedRow) =>
+      typedRow.map(generalGcpToGcpForBackward)
+    )
+  }
+}
+
+export function transformGcpGridForward(
+  gcpGrid: TypedGrid<Gcp>,
+  transformer: GcpTransformer,
+  partialTransformOptions: Partial<TransformOptions>
+): TypedGridWithDepth<Gcp> {
+  const transformOptions = mergeOptions(
+    transformer.options,
+    partialTransformOptions
+  )
+  const generalGcpGrid = gcpGrid.map((typedRow) =>
+    typedRow.map(gcpToGeneralGcpForForward)
+  )
+  const generalGcpGridWithDepth = refineGcpGrid(
+    generalGcpGrid,
+    (p) => transformer.transformForward(p),
+    refinementOptionsFromForwardTransformOptions(transformOptions)
+  )
+  return {
+    depth: generalGcpGridWithDepth.depth,
+    grid: generalGcpGridWithDepth.grid.map((typedRow) =>
+      typedRow.map(generalGcpToGcpForForward)
+    )
+  }
+}
+
+export function transformGcpGridBackward(
+  gcpGrid: TypedGrid<Gcp>,
+  transformer: GcpTransformer,
+  partialTransformOptions: Partial<TransformOptions>
+): TypedGridWithDepth<Gcp> {
+  const transformOptions = mergeOptions(
+    transformer.options,
+    partialTransformOptions
+  )
+  const generalGcpGrid = gcpGrid.map((typedRow) =>
+    typedRow.map(gcpToGeneralGcpForBackward)
+  )
+  const generalGcpGridWithDepth = refineGcpGrid(
+    generalGcpGrid,
+    (p) => transformer.transformBackward(p),
+    refinementOptionsFromBackwardTransformOptions(transformOptions)
+  )
+  return {
+    depth: generalGcpGridWithDepth.depth,
+    grid: generalGcpGridWithDepth.grid.map((typedRow) =>
+      typedRow.map(generalGcpToGcpForBackward)
+    )
+  }
+}
+
+// Should split/refine GcpGrid
+
+export function splitInfoIfShouldRefineGcpGridForward(
+  gcpGrid: TypedGrid<Gcp>,
+  transformer: GcpTransformer,
+  partialTransformOptions: Partial<TransformOptions>,
+  depth: number
+): SplitInfo | undefined {
+  const transformOptions = mergeOptions(
+    transformer.options,
+    partialTransformOptions
+  )
+  const generalGcpGrid = gcpGrid.map((typedRow) =>
+    typedRow.map(gcpToGeneralGcpForForward)
+  )
+  return splitInfoIfShouldRefineGcpGrid(
+    generalGcpGrid,
+    (p) => transformer.transformForward(p),
+    refinementOptionsFromForwardTransformOptions(transformOptions),
+    depth
+  )
+}
+
+export function splitInfoIfShouldRefineGcpGridBackward(
+  gcpGrid: TypedGrid<Gcp>,
+  transformer: GcpTransformer,
+  partialTransformOptions: Partial<TransformOptions>,
+  depth: number
+): SplitInfo | undefined {
+  const transformOptions = mergeOptions(
+    transformer.options,
+    partialTransformOptions
+  )
+  const generalGcpGrid = gcpGrid.map((typedRow) =>
+    typedRow.map(gcpToGeneralGcpForBackward)
+  )
+  return splitInfoIfShouldRefineGcpGrid(
+    generalGcpGrid,
+    (p) => transformer.transformBackward(p),
+    refinementOptionsFromBackwardTransformOptions(transformOptions),
+    depth
+  )
 }

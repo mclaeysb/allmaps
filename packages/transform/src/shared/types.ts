@@ -17,6 +17,17 @@ export type RefinementOptions = {
   returnDomain: 'source' | 'destination'
 }
 
+export type SplitLineInfo = SplitInfo & {
+  sourceMidPoint: Point
+  destinationMidPointFromRefinementFunction: Point
+}
+
+export type SplitInfo = {
+  destinationMidPointsDistance: number
+  destinationLineDistance: number
+  destinationRefinedLineDistance: number
+}
+
 /** Transformation type. */
 export type TransformationType =
   | 'straight'

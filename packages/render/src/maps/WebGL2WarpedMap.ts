@@ -3,7 +3,6 @@ import { throttle } from 'lodash-es'
 import {
   hexToFractionalRgb,
   lineStringToLines,
-  multiPointToGeojsonMultiPoint,
   pointsAndPointsToLines,
   subSetArray
 } from '@allmaps/stdlib'
@@ -332,6 +331,10 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       2,
       'a_resourceTrianglePoint'
     )
+    console.log(
+      'this.resourceTrianglePoints',
+      this.resourceTrianglePoints.slice(0, 5)
+    )
 
     // Clip previous and new triangle points
 
@@ -339,6 +342,10 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       this.projectedGeoPreviousTrianglePoints.map((point) =>
         applyTransform(this.projectedGeoToClipTransform as Transform, point)
       )
+    console.log(
+      'clipPreviousTrianglePoints',
+      clipPreviousTrianglePoints.slice(0, 5)
+    )
 
     createBuffer(
       gl,
@@ -351,6 +358,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     const clipTrianglePoints = this.projectedGeoTrianglePoints.map((point) =>
       applyTransform(this.projectedGeoToClipTransform as Transform, point)
     )
+    console.log('clipTrianglePoints', clipTrianglePoints.slice(0, 5))
 
     createBuffer(
       gl,
@@ -371,6 +379,10 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       1,
       'a_previousTrianglePointDistortion'
     )
+    console.log(
+      'this.previousTrianglePointsDistortion',
+      this.previousTrianglePointsDistortion.slice(0, 5)
+    )
 
     createBuffer(
       gl,
@@ -378,6 +390,10 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       new Float32Array(this.trianglePointsDistortion),
       1,
       'a_trianglePointDistortion'
+    )
+    console.log(
+      'this.trianglePointsDistortion',
+      this.trianglePointsDistortion.slice(0, 5)
     )
 
     // Triangle Point index

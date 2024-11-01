@@ -13,13 +13,19 @@ import {
   computeDistortionFromPartialDerivatives
 } from './distortion.js'
 
-import { defaultTransformOptions } from './shared/transform-helper-functions.js'
+import {
+  defaultTransformOptions,
+  transformRectangleForwardToGcpGrid,
+  transformRectangleBackwardToGcpGrid,
+  transformGcpGridForward,
+  transformGcpGridBackward,
+  splitInfoIfShouldRefineGcpGridForward,
+  splitInfoIfShouldRefineGcpGridBackward
+} from './shared/transform-helper-functions.js'
 import {
   defaultRefinementOptions,
-  mapQuadTreeRecursively,
-  forEachQuadTreeRecursively,
-  mixQuadTreesRecursively,
-  getQuadTreeTriangles
+  mixTypedGrids,
+  getTypedGridTriangles
 } from './shared/refinement-helper-functions.js'
 
 /** @module allmaps/transform */
@@ -35,12 +41,16 @@ export {
   Straight,
   supportedDistortionMeasures,
   computeDistortionFromPartialDerivatives,
+  transformRectangleForwardToGcpGrid,
+  transformRectangleBackwardToGcpGrid,
+  transformGcpGridForward,
+  transformGcpGridBackward,
+  splitInfoIfShouldRefineGcpGridForward,
+  splitInfoIfShouldRefineGcpGridBackward,
   defaultTransformOptions,
   defaultRefinementOptions,
-  mapQuadTreeRecursively,
-  forEachQuadTreeRecursively,
-  mixQuadTreesRecursively,
-  getQuadTreeTriangles
+  mixTypedGrids,
+  getTypedGridTriangles
 }
 
 export * from './shared/types.js'

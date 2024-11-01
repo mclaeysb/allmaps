@@ -69,6 +69,9 @@ export type TypedLine<P> = [P, P]
 export type TypedTriangle<P> = [P, P, P]
 export type TypedRectangle<P> = [P, P, P, P]
 
+export type TypedGrid<P> = P[][]
+export type TypedGridWithDepth<P> = { depth: number; grid: TypedGrid<P> }
+
 export type QuadTree<P> = {
   tl: P
   tr: P
