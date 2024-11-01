@@ -15,7 +15,7 @@ import type {
   TypedLine,
   TypedTriangle,
   TypedGrid,
-  DepthAndTypedGrid
+  TypedGridWithDepth
 } from '@allmaps/types'
 
 import type {
@@ -110,7 +110,7 @@ export function refineRectangleToGcpGrid(
   rectangle: Rectangle,
   refinementFunction: (p: Point) => Point,
   partialRefinementOptions: Partial<RefinementOptions>
-): DepthAndTypedGrid<GeneralGcp> {
+): TypedGridWithDepth<GeneralGcp> {
   rectangle = conformRing(rectangle) as Rectangle
   // Not treating partialRefinementOptions because happens in next function
 
@@ -126,7 +126,7 @@ export function refineGcpGrid(
   gcpGrid: TypedGrid<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   partialRefinementOptions: Partial<RefinementOptions>
-): DepthAndTypedGrid<GeneralGcp> {
+): TypedGridWithDepth<GeneralGcp> {
   const refinementOptions = mergeOptions(
     defaultRefinementOptions,
     partialRefinementOptions
@@ -180,7 +180,7 @@ export function refineGcpGridRecursively(
   refinementFunction: (p: Point) => Point,
   refinementOptions: RefinementOptions,
   depth: number
-): DepthAndTypedGrid<GeneralGcp> {
+): TypedGridWithDepth<GeneralGcp> {
   if (
     splitInfoIfShouldRefineGcpGrid(
       gcpGrid,
