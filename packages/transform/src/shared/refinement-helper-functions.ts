@@ -3,26 +3,30 @@ import {
   distance,
   conformLineString,
   conformRing,
-  mergeOptions
+  mergeOptions,
+  computeBbox,
+  bboxToSize
 } from '@allmaps/stdlib'
 
 import type {
   Point,
   LineString,
   Ring,
-  Rectangle,
   Gcp,
   TypedLine,
   TypedTriangle,
   TypedGrid,
-  TypedGridWithDepth
+  TypedGridWithDepth,
+  Bbox,
+  Line
 } from '@allmaps/types'
 
 import type {
   GeneralGcp,
   SplitInfo,
   RefinementOptions,
-  SplitLineInfo
+  SplitLineInfo,
+  GcpGridWithDepthSplitInfo
 } from './types.js'
 
 // Note:
@@ -46,7 +50,7 @@ export const defaultRefinementOptions: RefinementOptions = {
   returnDomain: 'destination'
 }
 
-// Refine
+// Refine Geometries
 
 export function refineLineString(
   lineString: LineString,
@@ -106,42 +110,6 @@ export function refineRing(
   )
 }
 
-export function refineRectangleToGcpGrid(
-  rectangle: Rectangle,
-  refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
-): TypedGridWithDepth<GeneralGcp> {
-  rectangle = conformRing(rectangle) as Rectangle
-  // Not treating partialRefinementOptions because happens in next function
-
-  const gcpGrid = rectangleToGcpGrid(rectangle, (point) => ({
-    source: point,
-    destination: refinementFunction(point)
-  }))
-
-  return refineGcpGrid(gcpGrid, refinementFunction, partialRefinementOptions)
-}
-
-export function refineGcpGrid(
-  gcpGrid: TypedGrid<GeneralGcp>,
-  refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
-): TypedGridWithDepth<GeneralGcp> {
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
-
-  return refineGcpGridRecursively(
-    gcpGrid,
-    refinementFunction,
-    refinementOptions,
-    0
-  )
-}
-
-// Recursively
-
 function splitGcpLineRecursively(
   gcpLine: TypedLine<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
@@ -175,67 +143,65 @@ function splitGcpLineRecursively(
   }
 }
 
-export function refineGcpGridRecursively(
-  gcpGrid: TypedGrid<GeneralGcp>,
+// Refine Bbox to GcpGrid
+
+export function refineBboxToGcpGridWithDepth(
+  bbox: Bbox,
   refinementFunction: (p: Point) => Point,
-  refinementOptions: RefinementOptions,
-  depth: number
+  partialRefinementOptions: Partial<RefinementOptions>
 ): TypedGridWithDepth<GeneralGcp> {
-  if (
-    splitInfoIfShouldRefineGcpGrid(
-      gcpGrid,
-      refinementFunction,
-      refinementOptions,
-      depth
-    )
-  ) {
-    const refinedRowsGcpGrid: GeneralGcp[][] = []
-    for (let i = 0; i < gcpGrid.length; i++) {
-      refinedRowsGcpGrid[i] = []
-      for (let j = 0; j < gcpGrid.length - 1; j++) {
-        // TODO: force split here, and only pass that option, not refinement options, as speedup
-        const splitLines = splitGcpLineRecursively(
-          [gcpGrid[i][j], gcpGrid[i][j + 1]],
-          refinementFunction,
-          { ...refinementOptions, maxDepth: 1 },
-          0
-        )
-        refinedRowsGcpGrid[i].push(splitLines[0][0], splitLines[0][1])
-      }
-      refinedRowsGcpGrid[i].push(gcpGrid[i][gcpGrid[i].length - 1])
-    }
+  const refinementOptions = mergeOptions(
+    defaultRefinementOptions,
+    partialRefinementOptions
+  )
 
-    const refinedRowsAndColumnsGcpGrid: GeneralGcp[][] = []
-    for (let i = 0; i < refinedRowsGcpGrid.length - 1; i++) {
-      refinedRowsAndColumnsGcpGrid[2 * i] = []
-      refinedRowsAndColumnsGcpGrid[2 * i + 1] = []
-      for (let j = 0; j < refinedRowsGcpGrid[i].length; j++) {
-        // TODO: force split here, and only pass that option, not refinement options, as speedup
-        const splitLines = splitGcpLineRecursively(
-          [refinedRowsGcpGrid[i][j], refinedRowsGcpGrid[i + 1][j]],
-          refinementFunction,
-          { ...refinementOptions, maxDepth: 1 },
-          0
-        )
-        refinedRowsAndColumnsGcpGrid[2 * i].push(splitLines[0][0])
-        refinedRowsAndColumnsGcpGrid[2 * i + 1].push(splitLines[0][1])
-      }
-      refinedRowsAndColumnsGcpGrid[2 * refinedRowsGcpGrid.length - 2] =
-        refinedRowsGcpGrid[refinedRowsGcpGrid.length - 1]
-    }
+  const gcpGridWithDepth = {
+    depth: 0,
+    grid: bboxToGcpGrid(bbox, 1, 1, refinementFunction)
+  }
 
-    return refineGcpGridRecursively(
-      refinedRowsAndColumnsGcpGrid,
-      refinementFunction,
-      refinementOptions,
-      depth + 1
-    )
+  return refineGcpGridWithDepth(
+    gcpGridWithDepth,
+    refinementFunction,
+    refinementOptions
+  )
+}
+
+export function refineGcpGridWithDepth(
+  gcpGridWithDepth: TypedGridWithDepth<GeneralGcp>,
+  refinementFunction: (p: Point) => Point,
+  partialRefinementOptions: Partial<RefinementOptions>
+): TypedGridWithDepth<GeneralGcp> {
+  const refinementOptions = mergeOptions(
+    defaultRefinementOptions,
+    partialRefinementOptions
+  )
+
+  const gcpGridSplitInfo = gcpGridWithDepthSplitInfoIfshouldRefineGcpGrid(
+    gcpGridWithDepth,
+    refinementFunction,
+    refinementOptions
+  )
+
+  console.log('gcpGridSplitInfo', gcpGridSplitInfo)
+
+  if (gcpGridSplitInfo) {
+    const { bbox, cols, rows, depth } = gcpGridSplitInfo
+    const refinedGcpGrid = bboxToGcpGrid(bbox, cols, rows, refinementFunction)
+
+    return { depth, grid: refinedGcpGrid }
   } else {
-    return { depth: depth, grid: gcpGrid }
+    return {
+      depth: gcpGridWithDepth.depth,
+      grid: mapTypedGrid(gcpGridWithDepth.grid, (generalGcp) => ({
+        source: generalGcp.source,
+        destination: refinementFunction(generalGcp.source)
+      }))
+    }
   }
 }
 
-// Should split/refine
+// Should split line
 
 // This function checks if a GcpLine should be splits, and returns the new midGcp if so, or undefined otherwise
 export function newMidGcpIfShouldSplitGcpLine(
@@ -272,68 +238,6 @@ export function newMidGcpIfShouldSplitGcpLine(
       }
     : undefined
 }
-
-export function splitInfoIfShouldRefineGcpGrid(
-  gcpGrid: TypedGrid<GeneralGcp>,
-  refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>,
-  depth: number
-): SplitInfo | undefined {
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
-
-  if (depth >= refinementOptions.maxDepth || refinementOptions.maxDepth <= 0) {
-    return undefined
-  }
-
-  // TODO: make shouldSplitGcpLine and getGcpLineDistance functions so we can only get the absolute distance and store that
-  // TODO: spead up by allowing to force split instead of checking every time
-  // TODO: make this return distance or undefined
-  let gcpGridSplitInfo = undefined
-  for (let i = 0; i < gcpGrid.length - 1; i++) {
-    const gcpLine = [
-      gcpGrid[i][i],
-      gcpGrid[i + 1][i + 1]
-    ] as TypedLine<GeneralGcp>
-    const splitInfo = gcpLineSplitInfo(
-      gcpLine,
-      refinementFunction,
-      refinementOptions
-    )
-    const shouldSplit = shouldSplitFromSplitInfo(splitInfo, refinementOptions)
-    if (!shouldSplit) {
-      return undefined
-    } else if (!gcpGridSplitInfo) {
-      gcpGridSplitInfo = {
-        destinationMidPointsDistance: splitInfo.destinationMidPointsDistance,
-        destinationLineDistance: splitInfo.destinationLineDistance,
-        destinationRefinedLineDistance: splitInfo.destinationRefinedLineDistance
-      }
-    } else {
-      // TODO: compute these at the end, reconsider min/max/avg/median
-      gcpGridSplitInfo = {
-        destinationMidPointsDistance: Math.max(
-          gcpGridSplitInfo.destinationMidPointsDistance,
-          splitInfo.destinationMidPointsDistance
-        ),
-        destinationLineDistance: Math.max(
-          gcpGridSplitInfo.destinationLineDistance,
-          splitInfo.destinationLineDistance
-        ),
-        destinationRefinedLineDistance: Math.max(
-          gcpGridSplitInfo.destinationRefinedLineDistance,
-          splitInfo.destinationRefinedLineDistance
-        )
-      }
-    }
-  }
-
-  return gcpGridSplitInfo
-}
-
-// Split info
 
 function gcpLineSplitInfo(
   gcpLine: TypedLine<GeneralGcp>,
@@ -383,6 +287,7 @@ function shouldSplitFromSplitInfo(
   }: SplitInfo,
   refinementOptions: RefinementOptions
 ): boolean {
+  // debugger
   return (
     destinationMidPointsDistance / destinationLineDistance >
       refinementOptions.maxOffsetRatio &&
@@ -414,6 +319,15 @@ export function mixTypedGrids<P0, P1, P2>(
   return mixedGrid
 }
 
+export function mapTypedGrid<P0, P1>(
+  typedGrid: TypedGrid<P0>,
+  mapFunction: (p0: P0) => P1
+): TypedGrid<P1> {
+  console.log('mapping so recalculating!')
+
+  return typedGrid.map((pRow) => pRow.map(mapFunction))
+}
+
 export function getTypedGridTriangles<P>(
   grid: TypedGrid<P>
 ): TypedTriangle<P>[] {
@@ -433,6 +347,109 @@ export function getTypedGridTriangles<P>(
     }
   }
   return triangles
+}
+
+// Should refine gcp grid
+
+export function gcpGridWithDepthSplitInfoIfshouldRefineGcpGrid(
+  gcpGridWithDepth: TypedGridWithDepth<GeneralGcp>,
+  refinementFunction: (p: Point) => Point,
+  refinementOptions: RefinementOptions
+): GcpGridWithDepthSplitInfo | undefined {
+  if (
+    gcpGridWithDepth.depth >= refinementOptions.maxDepth ||
+    refinementOptions.maxDepth <= 0
+  ) {
+    return undefined
+  }
+
+  const gcpGrid = gcpGridWithDepth.grid
+
+  const sourcePointNE = gcpGrid[0][0].source
+  const sourcePointNW = gcpGrid[0][gcpGrid[0].length - 1].source
+  const sourcePointSE = gcpGrid[gcpGrid.length - 1][0].source
+  const sourcePointSW =
+    gcpGrid[gcpGrid.length - 1][gcpGrid[gcpGrid.length - 1].length - 1].source
+
+  const sourcePointCE = refinementOptions.sourceMidPointFunction(
+    sourcePointNE,
+    sourcePointSE
+  )
+  const sourcePointCW = refinementOptions.sourceMidPointFunction(
+    sourcePointNW,
+    sourcePointSW
+  )
+  const sourcePointNC = refinementOptions.sourceMidPointFunction(
+    sourcePointNE,
+    sourcePointNW
+  )
+  const sourcePointSC = refinementOptions.sourceMidPointFunction(
+    sourcePointSE,
+    sourcePointSW
+  )
+
+  const bbox = computeBbox([
+    sourcePointNE,
+    sourcePointNW,
+    sourcePointSE,
+    sourcePointSW
+  ])
+
+  const sourceHorizontalLine = [sourcePointCE, sourcePointCW] as Line
+  const sourceVerticalLine = [sourcePointNC, sourcePointSC] as Line
+
+  const sourceHorizontalLenght = distance(sourceHorizontalLine)
+  const sourceVerticalLenght = distance(sourceVerticalLine)
+
+  const sourceRefinedHorizontalLineString = refineLineString(
+    sourceHorizontalLine,
+    refinementFunction,
+    { ...refinementOptions, returnDomain: 'source' }
+  )
+  const sourceRefinedVerticalLineString = refineLineString(
+    sourceVerticalLine,
+    refinementFunction,
+    { ...refinementOptions, returnDomain: 'source' }
+  )
+
+  // TODO: used squared distance
+  const sourceMinHorizontalLineLenghts = []
+  for (let i = 0; i < sourceRefinedHorizontalLineString.length - 1; i++) {
+    sourceMinHorizontalLineLenghts.push(
+      distance(
+        sourceRefinedHorizontalLineString[i],
+        sourceRefinedHorizontalLineString[i + 1]
+      )
+    )
+  }
+  const sourceMinHorizontalLineLenght = Math.min(
+    ...sourceMinHorizontalLineLenghts
+  )
+  const sourceMinVerticalLineLenghts = []
+  for (let i = 0; i < sourceRefinedVerticalLineString.length - 1; i++) {
+    sourceMinVerticalLineLenghts.push(
+      distance(
+        sourceRefinedVerticalLineString[i],
+        sourceRefinedVerticalLineString[i + 1]
+      )
+    )
+  }
+  const sourceMinVerticalLineLenght = Math.min(...sourceMinVerticalLineLenghts)
+
+  const cols = Math.round(
+    sourceHorizontalLenght / sourceMinHorizontalLineLenght
+  )
+  const rows = Math.round(sourceVerticalLenght / sourceMinVerticalLineLenght)
+  const depth = Math.round(Math.log2(Math.max(cols, rows)))
+
+  return cols > 1 && rows > 1
+    ? {
+        cols,
+        rows,
+        bbox,
+        depth
+      }
+    : undefined
 }
 
 // Convert
@@ -478,12 +495,36 @@ export function gcpLinesToGcps(
   return gcps
 }
 
-export function rectangleToGcpGrid(
-  rectangle: Rectangle,
-  pointToGcp: (point: Point) => GeneralGcp
+export function bboxToGcpGrid(
+  bbox: Bbox,
+  cols = 1,
+  rows = 1,
+  refinementFunction: (p: Point) => Point
 ): TypedGrid<GeneralGcp> {
-  return [
-    [pointToGcp(rectangle[0]), pointToGcp(rectangle[1])],
-    [pointToGcp(rectangle[3]), pointToGcp(rectangle[2])]
-  ]
+  const pointGrid = bboxToPointGrid(bbox, cols, rows)
+
+  return mapTypedGrid(pointGrid, (point) => ({
+    source: point,
+    destination: refinementFunction(point)
+  }))
+}
+
+export function bboxToPointGrid(
+  bbox: Bbox,
+  cols = 1,
+  rows = 1
+): TypedGrid<Point> {
+  const grid: TypedGrid<Point> = []
+  const size = bboxToSize(bbox)
+  const stepX = size[0] / cols
+  const stepY = size[1] / rows
+
+  for (let i = 0; i <= cols; i++) {
+    grid[i] = []
+    for (let j = 0; j <= rows; j++) {
+      grid[i].push([bbox[0] + i * stepX, bbox[1] + j * stepY] as Point)
+    }
+  }
+
+  return grid
 }

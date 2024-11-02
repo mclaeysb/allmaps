@@ -15,12 +15,10 @@ import {
 
 import {
   defaultTransformOptions,
-  transformRectangleForwardToGcpGrid,
-  transformRectangleBackwardToGcpGrid,
+  transformBboxForwardToGcpGrid,
+  transformBboxBackwardToGcpGrid,
   transformGcpGridForward,
-  transformGcpGridBackward,
-  splitInfoIfShouldRefineGcpGridForward,
-  splitInfoIfShouldRefineGcpGridBackward
+  transformGcpGridBackward
 } from './shared/transform-helper-functions.js'
 import {
   defaultRefinementOptions,
@@ -41,12 +39,10 @@ export {
   Straight,
   supportedDistortionMeasures,
   computeDistortionFromPartialDerivatives,
-  transformRectangleForwardToGcpGrid,
-  transformRectangleBackwardToGcpGrid,
+  transformBboxForwardToGcpGrid,
+  transformBboxBackwardToGcpGrid,
   transformGcpGridForward,
   transformGcpGridBackward,
-  splitInfoIfShouldRefineGcpGridForward,
-  splitInfoIfShouldRefineGcpGridBackward,
   defaultTransformOptions,
   defaultRefinementOptions,
   mixTypedGrids,

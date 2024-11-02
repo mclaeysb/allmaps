@@ -146,6 +146,7 @@ export default class WarpedMap extends EventTarget {
 
   visible: boolean
 
+  previousTransformationType: TransformationType
   transformationType: TransformationType
   transformer!: GcpTransformer
   projectedPreviousTransformer!: GcpTransformer
@@ -251,6 +252,7 @@ export default class WarpedMap extends EventTarget {
       options.transformation?.type ||
       this.georeferencedMap.transformation?.type ||
       'polynomial'
+    this.previousTransformationType = this.transformationType
 
     this.updateTransformerProperties()
   }
@@ -487,6 +489,7 @@ export default class WarpedMap extends EventTarget {
    * Reset the previous points and values.
    */
   resetPrevious() {
+    this.previousTransformationType = this.transformationType
     this.projectedPreviousTransformer = this.projectedTransformer
     this.projectedGeoPreviousTransformedResourcePoints =
       this.projectedGeoTransformedResourcePoints

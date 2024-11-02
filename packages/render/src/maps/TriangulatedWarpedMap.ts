@@ -1,11 +1,10 @@
 import { Map as GeoreferencedMap } from '@allmaps/annotation'
 import {
   computeDistortionFromPartialDerivatives,
-  transformRectangleForwardToGcpGrid,
   transformGcpGridForward,
-  splitInfoIfShouldRefineGcpGridForward,
   mixTypedGrids,
-  getTypedGridTriangles
+  getTypedGridTriangles,
+  transformBboxForwardToGcpGrid
 } from '@allmaps/transform'
 import { mixNumbers, mixPoints } from '@allmaps/stdlib'
 
@@ -13,7 +12,13 @@ import WarpedMap from './WarpedMap.js'
 
 import type { WarpedMapOptions } from '../shared/types.js'
 
-import type { Point, Ring, Gcp, TypedGridWithDepth } from '@allmaps/types'
+import type {
+  Point,
+  Ring,
+  Gcp,
+  TypedGridWithDepth,
+  TileZoomLevel
+} from '@allmaps/types'
 
 function createDefaultTriangulatedWarpedMapOptions(): Partial<WarpedMapOptions> {
   return {}
@@ -57,7 +62,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   projectedPreviousGcpGridWithDepth?: TypedGridWithDepth<GcpAndDistortionMeasure>
   projectedGcpGridWithDepth?: TypedGridWithDepth<GcpAndDistortionMeasure>
 
-  refining = false
+  computePrevious = true
 
   resourceTrianglePoints: Point[] = []
 
@@ -86,6 +91,9 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     }
 
     super(mapId, georeferencedMap, options)
+
+    console.log('since constructor')
+    this.updateTriangulation()
   }
 
   /**
@@ -95,22 +103,21 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   setResourceMask(resourceMask: Ring): void {
     super.setResourceMask(resourceMask)
+    console.log('since set resource mask')
     this.updateTriangulation()
   }
 
   /**
-   * Set currentResourceViewportRing at current viewport. Triggers triangulation update if needed.
+   * Set the overview tile zoom level for the current viewport
    *
-   * @param {Ring} [resourceViewportRing]
+   * @param {TileZoomLevel} [tileZoomLevel] - tile zoom level
    */
-  setCurrentResourceViewportRing(resourceViewportRing?: Ring) {
-    super.setCurrentResourceViewportRing(resourceViewportRing)
-    // TODO: check if changed significantly
-    // TODO: this does not depend on current anymore, so think of simpler way to call this with 'true' (if needed at all?)
-    // => Do this with set current tilezoomlevel, since we'll compute error using scale, and more precisely using scalefactor (so we don't do it too often and don't over zoom)
-    // This way we can also restrict the depth using the zoom level
-    // Or set via minOffsetDistance ==> maxOffsetDistance in transformOptions
-    this.updateTriangulation(true)
+  setCurrentTileZoomLevel(tileZoomLevel?: TileZoomLevel) {
+    super.setCurrentTileZoomLevel(tileZoomLevel)
+    // TODO: this can be used to update the triangulation based on the scalefactor
+    // By setting the allowed absolute error based on the scale and projectedGeo error
+    // Keeping this here for now since it's the only cases where updateTriangulation() is called with 'true'
+    // this.updateTriangulation(true)
   }
 
   /**
@@ -189,81 +196,71 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same - true by default, false during a transformation transition
    */
   private updateTriangulation(previousIsNew = false) {
+    console.log('>> updateTriangulation()')
     const triangulationTransformOptions = {
-      maxOffsetRatio: 0.001,
-      maxDepth: 5
+      maxOffsetRatio: 0.03,
+      maxDepth: 7
     }
+
+    this.computePrevious = true
 
     console.log(
-      'Starting',
+      'starting from',
       this.projectedPreviousGcpGridWithDepth,
-      this.projectedGcpGridWithDepth
+      this.projectedGcpGridWithDepth,
+      this.previousTransformationType,
+      this.transformationType,
+      this.projectedPreviousTransformer,
+      this.projectedTransformer
     )
 
-    this.refining = false
-
-    // TODO: if cached, use
-    console.log('Computing')
-    // TODO: optimise rectangle to grid for non-square, and adapt diagnal functions
-    this.projectedGcpGridWithDepth = transformRectangleForwardToGcpGrid(
-      this.resourceMaskRectangle,
-      this.projectedTransformer,
-      triangulationTransformOptions
-    )
     if (!this.projectedPreviousGcpGridWithDepth) {
-      this.projectedPreviousGcpGridWithDepth = this.projectedGcpGridWithDepth
-    }
-
-    if (
-      this.projectedPreviousGcpGridWithDepth.grid.length >
-      this.projectedGcpGridWithDepth.grid.length
-    ) {
-      console.log(
-        'Refining since',
-        this.projectedPreviousGcpGridWithDepth.grid.length,
-        this.projectedGcpGridWithDepth.grid.length
-      )
-      this.projectedGcpGridWithDepth.grid =
-        this.projectedPreviousGcpGridWithDepth.grid.map((projectedGcpRow) =>
-          projectedGcpRow.map((projectedGcp) => {
-            return {
-              ...projectedGcp,
-              geo: this.projectedTransformer.transformForward(
-                projectedGcp.resource
-              )
-            }
-          })
-        )
-      // TODO: clear cache
-    }
-    const splitInfo = splitInfoIfShouldRefineGcpGridForward(
-      this.projectedGcpGridWithDepth.grid,
-      this.projectedTransformer,
-      triangulationTransformOptions,
-      this.projectedGcpGridWithDepth.depth
-    )
-    if (splitInfo) {
-      console.log('Transforming forward')
-      this.projectedGcpGridWithDepth = transformGcpGridForward(
-        this.projectedGcpGridWithDepth.grid,
+      // Computing current grid from bbox
+      // TODO: replace in cached
+      console.log('from scratch')
+      this.projectedGcpGridWithDepth = transformBboxForwardToGcpGrid(
+        this.resourceMaskBbox,
         this.projectedTransformer,
         triangulationTransformOptions
       )
-      console.log('Adapting previous')
-      this.projectedPreviousGcpGridWithDepth.grid =
-        this.projectedGcpGridWithDepth.grid.map((projectedGcpRow) =>
-          projectedGcpRow.map((projectedGcp) => {
-            return {
-              ...projectedGcp,
-              geo: this.projectedPreviousTransformer.transformForward(
-                projectedGcp.resource
-              )
-            }
-          })
+      this.projectedPreviousGcpGridWithDepth = this.projectedGcpGridWithDepth
+    } else {
+      console.log('from previous')
+      const previousDepth = this.projectedPreviousGcpGridWithDepth?.depth
+      // Computing current grid from previous, with current transformer
+      // TODO: replace in cached
+      this.projectedGcpGridWithDepth = transformGcpGridForward(
+        this.projectedPreviousGcpGridWithDepth,
+        this.projectedTransformer,
+        triangulationTransformOptions
+      )
+      // Re-compute current if previous is finer
+      // TODO: replace in cached
+      if (
+        this.projectedPreviousGcpGridWithDepth.depth <
+        this.projectedGcpGridWithDepth.depth
+      ) {
+        this.projectedPreviousGcpGridWithDepth = transformGcpGridForward(
+          this.projectedGcpGridWithDepth,
+          this.projectedPreviousTransformer,
+          triangulationTransformOptions
         )
-      this.refining = true
-      // TODO: clear cache
+        this.computePrevious =
+          previousDepth < this.projectedPreviousGcpGridWithDepth.depth
+      }
+      console.log(
+        'depths afterwards',
+        previousDepth,
+        this.projectedPreviousGcpGridWithDepth.depth
+      )
     }
+
+    console.log(
+      'results',
+      this.projectedGcpGridWithDepth,
+      this.projectedPreviousGcpGridWithDepth,
+      this.computePrevious
+    )
 
     this.resourceTrianglePoints = getTypedGridTriangles(
       this.projectedGcpGridWithDepth.grid
@@ -277,21 +274,28 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       .flat(1)
       .map((projectedGcp) => projectedGcp.geo)
 
-    if (previousIsNew || !this.projectedGeoPreviousTrianglePoints) {
-      console.log(
-        '!! projectedGeoPreviousTrianglePoints not computed since',
-        previousIsNew,
-        !this.projectedGeoPreviousTrianglePoints
-      )
+    if (
+      previousIsNew ||
+      !this.projectedGeoPreviousTrianglePoints ||
+      !this.projectedPreviousGcpGridWithDepth
+    ) {
+      console.log('previous by setting previous from current')
       this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
-    } else if (this.refining) {
-      console.log('!! projectedGeoPreviousTrianglePoints computed')
+    } else if (this.computePrevious) {
+      console.log('previous by computing')
       this.projectedGeoPreviousTrianglePoints = getTypedGridTriangles(
         this.projectedPreviousGcpGridWithDepth.grid
       )
         .flat(1)
         .map((projectedGcp) => projectedGcp.geo)
     }
+
+    console.log(
+      'and results',
+      this.resourceTrianglePoints.slice(0, 5),
+      this.projectedGeoTrianglePoints.slice(0, 5),
+      this.projectedGeoPreviousTrianglePoints.slice(0, 5)
+    )
 
     this.updateTrianglePointsDistortion(previousIsNew)
   }
@@ -361,7 +365,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     if (previousIsNew || !this.previousTrianglePointsDistortion) {
       this.previousTrianglePointsDistortion = this.trianglePointsDistortion
-    } else if (this.refining) {
+    } else if (this.computePrevious) {
       this.previousTrianglePointsDistortion = getTypedGridTriangles(
         this.projectedPreviousGcpGridWithDepth.grid
       )
@@ -374,8 +378,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   protected updateTransformerProperties(useCache = true): void {
+    console.log('since update transform properties')
     super.updateTransformerProperties(useCache)
-    console.log('----- update triangulation')
     this.updateTriangulation(false)
   }
 
