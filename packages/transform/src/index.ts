@@ -20,11 +20,7 @@ import {
   transformGcpGridForward,
   transformGcpGridBackward
 } from './shared/transform-helper-functions.js'
-import {
-  defaultRefinementOptions,
-  mixTypedGrids,
-  getTypedGridTriangles
-} from './shared/refinement-helper-functions.js'
+import { defaultRefinementOptions } from './shared/refinement-helper-functions.js'
 
 /** @module allmaps/transform */
 
@@ -44,9 +40,7 @@ export {
   transformGcpGridForward,
   transformGcpGridBackward,
   defaultTransformOptions,
-  defaultRefinementOptions,
-  mixTypedGrids,
-  getTypedGridTriangles
+  defaultRefinementOptions
 }
 
 export * from './shared/types.js'

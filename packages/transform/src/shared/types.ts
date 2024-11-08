@@ -1,4 +1,4 @@
-import type { Bbox, Point } from '@allmaps/types'
+import type { Point } from '@allmaps/types'
 
 /**
  * Ground Control Point (GCP).
@@ -17,22 +17,25 @@ export type RefinementOptions = {
   returnDomain: 'source' | 'destination'
 }
 
-export type SplitLineInfo = SplitInfo & {
+export type SplitGcpLinePointInfo = SplitGcpLineInfo & {
   sourceMidPoint: Point
   destinationMidPointFromRefinementFunction: Point
 }
 
-export type SplitInfo = {
+export type SplitGcpLineInfo = {
   destinationMidPointsDistance: number
   destinationLineDistance: number
   destinationRefinedLineDistance: number
 }
 
-export type GcpGridWithDepthSplitInfo = {
-  bbox: Bbox
+export type RefineGcpGridWithDepthDimensionsInfo =
+  RefineGcpGridWithDepthInfo & {
+    depth: number
+  }
+
+export type RefineGcpGridWithDepthInfo = {
   cols: number
   rows: number
-  depth: number
 }
 
 /** Transformation type. */

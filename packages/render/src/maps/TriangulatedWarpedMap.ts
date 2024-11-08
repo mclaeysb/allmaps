@@ -2,11 +2,14 @@ import { Map as GeoreferencedMap } from '@allmaps/annotation'
 import {
   computeDistortionFromPartialDerivatives,
   transformGcpGridForward,
-  mixTypedGrids,
-  getTypedGridTriangles,
   transformBboxForwardToGcpGrid
 } from '@allmaps/transform'
-import { mixNumbers, mixPoints } from '@allmaps/stdlib'
+import {
+  mixNumbers,
+  mixPoints,
+  mixTypedGrids,
+  getTypedGridTriangles
+} from '@allmaps/stdlib'
 
 import WarpedMap from './WarpedMap.js'
 
@@ -198,7 +201,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   private updateTriangulation(previousIsNew = false) {
     console.log('>> updateTriangulation()')
     const triangulationTransformOptions = {
-      maxOffsetRatio: 0.03,
+      maxOffsetRatio: 0.02,
       maxDepth: 7
     }
 
@@ -261,6 +264,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       this.projectedPreviousGcpGridWithDepth,
       this.computePrevious
     )
+
+    // New function here that's only called if something changed and sets 'shouldUpdateVertexBuffers' which is checked when updating buffer
 
     this.resourceTrianglePoints = getTypedGridTriangles(
       this.projectedGcpGridWithDepth.grid

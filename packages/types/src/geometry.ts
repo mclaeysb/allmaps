@@ -112,6 +112,16 @@ export type Bbox = [number, number, number, number]
  */
 export type Size = [number, number]
 
+/**
+ * The number of columns of an Image, Matrix or TypedGrid
+ * This is an Object, not an Array like Size to prevent confusion with the order
+ * Since for Images, Matrices or Grids the rows would often come first
+ *
+ * @export
+ * @typedef {ColsRows}
+ */
+export type ColsRows = { cols: number; rows: number }
+
 // TODO: change name to something like 'helmert transformation signature'
 export type Transform = [number, number, number, number, number, number]
 
