@@ -71,7 +71,6 @@ export type TypedRectangle<P> = [P, P, P, P]
 
 // Indexed like a matrix: Top to down, then left to right
 export type TypedGrid<P> = P[][]
-export type TypedGridWithDepth<P> = { depth: number; grid: TypedGrid<P> }
 
 export type QuadTree<P> = {
   tl: P

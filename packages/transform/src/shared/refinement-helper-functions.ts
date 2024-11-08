@@ -7,8 +7,8 @@ import {
   mergeOptions,
   bboxToSize,
   mapTypedGrid,
-  depthFromColsRows,
-  computeBboxTypedGrid
+  computeBboxTypedGrid,
+  getTypedGridDepth
 } from '@allmaps/stdlib'
 
 import type {
@@ -18,18 +18,16 @@ import type {
   Gcp,
   TypedLine,
   TypedGrid,
-  TypedGridWithDepth,
   Bbox,
-  Line
+  Line,
+  ColsRows
 } from '@allmaps/types'
 
 import type {
   GeneralGcp,
   SplitGcpLineInfo,
   RefinementOptions,
-  SplitGcpLinePointInfo,
-  RefineGcpGridWithDepthDimensionsInfo,
-  RefineGcpGridWithDepthInfo
+  SplitGcpLinePointInfo
 } from './types.js'
 
 // Note:
@@ -148,66 +146,53 @@ function splitGcpLineRecursively(
 
 // Refine Bbox to GcpGrid
 
-export function refineBboxToGcpGridWithDepth(
+export function refineBboxToGcpGrid(
   bbox: Bbox,
   refinementFunction: (p: Point) => Point,
   partialRefinementOptions: Partial<RefinementOptions>
-): TypedGridWithDepth<GeneralGcp> {
+): TypedGrid<GeneralGcp> {
   const refinementOptions = mergeOptions(
     defaultRefinementOptions,
     partialRefinementOptions
   )
 
-  const gcpGridWithDepth = {
-    depth: 0,
-    grid: bboxToGcpGrid(bbox, 1, 1, refinementFunction)
-  }
+  const gcpGrid = bboxToGcpGrid(bbox, 1, 1, refinementFunction)
 
-  return refineGcpGridWithDepth(
-    gcpGridWithDepth,
-    refinementFunction,
-    refinementOptions
-  )
+  return refineGcpGrid(gcpGrid, refinementFunction, refinementOptions)
 }
 
-export function refineGcpGridWithDepth(
-  gcpGridWithDepth: TypedGridWithDepth<GeneralGcp>,
+export function refineGcpGrid(
+  gcpGrid: TypedGrid<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   partialRefinementOptions: Partial<RefinementOptions>
-): TypedGridWithDepth<GeneralGcp> {
+): TypedGrid<GeneralGcp> {
   const refinementOptions = mergeOptions(
     defaultRefinementOptions,
     partialRefinementOptions
   )
 
-  const refineGcpGridWithDepthDimensionsInfo = dimensionsIfshouldRefineGcpGrid(
-    gcpGridWithDepth,
+  const refineGcpGridColsRowsInfo = colsRowsIfshouldRefineGcpGrid(
+    gcpGrid,
     refinementFunction,
     refinementOptions
   )
 
-  console.log(
-    'refineGcpGridWithDepthDimensionsInfo',
-    refineGcpGridWithDepthDimensionsInfo
-  )
+  console.log('refineGcpGridColsRowsInfo', refineGcpGridColsRowsInfo)
 
-  if (refineGcpGridWithDepthDimensionsInfo) {
-    const { cols, rows, depth } = refineGcpGridWithDepthDimensionsInfo
+  if (refineGcpGridColsRowsInfo) {
+    const { cols, rows } = refineGcpGridColsRowsInfo
     const bbox = computeBboxTypedGrid(
-      gcpGridWithDepth.grid,
+      gcpGrid,
       (generalGcp) => generalGcp.source
     )
     const refinedGcpGrid = bboxToGcpGrid(bbox, cols, rows, refinementFunction)
 
-    return { depth, grid: refinedGcpGrid }
+    return refinedGcpGrid
   } else {
-    return {
-      depth: gcpGridWithDepth.depth,
-      grid: mapTypedGrid(gcpGridWithDepth.grid, (generalGcp) => ({
-        source: generalGcp.source,
-        destination: refinementFunction(generalGcp.source)
-      }))
-    }
+    return mapTypedGrid(gcpGrid, (generalGcp) => ({
+      source: generalGcp.source,
+      destination: refinementFunction(generalGcp.source)
+    }))
   }
 }
 
@@ -308,40 +293,37 @@ function shouldSplitGcpLine(
 
 // Should refine gcp grid
 
-export function dimensionsIfshouldRefineGcpGrid(
-  gcpGridWithDepth: TypedGridWithDepth<GeneralGcp>,
+export function colsRowsIfshouldRefineGcpGrid(
+  gcpGrid: TypedGrid<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   refinementOptions: RefinementOptions
-): RefineGcpGridWithDepthDimensionsInfo | undefined {
+): ColsRows | undefined {
   if (
-    gcpGridWithDepth.depth >= refinementOptions.maxDepth ||
+    getTypedGridDepth(gcpGrid) >= refinementOptions.maxDepth ||
     refinementOptions.maxDepth <= 0
   ) {
     return undefined
   }
 
-  const { cols, rows, depth } = refineGcpGridWithDepthDimensionsInfo(
-    gcpGridWithDepth,
+  const { cols, rows } = refineGcpGridDimensionsInfo(
+    gcpGrid,
     refinementFunction,
     refinementOptions
   )
 
-  return shouldRefineGcpGridWithDepth({ cols, rows })
+  return shouldRefineGcpGrid({ cols, rows })
     ? {
         cols,
-        rows,
-        depth
+        rows
       }
     : undefined
 }
 
-export function refineGcpGridWithDepthDimensionsInfo(
-  gcpGridWithDepth: TypedGridWithDepth<GeneralGcp>,
+export function refineGcpGridDimensionsInfo(
+  gcpGrid: TypedGrid<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   refinementOptions: RefinementOptions
-): RefineGcpGridWithDepthDimensionsInfo {
-  const gcpGrid = gcpGridWithDepth.grid
-
+): ColsRows {
   // Get grid points
   const sourcePointNE = gcpGrid[0][0].source
   const sourcePointNW = gcpGrid[0][gcpGrid[0].length - 1].source
@@ -418,19 +400,14 @@ export function refineGcpGridWithDepthDimensionsInfo(
     sourceHorizontalLenght / sourceMinHorizontalLineLenght
   )
   const rows = Math.round(sourceVerticalLenght / sourceMinVerticalLineLenght)
-  const depth = depthFromColsRows({ cols, rows })
 
   return {
     cols,
-    rows,
-    depth
+    rows
   }
 }
 
-function shouldRefineGcpGridWithDepth({
-  cols,
-  rows
-}: RefineGcpGridWithDepthInfo): boolean {
+function shouldRefineGcpGrid({ cols, rows }: ColsRows): boolean {
   return cols > 1 && rows > 1
 }
 

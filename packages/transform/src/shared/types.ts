@@ -28,16 +28,6 @@ export type SplitGcpLineInfo = {
   destinationRefinedLineDistance: number
 }
 
-export type RefineGcpGridWithDepthDimensionsInfo =
-  RefineGcpGridWithDepthInfo & {
-    depth: number
-  }
-
-export type RefineGcpGridWithDepthInfo = {
-  cols: number
-  rows: number
-}
-
 /** Transformation type. */
 export type TransformationType =
   | 'straight'

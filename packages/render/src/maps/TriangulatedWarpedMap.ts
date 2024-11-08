@@ -8,20 +8,15 @@ import {
   mixNumbers,
   mixPoints,
   mixTypedGrids,
-  getTypedGridTriangles
+  getTypedGridTriangles,
+  getTypedGridDepth
 } from '@allmaps/stdlib'
 
 import WarpedMap from './WarpedMap.js'
 
 import type { WarpedMapOptions } from '../shared/types.js'
 
-import type {
-  Point,
-  Ring,
-  Gcp,
-  TypedGridWithDepth,
-  TileZoomLevel
-} from '@allmaps/types'
+import type { Point, Ring, Gcp, TileZoomLevel, TypedGrid } from '@allmaps/types'
 
 function createDefaultTriangulatedWarpedMapOptions(): Partial<WarpedMapOptions> {
   return {}
@@ -62,8 +57,8 @@ type GcpAndDistortionMeasure = Gcp & {
  * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
-  projectedPreviousGcpGridWithDepth?: TypedGridWithDepth<GcpAndDistortionMeasure>
-  projectedGcpGridWithDepth?: TypedGridWithDepth<GcpAndDistortionMeasure>
+  projectedPreviousGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
+  projectedGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
 
   computePrevious = true
 
@@ -128,7 +123,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   resetPrevious() {
     super.resetPrevious()
-    this.projectedPreviousGcpGridWithDepth = this.projectedGcpGridWithDepth
+    this.projectedPreviousGcpGrid = this.projectedGcpGrid
     this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     this.previousTrianglePointsDistortion = this.trianglePointsDistortion
   }
@@ -140,55 +135,44 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   mixPreviousAndNew(t: number) {
     super.mixPreviousAndNew(t)
-    if (
-      this.projectedGcpGridWithDepth &&
-      this.projectedPreviousGcpGridWithDepth
-    ) {
+    if (this.projectedGcpGrid && this.projectedPreviousGcpGrid) {
       if (
-        this.projectedGcpGridWithDepth.grid.length !=
-          this.projectedPreviousGcpGridWithDepth.grid.length ||
-        this.projectedGcpGridWithDepth.depth !=
-          this.projectedPreviousGcpGridWithDepth.depth
+        this.projectedGcpGrid.length != this.projectedPreviousGcpGrid.length ||
+        getTypedGridDepth(this.projectedGcpGrid) !=
+          getTypedGridDepth(this.projectedPreviousGcpGrid)
       ) {
         throw new Error('Mixing grids of different size or depth')
       }
-      this.projectedPreviousGcpGridWithDepth = {
-        depth: mixNumbers(
-          this.projectedGcpGridWithDepth.depth,
-          this.projectedPreviousGcpGridWithDepth.depth,
-          t
-        ),
-        grid: mixTypedGrids(
-          this.projectedGcpGridWithDepth.grid,
-          this.projectedPreviousGcpGridWithDepth.grid,
-          (
-            projectedGcpAndDistortion0: GcpAndDistortionMeasure,
-            projectedGcpAndDistortion1: GcpAndDistortionMeasure
-          ) => {
-            return {
-              resource: mixPoints(
-                projectedGcpAndDistortion0.resource,
-                projectedGcpAndDistortion1.resource,
-                t
-              ),
-              geo: mixPoints(
-                projectedGcpAndDistortion0.geo,
-                projectedGcpAndDistortion1.geo,
-                t
-              ),
-              distortionMeasure:
-                projectedGcpAndDistortion0.distortionMeasure &&
-                projectedGcpAndDistortion1.distortionMeasure
-                  ? mixNumbers(
-                      projectedGcpAndDistortion0.distortionMeasure,
-                      projectedGcpAndDistortion1.distortionMeasure,
-                      t
-                    )
-                  : undefined
-            }
+      this.projectedPreviousGcpGrid = mixTypedGrids(
+        this.projectedGcpGrid,
+        this.projectedPreviousGcpGrid,
+        (
+          projectedGcpAndDistortion0: GcpAndDistortionMeasure,
+          projectedGcpAndDistortion1: GcpAndDistortionMeasure
+        ) => {
+          return {
+            resource: mixPoints(
+              projectedGcpAndDistortion0.resource,
+              projectedGcpAndDistortion1.resource,
+              t
+            ),
+            geo: mixPoints(
+              projectedGcpAndDistortion0.geo,
+              projectedGcpAndDistortion1.geo,
+              t
+            ),
+            distortionMeasure:
+              projectedGcpAndDistortion0.distortionMeasure &&
+              projectedGcpAndDistortion1.distortionMeasure
+                ? mixNumbers(
+                    projectedGcpAndDistortion0.distortionMeasure,
+                    projectedGcpAndDistortion1.distortionMeasure,
+                    t
+                  )
+                : undefined
           }
-        )
-      }
+        }
+      )
     }
   }
 
@@ -209,72 +193,70 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     console.log(
       'starting from',
-      this.projectedPreviousGcpGridWithDepth,
-      this.projectedGcpGridWithDepth,
+      this.projectedPreviousGcpGrid,
+      this.projectedGcpGrid,
       this.previousTransformationType,
       this.transformationType,
       this.projectedPreviousTransformer,
       this.projectedTransformer
     )
 
-    if (!this.projectedPreviousGcpGridWithDepth) {
+    if (!this.projectedPreviousGcpGrid) {
       // Computing current grid from bbox
       // TODO: replace in cached
       console.log('from scratch')
-      this.projectedGcpGridWithDepth = transformBboxForwardToGcpGrid(
+      this.projectedGcpGrid = transformBboxForwardToGcpGrid(
         this.resourceMaskBbox,
         this.projectedTransformer,
         triangulationTransformOptions
       )
-      this.projectedPreviousGcpGridWithDepth = this.projectedGcpGridWithDepth
+      this.projectedPreviousGcpGrid = this.projectedGcpGrid
     } else {
       console.log('from previous')
-      const previousDepth = this.projectedPreviousGcpGridWithDepth?.depth
+      const previousDepth = getTypedGridDepth(this.projectedPreviousGcpGrid)
       // Computing current grid from previous, with current transformer
       // TODO: replace in cached
-      this.projectedGcpGridWithDepth = transformGcpGridForward(
-        this.projectedPreviousGcpGridWithDepth,
+      this.projectedGcpGrid = transformGcpGridForward(
+        this.projectedPreviousGcpGrid,
         this.projectedTransformer,
         triangulationTransformOptions
       )
       // Re-compute current if previous is finer
       // TODO: replace in cached
       if (
-        this.projectedPreviousGcpGridWithDepth.depth <
-        this.projectedGcpGridWithDepth.depth
+        getTypedGridDepth(this.projectedPreviousGcpGrid) <
+        getTypedGridDepth(this.projectedGcpGrid)
       ) {
-        this.projectedPreviousGcpGridWithDepth = transformGcpGridForward(
-          this.projectedGcpGridWithDepth,
+        this.projectedPreviousGcpGrid = transformGcpGridForward(
+          this.projectedGcpGrid,
           this.projectedPreviousTransformer,
           triangulationTransformOptions
         )
         this.computePrevious =
-          previousDepth < this.projectedPreviousGcpGridWithDepth.depth
+          previousDepth < getTypedGridDepth(this.projectedPreviousGcpGrid)
       }
       console.log(
         'depths afterwards',
         previousDepth,
-        this.projectedPreviousGcpGridWithDepth.depth
+        getTypedGridDepth(this.projectedPreviousGcpGrid)
       )
     }
 
     console.log(
       'results',
-      this.projectedGcpGridWithDepth,
-      this.projectedPreviousGcpGridWithDepth,
+      this.projectedGcpGrid,
+      this.projectedPreviousGcpGrid,
       this.computePrevious
     )
 
     // New function here that's only called if something changed and sets 'shouldUpdateVertexBuffers' which is checked when updating buffer
 
-    this.resourceTrianglePoints = getTypedGridTriangles(
-      this.projectedGcpGridWithDepth.grid
-    )
+    this.resourceTrianglePoints = getTypedGridTriangles(this.projectedGcpGrid)
       .flat(1)
       .map((projectedGcp) => projectedGcp.resource)
 
     this.projectedGeoTrianglePoints = getTypedGridTriangles(
-      this.projectedGcpGridWithDepth.grid
+      this.projectedGcpGrid
     )
       .flat(1)
       .map((projectedGcp) => projectedGcp.geo)
@@ -282,14 +264,14 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     if (
       previousIsNew ||
       !this.projectedGeoPreviousTrianglePoints ||
-      !this.projectedPreviousGcpGridWithDepth
+      !this.projectedPreviousGcpGrid
     ) {
       console.log('previous by setting previous from current')
       this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     } else if (this.computePrevious) {
       console.log('previous by computing')
       this.projectedGeoPreviousTrianglePoints = getTypedGridTriangles(
-        this.projectedPreviousGcpGridWithDepth.grid
+        this.projectedPreviousGcpGrid
       )
         .flat(1)
         .map((projectedGcp) => projectedGcp.geo)
@@ -311,57 +293,50 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew=false]
    */
   private updateTrianglePointsDistortion(previousIsNew = false) {
-    if (
-      !this.projectedPreviousGcpGridWithDepth ||
-      !this.projectedGcpGridWithDepth
-    ) {
+    if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
       return
     }
 
     if (this.distortionMeasure) {
-      this.projectedGcpGridWithDepth.grid =
-        this.projectedGcpGridWithDepth.grid.map((projectedGcpRow) =>
-          projectedGcpRow.map((projectedGcp) => {
-            const partialDerivativeX = this.projectedTransformer.transformToGeo(
-              projectedGcp.resource,
-              {
-                evaluationType: 'partialDerivativeX'
-              }
-            )
-            const partialDerivativeY = this.projectedTransformer.transformToGeo(
-              projectedGcp.resource,
-              {
-                evaluationType: 'partialDerivativeY'
-              }
-            )
-            return {
-              ...projectedGcp,
-              partialDerivativeX,
-              partialDerivativeY
+      this.projectedGcpGrid = this.projectedGcpGrid.map((projectedGcpRow) =>
+        projectedGcpRow.map((projectedGcp) => {
+          const partialDerivativeX = this.projectedTransformer.transformToGeo(
+            projectedGcp.resource,
+            {
+              evaluationType: 'partialDerivativeX'
             }
-          })
-        )
-    }
-
-    this.projectedGcpGridWithDepth.grid =
-      this.projectedGcpGridWithDepth.grid.map((projectedGcpRow) =>
-        projectedGcpRow.map((projectedGcpAndPartialDerivatives) => {
-          const distortionMeasure = computeDistortionFromPartialDerivatives(
-            projectedGcpAndPartialDerivatives.partialDerivativeX,
-            projectedGcpAndPartialDerivatives.partialDerivativeY,
-            this.distortionMeasure,
-            this.getReferenceScale()
+          )
+          const partialDerivativeY = this.projectedTransformer.transformToGeo(
+            projectedGcp.resource,
+            {
+              evaluationType: 'partialDerivativeY'
+            }
           )
           return {
-            ...projectedGcpAndPartialDerivatives,
-            distortionMeasure
+            ...projectedGcp,
+            partialDerivativeX,
+            partialDerivativeY
           }
         })
       )
+    }
 
-    this.trianglePointsDistortion = getTypedGridTriangles(
-      this.projectedGcpGridWithDepth.grid
+    this.projectedGcpGrid = this.projectedGcpGrid.map((projectedGcpRow) =>
+      projectedGcpRow.map((projectedGcpAndPartialDerivatives) => {
+        const distortionMeasure = computeDistortionFromPartialDerivatives(
+          projectedGcpAndPartialDerivatives.partialDerivativeX,
+          projectedGcpAndPartialDerivatives.partialDerivativeY,
+          this.distortionMeasure,
+          this.getReferenceScale()
+        )
+        return {
+          ...projectedGcpAndPartialDerivatives,
+          distortionMeasure
+        }
+      })
     )
+
+    this.trianglePointsDistortion = getTypedGridTriangles(this.projectedGcpGrid)
       .flat(1)
       .map(
         (projectedGcpAndDistortion) =>
@@ -372,7 +347,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       this.previousTrianglePointsDistortion = this.trianglePointsDistortion
     } else if (this.computePrevious) {
       this.previousTrianglePointsDistortion = getTypedGridTriangles(
-        this.projectedPreviousGcpGridWithDepth.grid
+        this.projectedPreviousGcpGrid
       )
         .flat(1)
         .map(
