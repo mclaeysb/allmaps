@@ -8,15 +8,19 @@ import type {
 import { computeBbox } from './bbox'
 
 export function getTypedGridColsRows<P>(typedGrid: TypedGrid<P>): ColsRows {
-  return { rows: typedGrid.length, cols: typedGrid[0].length }
+  return { rows: typedGrid.length - 1, cols: typedGrid[0].length - 1 }
 }
 
 export function getTypedGridDepth<P>(typedGrid: TypedGrid<P>): number {
-  return depthFromColsRows(getTypedGridColsRows(typedGrid))
+  return getDepthFromColsRows(getTypedGridColsRows(typedGrid))
 }
 
-export function depthFromColsRows({ cols, rows }: ColsRows): number {
+export function getDepthFromColsRows({ cols, rows }: ColsRows): number {
   return Math.round(Math.log2(Math.max(cols, rows)))
+}
+
+export function getColsOrRowsFromDepth(depth: number): number {
+  return Math.pow(2, Math.round(depth))
 }
 
 export function computeBboxTypedGrid<P>(

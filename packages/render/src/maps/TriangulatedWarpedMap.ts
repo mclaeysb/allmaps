@@ -186,7 +186,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     console.log('>> updateTriangulation()')
     const triangulationTransformOptions = {
       maxOffsetRatio: 0.02,
-      maxDepth: 7
+      maxDepth: 6
     }
 
     this.computePrevious = true
@@ -224,9 +224,14 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       // Re-compute current if previous is finer
       // TODO: replace in cached
       if (
-        getTypedGridDepth(this.projectedPreviousGcpGrid) <
+        getTypedGridDepth(this.projectedPreviousGcpGrid) !=
         getTypedGridDepth(this.projectedGcpGrid)
       ) {
+        console.log(
+          'adapting previous since',
+          getTypedGridDepth(this.projectedPreviousGcpGrid),
+          getTypedGridDepth(this.projectedGcpGrid)
+        )
         this.projectedPreviousGcpGrid = transformGcpGridForward(
           this.projectedGcpGrid,
           this.projectedPreviousTransformer,

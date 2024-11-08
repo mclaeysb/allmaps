@@ -8,7 +8,7 @@ import {
   bboxToSize,
   mapTypedGrid,
   computeBboxTypedGrid,
-  getTypedGridDepth
+  getTypedGridColsRows
 } from '@allmaps/stdlib'
 
 import type {
@@ -171,29 +171,22 @@ export function refineGcpGrid(
     partialRefinementOptions
   )
 
-  const refineGcpGridColsRowsInfo = colsRowsIfshouldRefineGcpGrid(
+  let { cols, rows } = getTypedGridColsRows(gcpGrid)
+
+  const { cols: refinedCols, rows: refinedRows } = refineGcpGridColsRows(
     gcpGrid,
     refinementFunction,
     refinementOptions
   )
 
-  console.log('refineGcpGridColsRowsInfo', refineGcpGridColsRowsInfo)
-
-  if (refineGcpGridColsRowsInfo) {
-    const { cols, rows } = refineGcpGridColsRowsInfo
-    const bbox = computeBboxTypedGrid(
-      gcpGrid,
-      (generalGcp) => generalGcp.source
-    )
-    const refinedGcpGrid = bboxToGcpGrid(bbox, cols, rows, refinementFunction)
-
-    return refinedGcpGrid
-  } else {
-    return mapTypedGrid(gcpGrid, (generalGcp) => ({
-      source: generalGcp.source,
-      destination: refinementFunction(generalGcp.source)
-    }))
+  if (refinedCols * refinedRows > cols * rows) {
+    cols = refinedCols
+    rows = refinedRows
   }
+
+  const bbox = computeBboxTypedGrid(gcpGrid, (generalGcp) => generalGcp.source)
+
+  return bboxToGcpGrid(bbox, cols, rows, refinementFunction)
 }
 
 // Should split line
@@ -291,35 +284,7 @@ function shouldSplitGcpLine(
   )
 }
 
-// Should refine gcp grid
-
-export function colsRowsIfshouldRefineGcpGrid(
-  gcpGrid: TypedGrid<GeneralGcp>,
-  refinementFunction: (p: Point) => Point,
-  refinementOptions: RefinementOptions
-): ColsRows | undefined {
-  if (
-    getTypedGridDepth(gcpGrid) >= refinementOptions.maxDepth ||
-    refinementOptions.maxDepth <= 0
-  ) {
-    return undefined
-  }
-
-  const { cols, rows } = refineGcpGridDimensionsInfo(
-    gcpGrid,
-    refinementFunction,
-    refinementOptions
-  )
-
-  return shouldRefineGcpGrid({ cols, rows })
-    ? {
-        cols,
-        rows
-      }
-    : undefined
-}
-
-export function refineGcpGridDimensionsInfo(
+export function refineGcpGridColsRows(
   gcpGrid: TypedGrid<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
   refinementOptions: RefinementOptions
@@ -405,10 +370,6 @@ export function refineGcpGridDimensionsInfo(
     cols,
     rows
   }
-}
-
-function shouldRefineGcpGrid({ cols, rows }: ColsRows): boolean {
-  return cols > 1 && rows > 1
 }
 
 // Convert
