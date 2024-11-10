@@ -47,16 +47,16 @@ export function mixTypedGrids<P0, P1, P2>(
   typedGrid1: TypedGrid<P1>,
   mixFunction: (p0: P0, p1: P1) => P2
 ): TypedGrid<P2> {
-  const mixedGrid: TypedGrid<P2> = []
-  if (typedGrid0.length != typedGrid1.length) {
+  const colsRows0 = getTypedGridColsRows(typedGrid0)
+  const colsRows1 = getTypedGridColsRows(typedGrid1)
+  if (colsRows0.cols != colsRows1.cols || colsRows0.rows != colsRows1.rows) {
     throw new Error('Dimension mismatch')
   }
+
+  const mixedGrid: TypedGrid<P2> = []
   for (let i = 0; i < typedGrid0.length; i++) {
-    if (typedGrid0[i].length != typedGrid1[i].length) {
-      throw new Error('Dimension mismatch')
-    }
     mixedGrid[i] = []
-    for (let j = 0; j < typedGrid0.length; i++) {
+    for (let j = 0; j < typedGrid0.length; j++) {
       mixedGrid[i].push(mixFunction(typedGrid0[i][j], typedGrid1[i][j]))
     }
   }

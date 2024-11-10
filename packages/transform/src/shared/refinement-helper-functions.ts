@@ -144,51 +144,6 @@ function splitGcpLineRecursively(
   }
 }
 
-// Refine Bbox to GcpGrid
-
-export function refineBboxToGcpGrid(
-  bbox: Bbox,
-  refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
-): TypedGrid<GeneralGcp> {
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
-
-  const gcpGrid = bboxToGcpGrid(bbox, 1, 1, refinementFunction)
-
-  return refineGcpGrid(gcpGrid, refinementFunction, refinementOptions)
-}
-
-export function refineGcpGrid(
-  gcpGrid: TypedGrid<GeneralGcp>,
-  refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
-): TypedGrid<GeneralGcp> {
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
-
-  let { cols, rows } = getTypedGridColsRows(gcpGrid)
-
-  const { cols: refinedCols, rows: refinedRows } = refineGcpGridColsRows(
-    gcpGrid,
-    refinementFunction,
-    refinementOptions
-  )
-
-  if (refinedCols * refinedRows > cols * rows) {
-    cols = refinedCols
-    rows = refinedRows
-  }
-
-  const bbox = computeBboxTypedGrid(gcpGrid, (generalGcp) => generalGcp.source)
-
-  return bboxToGcpGrid(bbox, cols, rows, refinementFunction)
-}
-
 // Should split line
 
 // This function checks if a GcpLine should be splits
@@ -282,6 +237,60 @@ function shouldSplitGcpLine(
     destinationMidPointsDistance < refinementOptions.minOffsetDistance &&
     destinationRefinedLineDistance < refinementOptions.minLineDistance
   )
+}
+
+// Refine Bbox to GcpGrid
+
+export function refineBboxToGcpGrid(
+  bbox: Bbox,
+  refinementFunction: (p: Point) => Point,
+  partialRefinementOptions: Partial<RefinementOptions>
+): TypedGrid<GeneralGcp> {
+  const refinementOptions = mergeOptions(
+    defaultRefinementOptions,
+    partialRefinementOptions
+  )
+
+  const gcpGrid = bboxToGcpGrid(bbox, 1, 1, refinementFunction)
+
+  return refineGcpGrid(gcpGrid, refinementFunction, refinementOptions)
+}
+
+export function refineGcpGrid(
+  gcpGrid: TypedGrid<GeneralGcp>,
+  refinementFunction: (p: Point) => Point,
+  partialRefinementOptions: Partial<RefinementOptions>
+): TypedGrid<GeneralGcp> {
+  const refinementOptions = mergeOptions(
+    defaultRefinementOptions,
+    partialRefinementOptions
+  )
+
+  let { cols, rows } = getTypedGridColsRows(gcpGrid)
+
+  const { cols: refinedCols, rows: refinedRows } = refineGcpGridColsRows(
+    gcpGrid,
+    refinementFunction,
+    refinementOptions
+  )
+
+  console.log(
+    'colsRows',
+    cols,
+    rows,
+    'refinedColsRows',
+    refinedCols,
+    refinedRows
+  )
+
+  if (refinedCols * refinedRows > cols * rows) {
+    cols = refinedCols
+    rows = refinedRows
+  }
+
+  const bbox = computeBboxTypedGrid(gcpGrid, (generalGcp) => generalGcp.source)
+
+  return bboxToGcpGrid(bbox, cols, rows, refinementFunction)
 }
 
 export function refineGcpGridColsRows(

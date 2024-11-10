@@ -145,6 +145,7 @@ export default class WarpedMap extends EventTarget {
   protected abortController?: AbortController
 
   visible: boolean
+  mixed = false
 
   previousTransformationType: TransformationType
   transformationType: TransformationType
@@ -489,6 +490,7 @@ export default class WarpedMap extends EventTarget {
    * Reset the previous points and values.
    */
   resetPrevious() {
+    this.mixed = false
     this.previousTransformationType = this.transformationType
     this.projectedPreviousTransformer = this.projectedTransformer
     this.projectedGeoPreviousTransformedResourcePoints =
@@ -504,6 +506,9 @@ export default class WarpedMap extends EventTarget {
    * @param {number} t
    */
   mixPreviousAndNew(t: number) {
+    this.mixed = true
+    this.previousTransformationType = this.transformationType
+    this.projectedPreviousTransformer = this.projectedTransformer
     this.projectedGeoPreviousTransformedResourcePoints =
       this.projectedGeoTransformedResourcePoints.map((point, index) => {
         return mixPoints(
@@ -594,7 +599,7 @@ export default class WarpedMap extends EventTarget {
           this.transformationType,
           TRANSFORMER_OPTIONS
         ),
-      useCache
+      () => useCache
     )
   }
 
@@ -608,7 +613,7 @@ export default class WarpedMap extends EventTarget {
           this.transformationType,
           TRANSFORMER_OPTIONS
         ),
-      useCache
+      () => useCache
     )
     if (!this.projectedPreviousTransformer) {
       this.projectedPreviousTransformer = this.projectedTransformer

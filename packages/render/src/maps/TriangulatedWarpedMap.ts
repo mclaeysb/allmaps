@@ -9,7 +9,8 @@ import {
   mixPoints,
   mixTypedGrids,
   getTypedGridTriangles,
-  getTypedGridDepth
+  getTypedGridDepth,
+  getPropertyFromCacheOrComputation
 } from '@allmaps/stdlib'
 
 import WarpedMap from './WarpedMap.js'
@@ -59,8 +60,10 @@ type GcpAndDistortionMeasure = Gcp & {
 export default class TriangulatedWarpedMap extends WarpedMap {
   projectedPreviousGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
   projectedGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
-
-  computePrevious = true
+  private projectedGcpGridByTransformationType: Map<
+    string,
+    TypedGrid<GcpAndDistortionMeasure>
+  > = new Map()
 
   resourceTrianglePoints: Point[] = []
 
@@ -90,7 +93,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     super(mapId, georeferencedMap, options)
 
-    console.log('since constructor')
     this.updateTriangulation()
   }
 
@@ -136,13 +138,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   mixPreviousAndNew(t: number) {
     super.mixPreviousAndNew(t)
     if (this.projectedGcpGrid && this.projectedPreviousGcpGrid) {
-      if (
-        this.projectedGcpGrid.length != this.projectedPreviousGcpGrid.length ||
-        getTypedGridDepth(this.projectedGcpGrid) !=
-          getTypedGridDepth(this.projectedPreviousGcpGrid)
-      ) {
-        throw new Error('Mixing grids of different size or depth')
-      }
       this.projectedPreviousGcpGrid = mixTypedGrids(
         this.projectedGcpGrid,
         this.projectedPreviousGcpGrid,
@@ -185,76 +180,142 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   private updateTriangulation(previousIsNew = false) {
     console.log('>> updateTriangulation()')
     const triangulationTransformOptions = {
-      maxOffsetRatio: 0.02,
-      maxDepth: 6
+      maxOffsetRatio: 0.01,
+      maxDepth: 5
     }
 
-    this.computePrevious = true
+    // The TriangulatedMap constructor calls this function twice
+    // Once via super() and updateTransformerProperties()
+    // but then the cache is not ready yet, so we make it return
+    // And once at the end
+    if (!this.projectedGcpGridByTransformationType) {
+      return
+    }
 
-    console.log(
-      'starting from',
-      this.projectedPreviousGcpGrid,
-      this.projectedGcpGrid,
-      this.previousTransformationType,
-      this.transformationType,
-      this.projectedPreviousTransformer,
-      this.projectedTransformer
-    )
+    // console.log(
+    //   'starting from',
+    //   this.projectedPreviousGcpGrid,
+    //   this.projectedGcpGrid,
+    //   this.previousTransformationType,
+    //   this.transformationType,
+    //   this.projectedPreviousTransformer,
+    //   this.projectedTransformer
+    // )
+
+    // console.log('mixed', this.mixed)
+    // console.log(
+    //   this.previousTransformationType,
+    //   this.projectedPreviousGcpGrid
+    //     ? getTypedGridTriangles(this.projectedPreviousGcpGrid)
+    //         .flat(1)
+    //         .map((projectedGcp) => projectedGcp.geo)
+    //         .flat(1)
+    //         .slice(0, 5)
+    //     : 'undefined'
+    // )
+
+    if (previousIsNew) {
+      this.projectedPreviousGcpGrid = this.projectedGcpGrid
+      this.previousTransformationType = this.transformationType
+    }
 
     if (!this.projectedPreviousGcpGrid) {
-      // Computing current grid from bbox
-      // TODO: replace in cached
-      console.log('from scratch')
-      this.projectedGcpGrid = transformBboxForwardToGcpGrid(
-        this.resourceMaskBbox,
-        this.projectedTransformer,
-        triangulationTransformOptions
+      // Compute grid from bbox
+      // console.log(
+      //   'grid from bbox',
+      //   this.projectedGcpGridByTransformationType,
+      //   this.transformationType
+      // )
+      this.projectedGcpGrid = getPropertyFromCacheOrComputation(
+        this.projectedGcpGridByTransformationType,
+        this.transformationType,
+        () => {
+          console.log('from scratch')
+          return transformBboxForwardToGcpGrid(
+            this.resourceMaskBbox,
+            this.projectedTransformer,
+            triangulationTransformOptions
+          )
+        }
       )
       this.projectedPreviousGcpGrid = this.projectedGcpGrid
     } else {
-      console.log('from previous')
-      const previousDepth = getTypedGridDepth(this.projectedPreviousGcpGrid)
-      // Computing current grid from previous, with current transformer
-      // TODO: replace in cached
-      this.projectedGcpGrid = transformGcpGridForward(
-        this.projectedPreviousGcpGrid,
-        this.projectedTransformer,
-        triangulationTransformOptions
+      // Computing current grid from previous grid (or cache)
+      // console.log('grid from previous grid')
+      this.projectedGcpGrid = getPropertyFromCacheOrComputation(
+        this.projectedGcpGridByTransformationType,
+        this.transformationType,
+        () => {
+          // console.log(
+          //   'computing grid from previous grid since',
+          //   getTypedGridDepth(this.projectedPreviousGcpGrid!),
+          //   getTypedGridDepth(this.projectedGcpGrid!),
+          //   this.mixed,
+          //   'store',
+          //   !this.mixed
+          // )
+          return transformGcpGridForward(
+            this.projectedPreviousGcpGrid!,
+            this.projectedTransformer,
+            triangulationTransformOptions
+          )
+        },
+        () => !this.mixed,
+        () => !this.mixed
       )
-      // Re-compute current if previous is finer
-      // TODO: replace in cached
+
+      // Refine previous grid from grid (if needed)
+      console.log('adapting previous')
       if (
         getTypedGridDepth(this.projectedPreviousGcpGrid) !=
-        getTypedGridDepth(this.projectedGcpGrid)
+        getTypedGridDepth(this.projectedGcpGrid!)
       ) {
-        console.log(
-          'adapting previous since',
-          getTypedGridDepth(this.projectedPreviousGcpGrid),
-          getTypedGridDepth(this.projectedGcpGrid)
+        this.projectedPreviousGcpGrid = getPropertyFromCacheOrComputation(
+          this.projectedGcpGridByTransformationType,
+          this.previousTransformationType,
+          () => {
+            // console.log(
+            //   'computing adapting previous since',
+            //   getTypedGridDepth(this.projectedPreviousGcpGrid!),
+            //   getTypedGridDepth(this.projectedGcpGrid!),
+            //   this.mixed,
+            //   'store',
+            //   !this.mixed
+            // )
+            return transformGcpGridForward(
+              this.projectedGcpGrid!,
+              this.projectedPreviousTransformer,
+              triangulationTransformOptions
+            )
+          },
+          (projectedPreviousGcpGrid) =>
+            getTypedGridDepth(projectedPreviousGcpGrid) ==
+              getTypedGridDepth(this.projectedGcpGrid!) && !this.mixed,
+          () => !this.mixed
         )
-        this.projectedPreviousGcpGrid = transformGcpGridForward(
-          this.projectedGcpGrid,
-          this.projectedPreviousTransformer,
-          triangulationTransformOptions
-        )
-        this.computePrevious =
-          previousDepth < getTypedGridDepth(this.projectedPreviousGcpGrid)
       }
-      console.log(
-        'depths afterwards',
-        previousDepth,
-        getTypedGridDepth(this.projectedPreviousGcpGrid)
-      )
     }
 
-    console.log(
-      'results',
-      this.projectedGcpGrid,
-      this.projectedPreviousGcpGrid,
-      this.computePrevious
-    )
+    // console.log(
+    //   'results',
+    //   this.projectedGcpGrid,
+    //   getTypedGridDepth(this.projectedGcpGrid),
+    //   this.projectedPreviousGcpGrid,
+    //   getTypedGridDepth(this.projectedPreviousGcpGrid),
+    //   previousFromGrid
+    // )
 
-    // New function here that's only called if something changed and sets 'shouldUpdateVertexBuffers' which is checked when updating buffer
+    this.updateTrianglePoints()
+  }
+
+  /**
+   * Update the points of the triangulated resourceMask. Use cache if available.
+   */
+  private updateTrianglePoints() {
+    if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
+      return
+    }
+    // TODO: Set 'shouldUpdateVertexBuffers' which is checked when updating buffer
 
     this.resourceTrianglePoints = getTypedGridTriangles(this.projectedGcpGrid)
       .flat(1)
@@ -266,30 +327,20 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       .flat(1)
       .map((projectedGcp) => projectedGcp.geo)
 
-    if (
-      previousIsNew ||
-      !this.projectedGeoPreviousTrianglePoints ||
-      !this.projectedPreviousGcpGrid
-    ) {
-      console.log('previous by setting previous from current')
-      this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
-    } else if (this.computePrevious) {
-      console.log('previous by computing')
-      this.projectedGeoPreviousTrianglePoints = getTypedGridTriangles(
-        this.projectedPreviousGcpGrid
-      )
-        .flat(1)
-        .map((projectedGcp) => projectedGcp.geo)
-    }
-
-    console.log(
-      'and results',
-      this.resourceTrianglePoints.slice(0, 5),
-      this.projectedGeoTrianglePoints.slice(0, 5),
-      this.projectedGeoPreviousTrianglePoints.slice(0, 5)
+    this.projectedGeoPreviousTrianglePoints = getTypedGridTriangles(
+      this.projectedPreviousGcpGrid
     )
+      .flat(1)
+      .map((projectedGcp) => projectedGcp.geo)
 
-    this.updateTrianglePointsDistortion(previousIsNew)
+    // console.log(
+    //   'and results',
+    //   this.resourceTrianglePoints.slice(0, 5),
+    //   this.projectedGeoTrianglePoints.slice(0, 5),
+    //   this.projectedGeoPreviousTrianglePoints.slice(0, 5)
+    // )
+
+    this.updateTrianglePointsDistortion()
   }
 
   /**
@@ -297,7 +348,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    *
    * @param {boolean} [previousIsNew=false]
    */
-  private updateTrianglePointsDistortion(previousIsNew = false) {
+  private updateTrianglePointsDistortion() {
     if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
       return
     }
@@ -348,18 +399,14 @@ export default class TriangulatedWarpedMap extends WarpedMap {
           projectedGcpAndDistortion.distortionMeasure as number
       )
 
-    if (previousIsNew || !this.previousTrianglePointsDistortion) {
-      this.previousTrianglePointsDistortion = this.trianglePointsDistortion
-    } else if (this.computePrevious) {
-      this.previousTrianglePointsDistortion = getTypedGridTriangles(
-        this.projectedPreviousGcpGrid
+    this.previousTrianglePointsDistortion = getTypedGridTriangles(
+      this.projectedPreviousGcpGrid
+    )
+      .flat(1)
+      .map(
+        (projectedGcpAndDistortion) =>
+          projectedGcpAndDistortion.distortionMeasure as number
       )
-        .flat(1)
-        .map(
-          (projectedGcpAndDistortion) =>
-            projectedGcpAndDistortion.distortionMeasure as number
-        )
-    }
   }
 
   protected updateTransformerProperties(useCache = true): void {
@@ -370,6 +417,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
   protected updateDistortionProperties(): void {
     super.updateDistortionProperties()
-    this.updateTrianglePointsDistortion(false)
+    this.updateTrianglePointsDistortion()
   }
 }
