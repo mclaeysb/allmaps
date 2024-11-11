@@ -88,7 +88,8 @@ export function createWarpedMapFactory() {
  * @param {string} [imageId] - ID of the image
  * @param {Image} [parsedImage] - ID of the image
  * @param {boolean} visible - Whether the map is visible
- * @param {TransformationType} transformationType - Transformation type used in the transfomer
+ * @param {TransformationType} previousTransformationType - Previous transformation type
+ * @param {TransformationType} transformationType - Transformation type used in the transfomer. This is loaded from the georeference annotation.
  * @param {GcpTransformer} transformer - Transformer used for warping this map from resource coordinates to geospatial coordinates
  * @param {GcpTransformer} projectedPreviousTransformer - Previous transformer used for warping this map from resource coordinates to projected geospatial coordinates
  * @param {GcpTransformer} projectedTransformer - Transformer used for warping this map from resource coordinates to projected geospatial coordinates
@@ -108,6 +109,7 @@ export function createWarpedMapFactory() {
  * @param {Bbox} projectedGeoFullMaskBbox - Bbox of the projectedGeoFullMask
  * @param {Rectangle} projectedGeoFullMaskRectangle - resourceFullMaskRectangle in projected geospatial coordinates
  * @param {number} resourceToProjectedGeoScale - Scale of the warped map, in resource pixels per projected geospatial coordinates
+ * @param {DistortionMeasure} [previousDistortionMeasure] - Previous distortion measure displayed for this map
  * @param {DistortionMeasure} [distortionMeasure] - Distortion measure displayed for this map
  * @param {TileZoomLevel} [currentTileZoomLevel] - The tile zoom level, at the current viewport
  * @param {TileZoomLevel} [currentOverviewTileZoomLevel] - The overview tile zoom level, at the current viewport
@@ -179,6 +181,7 @@ export default class WarpedMap extends EventTarget {
 
   resourceToProjectedGeoScale!: number
 
+  previousDistortionMeasure?: DistortionMeasure
   distortionMeasure?: DistortionMeasure
 
   // The properties below are for the current viewport
@@ -382,7 +385,7 @@ export default class WarpedMap extends EventTarget {
   }
 
   /**
-   * Update the transformationType loaded from a georeferenced map to a new transformation type.
+   * Set the transformationType
    *
    * @param {TransformationType} transformationType
    */
@@ -492,6 +495,7 @@ export default class WarpedMap extends EventTarget {
   resetPrevious() {
     this.mixed = false
     this.previousTransformationType = this.transformationType
+    this.previousDistortionMeasure = this.distortionMeasure
     this.projectedPreviousTransformer = this.projectedTransformer
     this.projectedGeoPreviousTransformedResourcePoints =
       this.projectedGeoTransformedResourcePoints
@@ -508,6 +512,7 @@ export default class WarpedMap extends EventTarget {
   mixPreviousAndNew(t: number) {
     this.mixed = true
     this.previousTransformationType = this.transformationType
+    this.previousDistortionMeasure = this.distortionMeasure
     this.projectedPreviousTransformer = this.projectedTransformer
     this.projectedGeoPreviousTransformedResourcePoints =
       this.projectedGeoTransformedResourcePoints.map((point, index) => {
