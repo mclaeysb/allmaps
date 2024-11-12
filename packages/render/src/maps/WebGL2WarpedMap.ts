@@ -72,6 +72,7 @@ const TEXTURES_MAX_LOWER_LOG2_SCALE_FACTOR_DIFF = 1
 export function createWebGL2WarpedMapFactory(
   gl: WebGL2RenderingContext,
   mapsProgram: WebGLProgram,
+  mapStencilsProgram: WebGLProgram,
   pointsProgram: WebGLProgram,
   linesProgram: WebGLProgram
 ) {
@@ -85,6 +86,7 @@ export function createWebGL2WarpedMapFactory(
       georeferencedMap,
       gl,
       mapsProgram,
+      mapStencilsProgram,
       linesProgram,
       pointsProgram,
       options
@@ -107,10 +109,12 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
   gl: WebGL2RenderingContext
   mapsProgram!: WebGLProgram
+  mapStencilsProgram!: WebGLProgram
   linesProgram!: WebGLProgram
   pointsProgram!: WebGLProgram
 
   mapsVao: WebGLVertexArrayObject | null = null
+  mapStencilsVao: WebGLVertexArrayObject | null = null
   linesVao: WebGLVertexArrayObject | null = null
   pointsVao: WebGLVertexArrayObject | null = null
 
@@ -145,7 +149,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
    * @param {string} mapId - ID of the map
    * @param {GeoreferencedMap} georeferencedMap - Georeferenced map used to construct the WarpedMap
    * @param {WebGL2RenderingContext} gl - WebGL rendering context
-   * @param {WebGLProgram} mapsProgram - WebGL program
+   * @param {WebGLProgram} mapsProgram - WebGL program for maps
+   * @param {WebGLProgram} mapStencilsProgram - WebGL program for map stencils
    * @param {Partial<WarpedMapOptions>} options - WarpedMapOptions
    */
   constructor(
@@ -153,6 +158,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     georeferencedMap: GeoreferencedMap,
     gl: WebGL2RenderingContext,
     mapsProgram: WebGLProgram,
+    mapStencilsProgram: WebGLProgram,
     linesProgram: WebGLProgram,
     pointsProgram: WebGLProgram,
     options?: Partial<WarpedMapOptions>
@@ -160,7 +166,12 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     super(mapId, georeferencedMap, options)
 
     this.gl = gl
-    this.initializeWebGL(mapsProgram, linesProgram, pointsProgram)
+    this.initializeWebGL(
+      mapsProgram,
+      mapStencilsProgram,
+      linesProgram,
+      pointsProgram
+    )
 
     this.throttledUpdateTextures = throttle(
       this.updateTextures.bind(this),
@@ -171,14 +182,17 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
   initializeWebGL(
     mapsProgram: WebGLProgram,
+    mapStencilsProgram: WebGLProgram,
     linesProgram: WebGLProgram,
     pointsProgram: WebGLProgram
   ) {
     this.mapsProgram = mapsProgram
+    this.mapStencilsProgram = mapStencilsProgram
     this.linesProgram = linesProgram
     this.pointsProgram = pointsProgram
 
     this.mapsVao = this.gl.createVertexArray()
+    this.mapStencilsVao = this.gl.createVertexArray()
     this.linesVao = this.gl.createVertexArray()
     this.pointsVao = this.gl.createVertexArray()
 
@@ -246,6 +260,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
   destroy() {
     this.gl.deleteVertexArray(this.mapsVao)
+    this.gl.deleteVertexArray(this.mapStencilsVao)
     this.gl.deleteVertexArray(this.linesVao)
     this.gl.deleteVertexArray(this.pointsVao)
     this.gl.deleteTexture(this.cachedTilesTextureArray)
@@ -315,12 +330,52 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersMaps() {
-    if (!this.mapsVao || !this.projectedGeoToClipTransform) {
+    if (
+      !this.mapsVao ||
+      !this.mapStencilsVao ||
+      !this.projectedGeoToClipTransform
+    ) {
       return
     }
 
     const gl = this.gl
-    const program = this.mapsProgram
+    let program
+
+    // Map Stencils
+
+    program = this.mapStencilsProgram
+    gl.bindVertexArray(this.mapStencilsVao)
+
+    // Resource triangle points
+    const clipEarcutTrianglePoints = this.projectedGeoEarcutTrianglePoints.map(
+      (point) =>
+        applyTransform(this.projectedGeoToClipTransform as Transform, point)
+    )
+
+    createBuffer(
+      gl,
+      program,
+      new Float32Array(clipEarcutTrianglePoints.flat()),
+      2,
+      'a_clipEarcutTrianglePoint'
+    )
+
+    const clipPreviousEarcutTrianglePoints =
+      this.projectedGeoPreviousEarcutTrianglePoints.map((point) =>
+        applyTransform(this.projectedGeoToClipTransform as Transform, point)
+      )
+
+    createBuffer(
+      gl,
+      program,
+      new Float32Array(clipPreviousEarcutTrianglePoints.flat()),
+      2,
+      'a_clipPreviousEarcutTrianglePoint'
+    )
+
+    // Map
+
+    program = this.mapsProgram
     gl.bindVertexArray(this.mapsVao)
 
     // Resource triangle points

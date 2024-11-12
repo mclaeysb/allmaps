@@ -804,7 +804,8 @@ export class WarpedMapLayer extends L.Layer {
     }
 
     this.gl = this.canvas.getContext('webgl2', {
-      premultipliedAlpha: true
+      premultipliedAlpha: true,
+      stencil: true
     })
 
     if (!this.gl) {

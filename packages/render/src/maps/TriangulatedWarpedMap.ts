@@ -1,3 +1,5 @@
+import earcut from 'earcut'
+
 import { Map as GeoreferencedMap } from '@allmaps/annotation'
 import {
   computeDistortionFromPartialDerivatives,
@@ -43,15 +45,17 @@ type GcpAndDistortionMeasure = Gcp & {
  *
  * @export
  * @class TriangulatedWarpedMap
+ * @param {Point[]} projectedGeoPreviousEarcutTrianglePoints - The projectedGeoEarcutTrianglePoints of the previous transformation type, used during transformation transitions
+ * @param {Point[]} projectedGeoEarcutTrianglePoints - Triangle points of the earcut triangulated resourceMask in projected geospatial coordinated. These are only used for the WebGL stencil, and dont correspont to the other triangle points used for drawing the maps
  * @param {QuadTree<Gcp>} projectedPreviousGeoQuadTree - QuadTree of the previous transformation type used to triangulate the map (at the current viewport)
  * @param {QuadTree<Gcp>} projectedGeoQuadTree - QuadTree used to triangulate the map (at the current viewport)
- * @param {Point[]} resourceTrianglepoints - Triangle points of the triangles the triangulated resourceMask (at the current scaleFactor)
+ * @param {Point[]} resourceTrianglepoints - Triangle points of the triangulated resourceMask (at the current scaleFactor)
  * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask (at the current scaleFactor)
  * @param {number[]} trianglePointsUniquePointsIndex - Index in resourceUniquepoints where a specific resourceTrianglepoint can be found
  * @param {number} triangulateErrorCount - Number of time the triangulation has resulted in an error
  * @param {Point[]} projectedGeoPreviousTrianglePoints - The projectedGeoTrianglePoints of the previous transformation type, used during transformation transitions
- * @param {Point[]} projectedGeoTrianglePoints - The resourceTrianglePoints in geospatial coordinates
- * @param {Point[]} projectedGeoUniquePoints - The resourceUniquePoints in geospatial coordinates
+ * @param {Point[]} projectedGeoTrianglePoints - The resourceTrianglePoints in projected geospatial coordinates
+ * @param {Point[]} projectedGeoUniquePoints - The resourceUniquePoints in projected geospatial coordinates
  * @param {Point[]} projectedGeoUniquePointsPartialDerivativeX - Partial Derivative to X at the projectedGeoUniquePoints
  * @param {Point[]} projectedGeoUniquePointsPartialDerivativeY - Partial Derivative to Y at the projectedGeoUniquePoints
  * @param {number[]} previousTrianglePointsDistortion - The trianglePointsDistortion of the previous transformation type, used during transformation transitions
@@ -59,6 +63,9 @@ type GcpAndDistortionMeasure = Gcp & {
  * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
+  projectedGeoPreviousEarcutTrianglePoints: Point[] = []
+  projectedGeoEarcutTrianglePoints: Point[] = []
+
   projectedPreviousGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
   projectedGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
   private projectedGcpGridByTransformationType: Map<
@@ -94,6 +101,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     super(mapId, georeferencedMap, options)
 
+    this.updateEarcutTriangulation()
     this.updateTriangulation()
   }
 
@@ -105,6 +113,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   setResourceMask(resourceMask: Ring): void {
     super.setResourceMask(resourceMask)
     console.log('since set resource mask')
+    this.updateEarcutTriangulation()
     this.updateTriangulation()
   }
 
@@ -169,6 +178,27 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
+   * Update the earcut triangulation of the resourceMask.
+   */
+  private updateEarcutTriangulation() {
+    const projectedGeoEarcutTrianglePointIndices = earcut(
+      this.projectedGeoLongerMask.flat()
+    )
+    this.projectedGeoEarcutTrianglePoints =
+      projectedGeoEarcutTrianglePointIndices.map(
+        (i) => this.projectedGeoLongerMask[i]
+      )
+
+    const projectedGeoPreviousEarcutTrianglePointIndices = earcut(
+      this.projectedGeoPreviousLongerMask.flat()
+    )
+    this.projectedGeoPreviousEarcutTrianglePoints =
+      projectedGeoPreviousEarcutTrianglePointIndices.map(
+        (i) => this.projectedGeoPreviousLongerMask[i]
+      )
+  }
+
+  /**
    * Update the triangulation of the resourceMask.
    * Update the (previous and new) points of the triangulated resourceMask, at the current bestScaleFactor, in projectedGeo coordinates. Use cache if available.
    *
@@ -176,6 +206,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   private updateTriangulation(previousIsNew = false) {
     console.log('>> updateTriangulation()')
+
     const triangulationTransformOptions = {
       maxOffsetRatio: 0.01,
       maxDepth: 5
@@ -355,7 +386,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       (projectedGcp) =>
         this.computeDistortion(
           this.projectedTransformer,
-          projectedGcp,
+          projectedGcp as Gcp,
           this.distortionMeasure,
           this.getReferenceScale()
         )
@@ -366,7 +397,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       (projectedGcp) =>
         this.computeDistortion(
           this.projectedPreviousTransformer,
-          projectedGcp,
+          projectedGcp as Gcp,
           this.previousDistortionMeasure,
           this.getReferenceScale()
         )
@@ -392,6 +423,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   protected updateTransformerProperties(useCache = true): void {
     console.log('since update transform properties')
     super.updateTransformerProperties(useCache)
+    this.updateEarcutTriangulation()
     this.updateTriangulation(false)
   }
 

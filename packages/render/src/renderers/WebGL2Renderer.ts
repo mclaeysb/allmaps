@@ -28,6 +28,8 @@ import { createShader, createProgram } from '../shared/webgl2.js'
 
 import mapsVertexShaderSource from '../shaders/maps/vertex-shader.glsl'
 import mapsFragmentShaderSource from '../shaders/maps/fragment-shader.glsl'
+import mapStencilsVertexShaderSource from '../shaders/map-stencils/vertex-shader.glsl'
+import mapStencilsFragmentShaderSource from '../shaders/map-stencils/fragment-shader.glsl'
 import linesVertexShaderSource from '../shaders/lines/vertex-shader.glsl'
 import linesFragmentShaderSource from '../shaders/lines/fragment-shader.glsl'
 import pointsVertexShaderSource from '../shaders/points/vertex-shader.glsl'
@@ -83,6 +85,7 @@ export default class WebGL2Renderer
 {
   gl: WebGL2RenderingContext
   mapsProgram: WebGLProgram
+  mapStencilsProgram: WebGLProgram
   pointsProgram: WebGLProgram
   linesProgram: WebGLProgram
 
@@ -129,6 +132,17 @@ export default class WebGL2Renderer
       mapsFragmentShaderSource
     )
 
+    const mapStencilsVertexShader = createShader(
+      gl,
+      gl.VERTEX_SHADER,
+      mapStencilsVertexShaderSource
+    )
+    const mapStencilsFragmentShader = createShader(
+      gl,
+      gl.FRAGMENT_SHADER,
+      mapStencilsFragmentShaderSource
+    )
+
     const pointsVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -152,6 +166,11 @@ export default class WebGL2Renderer
     )
 
     const mapsProgram = createProgram(gl, mapsVertexShader, mapsFragmentShader)
+    const mapStencilsProgram = createProgram(
+      gl,
+      mapStencilsVertexShader,
+      mapStencilsFragmentShader
+    )
     const pointsProgram = createProgram(
       gl,
       pointsVertexShader,
@@ -168,6 +187,7 @@ export default class WebGL2Renderer
       createWebGL2WarpedMapFactory(
         gl,
         mapsProgram,
+        mapStencilsProgram,
         pointsProgram,
         linesProgram
       ),
@@ -176,6 +196,7 @@ export default class WebGL2Renderer
 
     this.gl = gl
     this.mapsProgram = mapsProgram
+    this.mapStencilsProgram = mapStencilsProgram
     this.pointsProgram = pointsProgram
     this.linesProgram = linesProgram
 
@@ -222,6 +243,17 @@ export default class WebGL2Renderer
       mapsFragmentShaderSource
     )
 
+    const mapStencilsVertexShader = createShader(
+      gl,
+      gl.VERTEX_SHADER,
+      mapStencilsVertexShaderSource
+    )
+    const mapStencilsFragmentShader = createShader(
+      gl,
+      gl.FRAGMENT_SHADER,
+      mapStencilsFragmentShaderSource
+    )
+
     const pointsVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -245,6 +277,11 @@ export default class WebGL2Renderer
     )
 
     const mapsProgram = createProgram(gl, mapsVertexShader, mapsFragmentShader)
+    const mapStencilsProgram = createProgram(
+      gl,
+      mapStencilsVertexShader,
+      mapStencilsFragmentShader
+    )
     const pointsProgram = createProgram(
       gl,
       pointsVertexShader,
@@ -258,13 +295,19 @@ export default class WebGL2Renderer
 
     this.gl = gl
     this.mapsProgram = mapsProgram
+    this.mapStencilsProgram = mapStencilsProgram
     this.pointsProgram = pointsProgram
     this.linesProgram = linesProgram
 
     gl.disable(gl.DEPTH_TEST)
 
     for (const warpedMap of this.warpedMapList.getWarpedMaps()) {
-      warpedMap.initializeWebGL(mapsProgram, pointsProgram, linesProgram)
+      warpedMap.initializeWebGL(
+        mapsProgram,
+        mapStencilsProgram,
+        pointsProgram,
+        linesProgram
+      )
     }
   }
 
@@ -621,7 +664,11 @@ export default class WebGL2Renderer
     this.warpedMapList.clear()
     this.mapsInViewport = new Set()
     this.mapsWithRequestedTilesForViewport = new Set()
-    this.gl.clear(this.gl.DEPTH_BUFFER_BIT | this.gl.COLOR_BUFFER_BIT)
+    this.gl.clear(
+      this.gl.DEPTH_BUFFER_BIT |
+        this.gl.COLOR_BUFFER_BIT |
+        this.gl.STENCIL_BUFFER_BIT
+    )
     this.tileCache.clear()
   }
 
@@ -642,6 +689,9 @@ export default class WebGL2Renderer
     super.destroy()
 
     this.gl.deleteProgram(this.mapsProgram)
+    this.gl.deleteProgram(this.mapStencilsProgram)
+    this.gl.deleteProgram(this.linesProgram)
+    this.gl.deleteProgram(this.pointsProgram)
     // Can't delete context, see:
     // https://stackoverflow.com/questions/14970206/deleting-webgl-contexts
   }
@@ -752,20 +802,14 @@ export default class WebGL2Renderer
     )
 
     const gl = this.gl
-    const program = this.mapsProgram
+    let program
 
+    // Map stencils
+
+    program = this.mapStencilsProgram
     gl.useProgram(program)
 
-    // Global uniforms
-
-    // Debug
-
-    const debugLocation = gl.getUniformLocation(program, 'u_debug')
-    gl.uniform1f(debugLocation, DEBUG ? 1 : 0)
-
-    // Render transform
-
-    const renderTransformLocation = gl.getUniformLocation(
+    let renderTransformLocation = gl.getUniformLocation(
       program,
       'u_renderTransform'
     )
@@ -777,7 +821,39 @@ export default class WebGL2Renderer
 
     // Animation progress
 
-    const animationProgressLocation = gl.getUniformLocation(
+    let animationProgressLocation = gl.getUniformLocation(
+      program,
+      'u_animationProgress'
+    )
+    gl.uniform1f(animationProgressLocation, this.animationProgress)
+
+    // Map
+
+    program = this.mapsProgram
+    gl.useProgram(program)
+
+    // Global uniforms
+
+    // Debug
+
+    const debugLocation = gl.getUniformLocation(program, 'u_debug')
+    gl.uniform1f(debugLocation, DEBUG ? 1 : 0)
+
+    // Render transform
+
+    renderTransformLocation = gl.getUniformLocation(
+      program,
+      'u_renderTransform'
+    )
+    gl.uniformMatrix4fv(
+      renderTransformLocation,
+      false,
+      transformToMatrix4(renderTransform)
+    )
+
+    // Animation progress
+
+    animationProgressLocation = gl.getUniformLocation(
       program,
       'u_animationProgress'
     )
@@ -825,6 +901,47 @@ export default class WebGL2Renderer
       if (!warpedMap) {
         continue
       }
+
+      // Map Stencil
+
+      program = this.mapStencilsProgram
+      gl.useProgram(program)
+
+      // Apply mask using stencil buffers and earcut triangles
+      // by setting stencil operations to mask where earcut triangles will *not* be drawn
+
+      // Enable stencil buffer and clear values
+      gl.enable(gl.STENCIL_TEST)
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+
+      // Set stencil buffers to 1 where triangles are drawn
+      // - stencilFunc sets the test pass all pixels (regardless of the current stencil buffer value) and sets the referenc value to 1
+      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: replace the stencil buffer value (in this case the default value 0) with the reference value (1)
+      // This will set the stencil buffer to 1 for all drawn pixels
+      gl.stencilFunc(gl.ALWAYS, 1, 0xff)
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
+
+      // Draw earcut triangles
+      // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
+      // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
+      gl.bindVertexArray(warpedMap.mapStencilsVao)
+      gl.drawArrays(
+        this.gl.TRIANGLES,
+        0,
+        warpedMap.projectedGeoEarcutTrianglePoints.length
+      )
+
+      // Set stencil buffer to draw image
+      // - stencilFunc sets the test to pass only on pixels who's stencil buffer already equals 1
+      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: keep the current stencil buffer value
+      // This will make each pixel within the earcut triangles keep its value
+      gl.stencilFunc(gl.EQUAL, 1, 0xff)
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
+
+      // Map
+
+      program = this.mapsProgram
+      gl.useProgram(program)
 
       // Map-specific uniforms
 
@@ -909,6 +1026,9 @@ export default class WebGL2Renderer
 
       gl.bindVertexArray(warpedMap.mapsVao)
       gl.drawArrays(primitiveType, offset, count)
+
+      // Disable stencil buffer
+      gl.disable(gl.STENCIL_TEST)
     }
   }
 
@@ -919,7 +1039,6 @@ export default class WebGL2Renderer
 
     const gl = this.gl
     const program = this.linesProgram
-
     gl.useProgram(program)
 
     // Global uniform
@@ -985,9 +1104,6 @@ export default class WebGL2Renderer
 
     const gl = this.gl
     const program = this.pointsProgram
-
-    // Render Points
-
     gl.useProgram(program)
 
     // Global uniform
