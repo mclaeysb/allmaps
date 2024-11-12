@@ -49,6 +49,7 @@ import type {
   GridOptions,
   WebGL2RendererOptions
 } from '../shared/types.js'
+import WarpedMap from '../maps/WarpedMap.js'
 
 const THROTTLE_PREPARE_RENDER_WAIT_MS = 200
 const THROTTLE_PREPARE_RENDER_OPTIONS = {
@@ -801,15 +802,94 @@ export default class WebGL2Renderer
       this.invertedRenderTransform
     )
 
+    this.setMapStencilProgramUniforms(renderTransform)
+
+    this.setMapsProgramUniforms(renderTransform)
+
+    for (const mapId of this.mapsWithRequestedTilesForViewport) {
+      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
+
+      if (!warpedMap) {
+        continue
+      }
+
+      this.enableMapStencilMask(warpedMap)
+
+      this.setMapsProgramRenderOptionsUniforms(
+        this.renderOptions,
+        warpedMap.renderOptions
+      )
+      this.setMapProgramMapUniforms(warpedMap)
+
+      // Draw each map
+      const count = warpedMap.resourceTrianglePoints.length
+      const primitiveType = this.gl.TRIANGLES
+      const offset = 0
+      this.gl.bindVertexArray(warpedMap.mapsVao)
+      this.gl.drawArrays(primitiveType, offset, count)
+
+      this.disableMapStencil()
+    }
+  }
+
+  private renderLinesInternal(): void {
+    this.setLinesProgramUniforms()
+
+    for (const mapId of this.mapsWithRequestedTilesForViewport) {
+      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
+
+      if (!warpedMap) {
+        continue
+      }
+
+      // (no lines program line uniforms)
+
+      // Draw lines for each map
+      const count =
+        warpedMap.lineLayers.reduce(
+          (accumulator: number, lineLayer) =>
+            accumulator + lineLayer.projectedGeoLines.length,
+          0
+        ) * 6
+      const primitiveType = this.gl.TRIANGLES
+      const offset = 0
+      this.gl.bindVertexArray(warpedMap.linesVao)
+      this.gl.drawArrays(primitiveType, offset, count)
+    }
+  }
+
+  private renderPointsInternal(): void {
+    this.setPointsProgramUniforms()
+
+    for (const mapId of this.mapsWithRequestedTilesForViewport) {
+      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
+
+      if (!warpedMap) {
+        continue
+      }
+
+      // (no points program point uniforms)
+
+      // Draw points for each map
+      const count = warpedMap.pointLayers.reduce(
+        (accumulator: number, pointLayer) =>
+          accumulator + pointLayer.projectedGeoPoints.length,
+        0
+      )
+      const primitiveType = this.gl.POINTS
+      const offset = 0
+      this.gl.bindVertexArray(warpedMap.pointsVao)
+      this.gl.drawArrays(primitiveType, offset, count)
+    }
+  }
+
+  private setMapStencilProgramUniforms(renderTransform: Transform) {
+    const program = this.mapStencilsProgram
     const gl = this.gl
-    let program
-
-    // Map stencils
-
-    program = this.mapStencilsProgram
     gl.useProgram(program)
 
-    let renderTransformLocation = gl.getUniformLocation(
+    // Render transform
+    const renderTransformLocation = gl.getUniformLocation(
       program,
       'u_renderTransform'
     )
@@ -820,28 +900,24 @@ export default class WebGL2Renderer
     )
 
     // Animation progress
-
-    let animationProgressLocation = gl.getUniformLocation(
+    const animationProgressLocation = gl.getUniformLocation(
       program,
       'u_animationProgress'
     )
     gl.uniform1f(animationProgressLocation, this.animationProgress)
+  }
 
-    // Map
-
-    program = this.mapsProgram
+  private setMapsProgramUniforms(renderTransform: Transform) {
+    const program = this.mapsProgram
+    const gl = this.gl
     gl.useProgram(program)
 
-    // Global uniforms
-
     // Debug
-
     const debugLocation = gl.getUniformLocation(program, 'u_debug')
     gl.uniform1f(debugLocation, DEBUG ? 1 : 0)
 
     // Render transform
-
-    renderTransformLocation = gl.getUniformLocation(
+    const renderTransformLocation = gl.getUniformLocation(
       program,
       'u_renderTransform'
     )
@@ -852,8 +928,7 @@ export default class WebGL2Renderer
     )
 
     // Animation progress
-
-    animationProgressLocation = gl.getUniformLocation(
+    const animationProgressLocation = gl.getUniformLocation(
       program,
       'u_animationProgress'
     )
@@ -861,7 +936,6 @@ export default class WebGL2Renderer
 
     // Distortion colors
     // TODO: make these colors pickable
-
     const colorDistortion00 = gl.getUniformLocation(
       program,
       'u_colorDistortion00'
@@ -894,279 +968,58 @@ export default class WebGL2Renderer
 
     const colorGrid = gl.getUniformLocation(program, 'u_colorGrid')
     gl.uniform4f(colorGrid, ...hexToFractionalRgb(black), 1)
-
-    for (const mapId of this.mapsWithRequestedTilesForViewport) {
-      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
-
-      if (!warpedMap) {
-        continue
-      }
-
-      // Map Stencil
-
-      program = this.mapStencilsProgram
-      gl.useProgram(program)
-
-      // Apply mask using stencil buffers and earcut triangles
-      // by setting stencil operations to mask where earcut triangles will *not* be drawn
-
-      // Enable stencil buffer and clear values
-      gl.enable(gl.STENCIL_TEST)
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
-
-      // Set stencil buffers to 1 where triangles are drawn
-      // - stencilFunc sets the test pass all pixels (regardless of the current stencil buffer value) and sets the referenc value to 1
-      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: replace the stencil buffer value (in this case the default value 0) with the reference value (1)
-      // This will set the stencil buffer to 1 for all drawn pixels
-      gl.stencilFunc(gl.ALWAYS, 1, 0xff)
-      gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
-
-      // Draw earcut triangles
-      // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
-      // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
-      gl.bindVertexArray(warpedMap.mapStencilsVao)
-      gl.drawArrays(
-        this.gl.TRIANGLES,
-        0,
-        warpedMap.projectedGeoEarcutTrianglePoints.length
-      )
-
-      // Set stencil buffer to draw image
-      // - stencilFunc sets the test to pass only on pixels who's stencil buffer already equals 1
-      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: keep the current stencil buffer value
-      // This will make each pixel within the earcut triangles keep its value
-      gl.stencilFunc(gl.EQUAL, 1, 0xff)
-      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-
-      // Map
-
-      program = this.mapsProgram
-      gl.useProgram(program)
-
-      // Map-specific uniforms
-
-      this.setRenderOptionsUniforms(this.renderOptions, warpedMap.renderOptions)
-
-      // Opacity
-
-      const opacityLocation = gl.getUniformLocation(program, 'u_opacity')
-      gl.uniform1f(opacityLocation, this.opacity * warpedMap.opacity)
-
-      // Saturation
-
-      const saturationLocation = gl.getUniformLocation(program, 'u_saturation')
-      gl.uniform1f(saturationLocation, this.saturation * warpedMap.saturation)
-
-      // Distortion
-
-      const distortionLocation = gl.getUniformLocation(program, 'u_distortion')
-      gl.uniform1f(distortionLocation, warpedMap.distortionMeasure ? 1 : 0)
-
-      if (warpedMap.distortionMeasure) {
-        const distortionOptionsDistortionMeasureLocation =
-          gl.getUniformLocation(program, 'u_distortionOptionsdistortionMeasure')
-        gl.uniform1i(
-          distortionOptionsDistortionMeasureLocation,
-          supportedDistortionMeasures.indexOf(warpedMap.distortionMeasure)
-        )
-      }
-
-      // Best scale factor
-
-      const currentScaleFactorLocation = gl.getUniformLocation(
-        program,
-        'u_currentScaleFactor'
-      )
-      const currentScaleFactor = warpedMap.currentTileZoomLevel
-        ? warpedMap.currentTileZoomLevel.scaleFactor
-        : 1
-      gl.uniform1i(currentScaleFactorLocation, currentScaleFactor)
-
-      // Cached tiles texture array
-
-      const cachedTilesTextureArrayLocation = gl.getUniformLocation(
-        program,
-        'u_cachedTilesTextureArray'
-      )
-      gl.uniform1i(cachedTilesTextureArrayLocation, 0)
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D_ARRAY, warpedMap.cachedTilesTextureArray)
-
-      // Cached tiles resource positions and dimensions texture
-
-      const cachedTilesResourcePositionsAndDimensionsLocation =
-        gl.getUniformLocation(
-          program,
-          'u_cachedTilesResourcePositionsAndDimensionsTexture'
-        )
-      gl.uniform1i(cachedTilesResourcePositionsAndDimensionsLocation, 2)
-      gl.activeTexture(gl.TEXTURE2)
-
-      gl.bindTexture(
-        gl.TEXTURE_2D,
-        warpedMap.cachedTilesResourcePositionsAndDimensionsTexture
-      )
-
-      // Cached tiles scale factors texture
-
-      const cachedTileScaleFactorsTextureLocation = gl.getUniformLocation(
-        program,
-        'u_cachedTilesScaleFactorsTexture'
-      )
-      gl.uniform1i(cachedTileScaleFactorsTextureLocation, 3)
-      gl.activeTexture(gl.TEXTURE3)
-      gl.bindTexture(gl.TEXTURE_2D, warpedMap.cachedTilesScaleFactorsTexture)
-
-      // Draw each map
-
-      const count = warpedMap.resourceTrianglePoints.length
-
-      const primitiveType = this.gl.TRIANGLES
-      const offset = 0
-
-      gl.bindVertexArray(warpedMap.mapsVao)
-      gl.drawArrays(primitiveType, offset, count)
-
-      // Disable stencil buffer
-      gl.disable(gl.STENCIL_TEST)
-    }
   }
 
-  private renderLinesInternal(): void {
-    if (!this.viewport) {
-      return
-    }
+  private enableMapStencilMask(warpedMap: WebGL2WarpedMap) {
+    // Apply mask using stencil buffers and earcut triangles
+    // by setting stencil operations to mask where earcut triangles will *not* be drawn
 
     const gl = this.gl
-    const program = this.linesProgram
+    const program = this.mapStencilsProgram
     gl.useProgram(program)
 
-    // Global uniform
+    // Enable stencil buffer and clear values
+    gl.enable(gl.STENCIL_TEST)
+    gl.clear(gl.STENCIL_BUFFER_BIT)
 
-    const projectedGeoToViewportTransformLocation = gl.getUniformLocation(
-      program,
-      'u_projectedGeoToViewportTransform'
+    // Set stencil buffers to 1 where triangles are drawn
+    // - stencilFunc sets the test pass all pixels (regardless of the current stencil buffer value) and sets the referenc value to 1
+    // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: replace the stencil buffer value (in this case the default value 0) with the reference value (1)
+    // This will set the stencil buffer to 1 for all drawn pixels
+    gl.stencilFunc(gl.ALWAYS, 1, 0xff)
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
+
+    // Draw earcut triangles
+    // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
+    // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
+
+    gl.bindVertexArray(warpedMap.mapStencilsVao)
+    gl.drawArrays(
+      this.gl.TRIANGLES,
+      0,
+      warpedMap.projectedGeoEarcutTrianglePoints.length
     )
-    gl.uniformMatrix4fv(
-      projectedGeoToViewportTransformLocation,
-      false,
-      transformToMatrix4(this.viewport.projectedGeoToViewportTransform)
-    )
 
-    const viewportToClipTransformLocation = gl.getUniformLocation(
-      program,
-      'u_viewportToClipTransform'
-    )
-    gl.uniformMatrix4fv(
-      viewportToClipTransformLocation,
-      false,
-      transformToMatrix4(this.viewport.viewportToClipTransform)
-    )
-
-    // Animation progress
-
-    const animationProgressLocation = gl.getUniformLocation(
-      program,
-      'u_animationProgress'
-    )
-    gl.uniform1f(animationProgressLocation, this.animationProgress)
-
-    for (const mapId of this.mapsWithRequestedTilesForViewport) {
-      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
-
-      if (!warpedMap) {
-        continue
-      }
-
-      // (none)
-
-      // Draw lines for each map
-
-      const count =
-        warpedMap.lineLayers.reduce(
-          (accumulator: number, lineLayer) =>
-            accumulator + lineLayer.projectedGeoLines.length,
-          0
-        ) * 6
-
-      const primitiveType = this.gl.TRIANGLES
-      const offset = 0
-
-      gl.bindVertexArray(warpedMap.linesVao)
-      gl.drawArrays(primitiveType, offset, count)
-    }
+    // Set stencil buffer to draw map triangles
+    // - stencilFunc sets the test to pass only on pixels who's stencil buffer already equals 1
+    // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: keep the current stencil buffer value
+    // This will make each pixel within the earcut triangles keep its value
+    gl.stencilFunc(gl.EQUAL, 1, 0xff)
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
   }
 
-  private renderPointsInternal(): void {
-    if (!this.viewport) {
-      return
-    }
-
+  private disableMapStencil() {
     const gl = this.gl
-    const program = this.pointsProgram
-    gl.useProgram(program)
-
-    // Global uniform
-
-    const projectedGeoToViewportTransformLocation = gl.getUniformLocation(
-      program,
-      'u_projectedGeoToViewportTransform'
-    )
-    gl.uniformMatrix4fv(
-      projectedGeoToViewportTransformLocation,
-      false,
-      transformToMatrix4(this.viewport.projectedGeoToViewportTransform)
-    )
-
-    const viewportToClipTransformLocation = gl.getUniformLocation(
-      program,
-      'u_viewportToClipTransform'
-    )
-    gl.uniformMatrix4fv(
-      viewportToClipTransformLocation,
-      false,
-      transformToMatrix4(this.viewport.viewportToClipTransform)
-    )
-
-    // Animation progress
-
-    const animationProgressLocation = gl.getUniformLocation(
-      program,
-      'u_animationProgress'
-    )
-    gl.uniform1f(animationProgressLocation, this.animationProgress)
-
-    for (const mapId of this.mapsWithRequestedTilesForViewport) {
-      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
-
-      if (!warpedMap) {
-        continue
-      }
-
-      // (none)
-
-      // Draw points for each map
-
-      const count = warpedMap.pointLayers.reduce(
-        (accumulator: number, pointLayer) =>
-          accumulator + pointLayer.projectedGeoPoints.length,
-        0
-      )
-
-      const primitiveType = this.gl.POINTS
-      const offset = 0
-
-      gl.bindVertexArray(warpedMap.pointsVao)
-      gl.drawArrays(primitiveType, offset, count)
-    }
+    gl.disable(gl.STENCIL_TEST)
   }
 
-  private setRenderOptionsUniforms(
+  private setMapsProgramRenderOptionsUniforms(
     layerRenderOptions: RenderOptions,
     mapRenderOptions: RenderOptions
   ) {
     const gl = this.gl
     const program = this.mapsProgram
+    gl.useProgram(program)
 
     const renderOptions: RenderOptions = {
       removeColorOptions: {
@@ -1248,6 +1101,157 @@ export default class WebGL2Renderer
 
     const gridLocation = gl.getUniformLocation(program, 'u_grid')
     gl.uniform1f(gridLocation, gridOptionsGrid ? 1 : 0)
+  }
+
+  private setMapProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
+    const gl = this.gl
+    const program = this.mapsProgram
+    gl.useProgram(program)
+
+    // Opacity
+    const opacityLocation = gl.getUniformLocation(program, 'u_opacity')
+    gl.uniform1f(opacityLocation, this.opacity * warpedMap.opacity)
+
+    // Saturation
+    const saturationLocation = gl.getUniformLocation(program, 'u_saturation')
+    gl.uniform1f(saturationLocation, this.saturation * warpedMap.saturation)
+
+    // Distortion
+    const distortionLocation = gl.getUniformLocation(program, 'u_distortion')
+    gl.uniform1f(distortionLocation, warpedMap.distortionMeasure ? 1 : 0)
+
+    if (warpedMap.distortionMeasure) {
+      const distortionOptionsDistortionMeasureLocation = gl.getUniformLocation(
+        program,
+        'u_distortionOptionsdistortionMeasure'
+      )
+      gl.uniform1i(
+        distortionOptionsDistortionMeasureLocation,
+        supportedDistortionMeasures.indexOf(warpedMap.distortionMeasure)
+      )
+    }
+
+    // Best scale factor
+    const currentScaleFactorLocation = gl.getUniformLocation(
+      program,
+      'u_currentScaleFactor'
+    )
+    const currentScaleFactor = warpedMap.currentTileZoomLevel
+      ? warpedMap.currentTileZoomLevel.scaleFactor
+      : 1
+    gl.uniform1i(currentScaleFactorLocation, currentScaleFactor)
+
+    // Cached tiles texture array
+    const cachedTilesTextureArrayLocation = gl.getUniformLocation(
+      program,
+      'u_cachedTilesTextureArray'
+    )
+    gl.uniform1i(cachedTilesTextureArrayLocation, 0)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, warpedMap.cachedTilesTextureArray)
+
+    // Cached tiles resource positions and dimensions texture
+    const cachedTilesResourcePositionsAndDimensionsLocation =
+      gl.getUniformLocation(
+        program,
+        'u_cachedTilesResourcePositionsAndDimensionsTexture'
+      )
+    gl.uniform1i(cachedTilesResourcePositionsAndDimensionsLocation, 2)
+    gl.activeTexture(gl.TEXTURE2)
+
+    gl.bindTexture(
+      gl.TEXTURE_2D,
+      warpedMap.cachedTilesResourcePositionsAndDimensionsTexture
+    )
+
+    // Cached tiles scale factors texture
+    const cachedTileScaleFactorsTextureLocation = gl.getUniformLocation(
+      program,
+      'u_cachedTilesScaleFactorsTexture'
+    )
+    gl.uniform1i(cachedTileScaleFactorsTextureLocation, 3)
+    gl.activeTexture(gl.TEXTURE3)
+    gl.bindTexture(gl.TEXTURE_2D, warpedMap.cachedTilesScaleFactorsTexture)
+  }
+
+  private setLinesProgramUniforms() {
+    if (!this.viewport) {
+      return
+    }
+
+    const gl = this.gl
+    const program = this.linesProgram
+    gl.useProgram(program)
+
+    // Global uniform
+
+    const projectedGeoToViewportTransformLocation = gl.getUniformLocation(
+      program,
+      'u_projectedGeoToViewportTransform'
+    )
+    gl.uniformMatrix4fv(
+      projectedGeoToViewportTransformLocation,
+      false,
+      transformToMatrix4(this.viewport.projectedGeoToViewportTransform)
+    )
+
+    const viewportToClipTransformLocation = gl.getUniformLocation(
+      program,
+      'u_viewportToClipTransform'
+    )
+    gl.uniformMatrix4fv(
+      viewportToClipTransformLocation,
+      false,
+      transformToMatrix4(this.viewport.viewportToClipTransform)
+    )
+
+    // Animation progress
+
+    const animationProgressLocation = gl.getUniformLocation(
+      program,
+      'u_animationProgress'
+    )
+    gl.uniform1f(animationProgressLocation, this.animationProgress)
+  }
+
+  private setPointsProgramUniforms() {
+    if (!this.viewport) {
+      return
+    }
+
+    const gl = this.gl
+    const program = this.pointsProgram
+    gl.useProgram(program)
+
+    // Global uniform
+
+    const projectedGeoToViewportTransformLocation = gl.getUniformLocation(
+      program,
+      'u_projectedGeoToViewportTransform'
+    )
+    gl.uniformMatrix4fv(
+      projectedGeoToViewportTransformLocation,
+      false,
+      transformToMatrix4(this.viewport.projectedGeoToViewportTransform)
+    )
+
+    const viewportToClipTransformLocation = gl.getUniformLocation(
+      program,
+      'u_viewportToClipTransform'
+    )
+    gl.uniformMatrix4fv(
+      viewportToClipTransformLocation,
+      false,
+      transformToMatrix4(this.viewport.viewportToClipTransform)
+    )
+
+    // Animation progress
+
+    const animationProgressLocation = gl.getUniformLocation(
+      program,
+      'u_animationProgress'
+    )
+    gl.uniform1f(animationProgressLocation, this.animationProgress)
   }
 
   private startTransformationTransition() {
