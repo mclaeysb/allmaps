@@ -274,15 +274,6 @@ export function refineGcpGrid(
     refinementOptions
   )
 
-  console.log(
-    'colsRows',
-    cols,
-    rows,
-    'refinedColsRows',
-    refinedCols,
-    refinedRows
-  )
-
   if (refinedCols * refinedRows > cols * rows) {
     cols = refinedCols
     rows = refinedRows

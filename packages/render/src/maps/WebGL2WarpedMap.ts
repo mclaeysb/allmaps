@@ -275,9 +275,9 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   private setLineLayers() {
     this.lineLayers = [
       {
-        projectedGeoLines: lineStringToLines(this.projectedGeoLongerMask),
+        projectedGeoLines: lineStringToLines(this.projectedGeoFinerMask),
         projectedGeoPreviousLines: lineStringToLines(
-          this.projectedGeoPreviousLongerMask
+          this.projectedGeoPreviousFinerMask
         ),
         viewportSize: 8,
         color: [...hexToFractionalRgb(pink), 1]

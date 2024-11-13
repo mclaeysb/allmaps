@@ -49,7 +49,6 @@ import type {
   GridOptions,
   WebGL2RendererOptions
 } from '../shared/types.js'
-import WarpedMap from '../maps/WarpedMap.js'
 
 const THROTTLE_PREPARE_RENDER_WAIT_MS = 200
 const THROTTLE_PREPARE_RENDER_OPTIONS = {

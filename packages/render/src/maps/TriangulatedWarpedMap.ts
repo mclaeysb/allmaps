@@ -190,15 +190,15 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     }
 
     this.resourceMaskTrianglePointIndices = earcut(
-      this.resourceLongerMask.flat()
+      this.resourceFinerMask.flat()
     )
     this.projectedGeoMaskTrianglePoints =
       this.resourceMaskTrianglePointIndices.map(
-        (i) => this.projectedGeoLongerMask[i]
+        (i) => this.projectedGeoFinerMask[i]
       )
     this.projectedGeoPreviousMaskTrianglePoints =
       this.resourceMaskTrianglePointIndices.map(
-        (i) => this.projectedGeoPreviousLongerMask[i]
+        (i) => this.projectedGeoPreviousFinerMask[i]
       )
   }
 
@@ -209,8 +209,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same - true by default, false during a transformation transition
    */
   private updateTriangulation(previousIsNew = false) {
-    console.log('>> updateTriangulation()')
-
     const triangulationTransformOptions = {
       maxOffsetRatio: 0.01,
       maxDepth: 5
@@ -225,28 +223,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       return
     }
 
-    // console.log(
-    //   'starting from',
-    //   this.projectedPreviousGcpGrid,
-    //   this.projectedGcpGrid,
-    //   this.previousTransformationType,
-    //   this.transformationType,
-    //   this.projectedPreviousTransformer,
-    //   this.projectedTransformer
-    // )
-
-    // console.log('mixed', this.mixed)
-    // console.log(
-    //   this.previousTransformationType,
-    //   this.projectedPreviousGcpGrid
-    //     ? getTypedGridTriangles(this.projectedPreviousGcpGrid)
-    //         .flat(1)
-    //         .map((projectedGcp) => projectedGcp.geo)
-    //         .flat(1)
-    //         .slice(0, 5)
-    //     : 'undefined'
-    // )
-
     if (previousIsNew) {
       this.projectedPreviousGcpGrid = this.projectedGcpGrid
       this.previousTransformationType = this.transformationType
@@ -254,16 +230,10 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     if (!this.projectedPreviousGcpGrid) {
       // Compute grid from bbox
-      // console.log(
-      //   'grid from bbox',
-      //   this.projectedGcpGridByTransformationType,
-      //   this.transformationType
-      // )
       this.projectedGcpGrid = getPropertyFromCacheOrComputation(
         this.projectedGcpGridByTransformationType,
         this.transformationType,
         () => {
-          console.log('from scratch')
           return transformBboxForwardToGcpGrid(
             this.resourceMaskBbox,
             this.projectedTransformer,
@@ -274,19 +244,10 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       this.projectedPreviousGcpGrid = this.projectedGcpGrid
     } else {
       // Computing current grid from previous grid (or cache)
-      // console.log('grid from previous grid')
       this.projectedGcpGrid = getPropertyFromCacheOrComputation(
         this.projectedGcpGridByTransformationType,
         this.transformationType,
         () => {
-          // console.log(
-          //   'computing grid from previous grid since',
-          //   getTypedGridDepth(this.projectedPreviousGcpGrid!),
-          //   getTypedGridDepth(this.projectedGcpGrid!),
-          //   this.mixed,
-          //   'store',
-          //   !this.mixed
-          // )
           return transformGcpGridForward(
             this.projectedPreviousGcpGrid!,
             this.projectedTransformer,
@@ -298,7 +259,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       )
 
       // Refine previous grid from grid (if needed)
-      // console.log('adapting previous')
       if (
         getTypedGridDepth(this.projectedPreviousGcpGrid) !=
         getTypedGridDepth(this.projectedGcpGrid!)
@@ -307,14 +267,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
           this.projectedGcpGridByTransformationType,
           this.previousTransformationType,
           () => {
-            // console.log(
-            //   'computing adapting previous since',
-            //   getTypedGridDepth(this.projectedPreviousGcpGrid!),
-            //   getTypedGridDepth(this.projectedGcpGrid!),
-            //   this.mixed,
-            //   'store',
-            //   !this.mixed
-            // )
             return transformGcpGridForward(
               this.projectedGcpGrid!,
               this.projectedPreviousTransformer,
@@ -328,15 +280,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
         )
       }
     }
-
-    // console.log(
-    //   'results',
-    //   this.projectedGcpGrid,
-    //   getTypedGridDepth(this.projectedGcpGrid),
-    //   this.projectedPreviousGcpGrid,
-    //   getTypedGridDepth(this.projectedPreviousGcpGrid),
-    //   previousFromGrid
-    // )
 
     this.updateTrianglePoints()
   }
@@ -365,13 +308,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     )
       .flat(1)
       .map((projectedGcp) => projectedGcp.geo)
-
-    // console.log(
-    //   'and results',
-    //   this.resourceTrianglePoints.slice(0, 5),
-    //   this.projectedGeoTrianglePoints.slice(0, 5),
-    //   this.projectedGeoPreviousTrianglePoints.slice(0, 5)
-    // )
 
     this.updateTrianglePointsDistortion()
   }
