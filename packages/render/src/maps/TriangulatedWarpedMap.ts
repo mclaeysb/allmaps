@@ -45,8 +45,9 @@ type GcpAndDistortionMeasure = Gcp & {
  *
  * @export
  * @class TriangulatedWarpedMap
- * @param {Point[]} projectedGeoPreviousEarcutTrianglePoints - The projectedGeoEarcutTrianglePoints of the previous transformation type, used during transformation transitions
- * @param {Point[]} projectedGeoEarcutTrianglePoints - Triangle points of the earcut triangulated resourceMask in projected geospatial coordinated. These are only used for the WebGL stencil, and dont correspont to the other triangle points used for drawing the maps
+ * @param {Point[]} resourceMaskTrianglePointIndices - Triangle point incidices of the triangulated resourceMask. These are only used for the WebGL stencil, and dont correspont to the other triangle points used for drawing the maps
+ * @param {Point[]} projectedGeoPreviousMaskTrianglePoints - The projectedGeoMaskTrianglePoints of the previous transformation type, used during transformation transitions
+ * @param {Point[]} projectedGeoMaskTrianglePoints - The resourceMaskTrianglePoints in projected geospatial coordinated.
  * @param {QuadTree<Gcp>} projectedPreviousGeoQuadTree - QuadTree of the previous transformation type used to triangulate the map (at the current viewport)
  * @param {QuadTree<Gcp>} projectedGeoQuadTree - QuadTree used to triangulate the map (at the current viewport)
  * @param {Point[]} resourceTrianglepoints - Triangle points of the triangulated resourceMask (at the current scaleFactor)
@@ -63,8 +64,9 @@ type GcpAndDistortionMeasure = Gcp & {
  * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
-  projectedGeoPreviousEarcutTrianglePoints: Point[] = []
-  projectedGeoEarcutTrianglePoints: Point[] = []
+  resourceMaskTrianglePointIndices: number[] = []
+  projectedGeoPreviousMaskTrianglePoints: Point[] = []
+  projectedGeoMaskTrianglePoints: Point[] = []
 
   projectedPreviousGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
   projectedGcpGrid?: TypedGrid<GcpAndDistortionMeasure>
@@ -101,7 +103,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     super(mapId, georeferencedMap, options)
 
-    this.updateEarcutTriangulation()
+    this.updateMaskTriangulation()
     this.updateTriangulation()
   }
 
@@ -112,8 +114,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   setResourceMask(resourceMask: Ring): void {
     super.setResourceMask(resourceMask)
-    console.log('since set resource mask')
-    this.updateEarcutTriangulation()
+    this.updateMaskTriangulation()
     this.updateTriangulation()
   }
 
@@ -135,6 +136,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   resetPrevious() {
     super.resetPrevious()
+    this.projectedGeoPreviousMaskTrianglePoints =
+      this.projectedGeoMaskTrianglePoints
     this.projectedPreviousGcpGrid = this.projectedGcpGrid
     this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     this.previousTrianglePointsDistortion = this.trianglePointsDistortion
@@ -180,20 +183,21 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   /**
    * Update the earcut triangulation of the resourceMask.
    */
-  private updateEarcutTriangulation() {
-    const projectedGeoEarcutTrianglePointIndices = earcut(
-      this.projectedGeoLongerMask.flat()
+  private updateMaskTriangulation() {
+    // Ensure this function is only run after initialisation (see also updateTriangulation())
+    if (!this.resourceMaskTrianglePointIndices) {
+      return
+    }
+
+    this.resourceMaskTrianglePointIndices = earcut(
+      this.resourceLongerMask.flat()
     )
-    this.projectedGeoEarcutTrianglePoints =
-      projectedGeoEarcutTrianglePointIndices.map(
+    this.projectedGeoMaskTrianglePoints =
+      this.resourceMaskTrianglePointIndices.map(
         (i) => this.projectedGeoLongerMask[i]
       )
-
-    const projectedGeoPreviousEarcutTrianglePointIndices = earcut(
-      this.projectedGeoPreviousLongerMask.flat()
-    )
-    this.projectedGeoPreviousEarcutTrianglePoints =
-      projectedGeoPreviousEarcutTrianglePointIndices.map(
+    this.projectedGeoPreviousMaskTrianglePoints =
+      this.resourceMaskTrianglePointIndices.map(
         (i) => this.projectedGeoPreviousLongerMask[i]
       )
   }
@@ -212,6 +216,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       maxDepth: 5
     }
 
+    // Ensure this function is only run after initialisation
     // The TriangulatedMap constructor calls this function twice
     // Once via super() and updateTransformerProperties()
     // but then the cache is not ready yet, so we make it return
@@ -421,9 +426,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   protected updateTransformerProperties(useCache = true): void {
-    console.log('since update transform properties')
     super.updateTransformerProperties(useCache)
-    this.updateEarcutTriangulation()
+    this.updateMaskTriangulation()
     this.updateTriangulation(false)
   }
 

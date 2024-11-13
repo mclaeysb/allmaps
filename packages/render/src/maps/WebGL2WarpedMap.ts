@@ -73,8 +73,8 @@ export function createWebGL2WarpedMapFactory(
   gl: WebGL2RenderingContext,
   mapsProgram: WebGLProgram,
   mapStencilsProgram: WebGLProgram,
-  pointsProgram: WebGLProgram,
-  linesProgram: WebGLProgram
+  linesProgram: WebGLProgram,
+  pointsProgram: WebGLProgram
 ) {
   return (
     mapId: string,
@@ -347,7 +347,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     gl.bindVertexArray(this.mapStencilsVao)
 
     // Resource triangle points
-    const clipEarcutTrianglePoints = this.projectedGeoEarcutTrianglePoints.map(
+    const clipEarcutTrianglePoints = this.projectedGeoMaskTrianglePoints.map(
       (point) =>
         applyTransform(this.projectedGeoToClipTransform as Transform, point)
     )
@@ -361,7 +361,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
 
     const clipPreviousEarcutTrianglePoints =
-      this.projectedGeoPreviousEarcutTrianglePoints.map((point) =>
+      this.projectedGeoPreviousMaskTrianglePoints.map((point) =>
         applyTransform(this.projectedGeoToClipTransform as Transform, point)
       )
 

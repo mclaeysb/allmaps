@@ -87,8 +87,8 @@ export default class WebGL2Renderer
   gl: WebGL2RenderingContext
   mapsProgram: WebGLProgram
   mapStencilsProgram: WebGLProgram
-  pointsProgram: WebGLProgram
   linesProgram: WebGLProgram
+  pointsProgram: WebGLProgram
 
   previousSignificantViewport: Viewport | undefined
 
@@ -144,17 +144,6 @@ export default class WebGL2Renderer
       mapStencilsFragmentShaderSource
     )
 
-    const pointsVertexShader = createShader(
-      gl,
-      gl.VERTEX_SHADER,
-      pointsVertexShaderSource
-    )
-    const pointsFragmentShader = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      pointsFragmentShaderSource
-    )
-
     const linesVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -166,21 +155,32 @@ export default class WebGL2Renderer
       linesFragmentShaderSource
     )
 
+    const pointsVertexShader = createShader(
+      gl,
+      gl.VERTEX_SHADER,
+      pointsVertexShaderSource
+    )
+    const pointsFragmentShader = createShader(
+      gl,
+      gl.FRAGMENT_SHADER,
+      pointsFragmentShaderSource
+    )
+
     const mapsProgram = createProgram(gl, mapsVertexShader, mapsFragmentShader)
     const mapStencilsProgram = createProgram(
       gl,
       mapStencilsVertexShader,
       mapStencilsFragmentShader
     )
-    const pointsProgram = createProgram(
-      gl,
-      pointsVertexShader,
-      pointsFragmentShader
-    )
     const linesProgram = createProgram(
       gl,
       linesVertexShader,
       linesFragmentShader
+    )
+    const pointsProgram = createProgram(
+      gl,
+      pointsVertexShader,
+      pointsFragmentShader
     )
 
     super(
@@ -189,8 +189,8 @@ export default class WebGL2Renderer
         gl,
         mapsProgram,
         mapStencilsProgram,
-        pointsProgram,
-        linesProgram
+        linesProgram,
+        pointsProgram
       ),
       options
     )
@@ -198,8 +198,8 @@ export default class WebGL2Renderer
     this.gl = gl
     this.mapsProgram = mapsProgram
     this.mapStencilsProgram = mapStencilsProgram
-    this.pointsProgram = pointsProgram
     this.linesProgram = linesProgram
+    this.pointsProgram = pointsProgram
 
     // Unclear how to remove shaders, possibly already after linking to program, see:
     // https://stackoverflow.com/questions/9113154/proper-way-to-delete-glsl-shader
@@ -255,17 +255,6 @@ export default class WebGL2Renderer
       mapStencilsFragmentShaderSource
     )
 
-    const pointsVertexShader = createShader(
-      gl,
-      gl.VERTEX_SHADER,
-      pointsVertexShaderSource
-    )
-    const pointsFragmentShader = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      pointsFragmentShaderSource
-    )
-
     const linesVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -277,28 +266,39 @@ export default class WebGL2Renderer
       linesFragmentShaderSource
     )
 
+    const pointsVertexShader = createShader(
+      gl,
+      gl.VERTEX_SHADER,
+      pointsVertexShaderSource
+    )
+    const pointsFragmentShader = createShader(
+      gl,
+      gl.FRAGMENT_SHADER,
+      pointsFragmentShaderSource
+    )
+
     const mapsProgram = createProgram(gl, mapsVertexShader, mapsFragmentShader)
     const mapStencilsProgram = createProgram(
       gl,
       mapStencilsVertexShader,
       mapStencilsFragmentShader
     )
-    const pointsProgram = createProgram(
-      gl,
-      pointsVertexShader,
-      pointsFragmentShader
-    )
     const linesProgram = createProgram(
       gl,
       linesVertexShader,
       linesFragmentShader
     )
+    const pointsProgram = createProgram(
+      gl,
+      pointsVertexShader,
+      pointsFragmentShader
+    )
 
     this.gl = gl
     this.mapsProgram = mapsProgram
     this.mapStencilsProgram = mapStencilsProgram
-    this.pointsProgram = pointsProgram
     this.linesProgram = linesProgram
+    this.pointsProgram = pointsProgram
 
     gl.disable(gl.DEPTH_TEST)
 
@@ -306,8 +306,8 @@ export default class WebGL2Renderer
       warpedMap.initializeWebGL(
         mapsProgram,
         mapStencilsProgram,
-        pointsProgram,
-        linesProgram
+        linesProgram,
+        pointsProgram
       )
     }
   }
@@ -997,7 +997,7 @@ export default class WebGL2Renderer
     gl.drawArrays(
       this.gl.TRIANGLES,
       0,
-      warpedMap.projectedGeoEarcutTrianglePoints.length
+      warpedMap.projectedGeoMaskTrianglePoints.length
     )
 
     // Set stencil buffer to draw map triangles
