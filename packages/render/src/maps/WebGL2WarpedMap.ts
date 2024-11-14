@@ -138,8 +138,6 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null = null
   cachedTilesScaleFactorsTexture: WebGLTexture | null = null
 
-  projectedGeoToClipTransform: Transform | undefined
-
   private throttledUpdateTextures: DebouncedFunc<typeof this.updateTextures>
 
   /**
@@ -208,16 +206,14 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
    * @param {Transform} projectedGeoToClipTransform - Transform from projected geo coordinates to webgl2 coordinates in the [-1, 1] range. Equivalent to OpenLayers' projectionTransform.
    */
   updateVertexBuffers(projectedGeoToClipTransform: Transform) {
-    this.projectedGeoToClipTransform = projectedGeoToClipTransform
-
     if (RENDER_MAPS) {
-      this.updateVertexBuffersMaps()
+      this.updateVertexBuffersMaps(projectedGeoToClipTransform)
     }
     if (RENDER_LINES) {
-      this.updateVertexBuffersLines()
+      this.updateVertexBuffersLines(projectedGeoToClipTransform)
     }
     if (RENDER_POINTS) {
-      this.updateVertexBuffersPoints()
+      this.updateVertexBuffersPoints(projectedGeoToClipTransform)
     }
   }
 
@@ -329,12 +325,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     ]
   }
 
-  private updateVertexBuffersMaps() {
-    if (
-      !this.mapsVao ||
-      !this.mapStencilsVao ||
-      !this.projectedGeoToClipTransform
-    ) {
+  private updateVertexBuffersMaps(projectedGeoToClipTransform: Transform) {
+    if (!this.mapsVao || !this.mapStencilsVao) {
       return
     }
 
@@ -347,30 +339,29 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     gl.bindVertexArray(this.mapStencilsVao)
 
     // Resource triangle points
-    const clipEarcutTrianglePoints = this.projectedGeoMaskTrianglePoints.map(
-      (point) =>
-        applyTransform(this.projectedGeoToClipTransform as Transform, point)
+    const clipMaskTrianglePoints = this.projectedGeoMaskTrianglePoints.map(
+      (point) => applyTransform(projectedGeoToClipTransform, point)
     )
 
     createBuffer(
       gl,
       program,
-      new Float32Array(clipEarcutTrianglePoints.flat()),
+      new Float32Array(clipMaskTrianglePoints.flat()),
       2,
-      'a_clipEarcutTrianglePoint'
+      'a_clipMaskTrianglePoint'
     )
 
-    const clipPreviousEarcutTrianglePoints =
+    const clipPreviousMaskTrianglePoints =
       this.projectedGeoPreviousMaskTrianglePoints.map((point) =>
-        applyTransform(this.projectedGeoToClipTransform as Transform, point)
+        applyTransform(projectedGeoToClipTransform, point)
       )
 
     createBuffer(
       gl,
       program,
-      new Float32Array(clipPreviousEarcutTrianglePoints.flat()),
+      new Float32Array(clipPreviousMaskTrianglePoints.flat()),
       2,
-      'a_clipPreviousEarcutTrianglePoint'
+      'a_clipPreviousMaskTrianglePoint'
     )
 
     // Map
@@ -391,7 +382,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     const clipPreviousTrianglePoints =
       this.projectedGeoPreviousTrianglePoints.map((point) =>
-        applyTransform(this.projectedGeoToClipTransform as Transform, point)
+        applyTransform(projectedGeoToClipTransform, point)
       )
 
     createBuffer(
@@ -403,7 +394,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
 
     const clipTrianglePoints = this.projectedGeoTrianglePoints.map((point) =>
-      applyTransform(this.projectedGeoToClipTransform as Transform, point)
+      applyTransform(projectedGeoToClipTransform, point)
     )
 
     createBuffer(
@@ -450,7 +441,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
   }
 
-  private updateVertexBuffersLines() {
+  private updateVertexBuffersLines(projectedGeoToClipTransform: Transform) {
     if (!this.linesVao) {
       return
     }
@@ -461,7 +452,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     this.setLineLayers()
 
-    const sixProjectedGeoPoints = this.lineLayers
+    const clipSixPoints = this.lineLayers
       .reduce(
         (accumulator: Line[], lineLayer) =>
           accumulator.concat(lineLayer.projectedGeoLines),
@@ -476,15 +467,16 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
         projectedGeoLine[1]
       ])
       .flat()
+      .map((point) => applyTransform(projectedGeoToClipTransform, point))
     createBuffer(
       gl,
       program,
-      new Float32Array(sixProjectedGeoPoints.flat()),
+      new Float32Array(clipSixPoints.flat()),
       2,
-      'a_projectedGeoPoint'
+      'a_clipPoint'
     )
 
-    const sixProjectedGeoOtherPoints = this.lineLayers
+    const clipSixOtherPoints = this.lineLayers
       .reduce(
         (accumulator: Line[], lineLayer) =>
           accumulator.concat(lineLayer.projectedGeoLines),
@@ -499,15 +491,16 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
         projectedGeoLine[0]
       ])
       .flat()
+      .map((point) => applyTransform(projectedGeoToClipTransform, point))
     createBuffer(
       gl,
       program,
-      new Float32Array(sixProjectedGeoOtherPoints.flat()),
+      new Float32Array(clipSixOtherPoints.flat()),
       2,
-      'a_projectedGeoOtherPoint'
+      'a_clipOtherPoint'
     )
 
-    const sixProjectedGeoPreviousPoints = this.lineLayers
+    const clipSixPreviousPoints = this.lineLayers
       .reduce(
         (accumulator: Line[], lineLayer) =>
           accumulator.concat(
@@ -524,15 +517,16 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
         projectedGeoLine[1]
       ])
       .flat()
+      .map((point) => applyTransform(projectedGeoToClipTransform, point))
     createBuffer(
       gl,
       program,
-      new Float32Array(sixProjectedGeoPreviousPoints.flat()),
+      new Float32Array(clipSixPreviousPoints.flat()),
       2,
-      'a_projectedGeoPreviousPoint'
+      'a_clipPreviousPoint'
     )
 
-    const sixProjectedGeoPreviousOtherPoints = this.lineLayers
+    const clipSixPreviousOtherPoints = this.lineLayers
       .reduce(
         (accumulator: Line[], lineLayer) =>
           accumulator.concat(
@@ -549,12 +543,13 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
         projectedGeoLine[0]
       ])
       .flat()
+      .map((point) => applyTransform(projectedGeoToClipTransform, point))
     createBuffer(
       gl,
       program,
-      new Float32Array(sixProjectedGeoPreviousOtherPoints.flat()),
+      new Float32Array(clipSixPreviousOtherPoints.flat()),
       2,
-      'a_projectedGeoPreviousOtherPoint'
+      'a_clipPreviousOtherPoint'
     )
 
     const sixIsOtherPoints = this.lineLayers.reduce(
@@ -669,7 +664,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
   }
 
-  private updateVertexBuffersPoints() {
+  private updateVertexBuffersPoints(projectedGeoToClipTransform: Transform) {
     if (!this.pointsVao) {
       return
     }
@@ -680,32 +675,37 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     this.setPointLayers()
 
-    const projectedGeoPoints = this.pointLayers.reduce(
-      (accumulator: Point[], pointLayer) =>
-        accumulator.concat(pointLayer.projectedGeoPoints),
-      []
-    )
+    const clipPoints = this.pointLayers
+      .reduce(
+        (accumulator: Point[], pointLayer) =>
+          accumulator.concat(pointLayer.projectedGeoPoints),
+        []
+      )
+      .map((point) => applyTransform(projectedGeoToClipTransform, point))
     createBuffer(
       gl,
       program,
-      new Float32Array(projectedGeoPoints.flat()),
+      new Float32Array(clipPoints.flat()),
       2,
-      'a_projectedGeoPoint'
+      'a_clipPoint'
     )
 
-    const projectedGeoPreviousPoints = this.pointLayers.reduce(
-      (accumulator: Point[], pointLayer) =>
-        accumulator.concat(
-          pointLayer.projectedGeoPreviousPoints || pointLayer.projectedGeoPoints
-        ),
-      []
-    )
+    const clipPreviousPoints = this.pointLayers
+      .reduce(
+        (accumulator: Point[], pointLayer) =>
+          accumulator.concat(
+            pointLayer.projectedGeoPreviousPoints ||
+              pointLayer.projectedGeoPoints
+          ),
+        []
+      )
+      .map((point) => applyTransform(projectedGeoToClipTransform, point))
     createBuffer(
       gl,
       program,
-      new Float32Array(projectedGeoPreviousPoints.flat()),
+      new Float32Array(clipPreviousPoints.flat()),
       2,
-      'a_projectedGeoPreviousPoint'
+      'a_clipPreviousPoint'
     )
 
     const viewportSizes = this.pointLayers.reduce(
