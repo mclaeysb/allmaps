@@ -136,6 +136,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null = null
   offscreenTexture: WebGLTexture | null = null
 
+  offscreenTextureDrawn = false
+
   private throttledUpdateTextures: DebouncedFunc<typeof this.updateTextures>
 
   /**
@@ -913,47 +915,48 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     // Offscreen texture
 
-    gl.bindTexture(gl.TEXTURE_2D, this.offscreenTexture)
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      this.parsedImage.width,
-      this.parsedImage.height,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      null
-    )
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    if (!this.offscreenTextureDrawn) {
+      gl.bindTexture(gl.TEXTURE_2D, this.offscreenTexture)
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        this.parsedImage.width,
+        this.parsedImage.height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null
+      )
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-    const offscreenFrameBuffer = gl.createFramebuffer()
-    gl.bindFramebuffer(gl.FRAMEBUFFER, offscreenFrameBuffer)
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      gl.COLOR_ATTACHMENT0,
-      gl.TEXTURE_2D,
-      this.offscreenTexture,
-      0
-    )
+      // TODO: should be able to uncomment this and the mask check in the map shader
+      // const offscreenFrameBuffer = gl.createFramebuffer()
+      // gl.bindFramebuffer(gl.FRAMEBUFFER, offscreenFrameBuffer)
+      // gl.framebufferTexture2D(
+      //   gl.FRAMEBUFFER,
+      //   gl.COLOR_ATTACHMENT0,
+      //   gl.TEXTURE_2D,
+      //   this.offscreenTexture,
+      //   0
+      // )
 
-    // if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-    //   console.error('Framebuffer is not complete')
-    // }
+      gl.viewport(0, 0, this.parsedImage.width, this.parsedImage.height)
+      gl.clearColor(0.0, 0.0, 0.0, 0.0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
 
-    gl.viewport(0, 0, this.parsedImage.width, this.parsedImage.height)
-    gl.clearColor(0.0, 0.0, 0.0, 0.0)
-    gl.clear(gl.COLOR_BUFFER_BIT)
+      // Bind mask shader program and vao, then draw mask
+      gl.useProgram(this.mapStencilsProgram)
+      gl.bindVertexArray(this.mapStencilsVao)
+      gl.drawArrays(gl.TRIANGLES, 0, this.resourceMaskTrianglePoints.length)
 
-    // Bind mask shader program and vao, then draw mask
-    gl.useProgram(this.mapStencilsProgram)
-    gl.bindVertexArray(this.mapStencilsVao)
-    gl.drawArrays(gl.TRIANGLES, 0, this.resourceMaskTrianglePoints.length)
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      this.offscreenTextureDrawn = true
+    }
   }
 
   private updateCachedTilesForTextures() {

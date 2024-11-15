@@ -47,12 +47,12 @@ in vec4 v_trianglePointBarycentric;
 out vec4 color;
 
 void main() {
-  // float maskValue = texture(u_offscreenTexture, v_resourceTrianglePoint).r; // Sample red channel of the mask
-  vec4 maskValue = texelFetch(u_offscreenTexture, ivec2(v_resourceTrianglePoint), 0);
+  // TODO: should be able to uncomment this and the offscreen texture creation in the webgl2warpedmap code
+  // vec4 maskValue = texelFetch(u_offscreenTexture, ivec2(v_resourceTrianglePoint), 0);
 
-  if (maskValue.r < 0.5) { // Outside the mask
-    discard;
-  }
+  // if (maskValue.r < 0.5) { // Outside the mask
+  //   discard;
+  // }
 
   float resourceTrianglePointX = v_resourceTrianglePoint.x;
   float resourceTrianglePointY = v_resourceTrianglePoint.y;
