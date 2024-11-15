@@ -28,8 +28,9 @@ uniform int u_distortionOptionsdistortionMeasure;
 uniform int u_currentScaleFactor;
 
 uniform lowp sampler2DArray u_cachedTilesTextureArray;
-uniform isampler2D u_cachedTilesResourcePositionsAndDimensionsTexture;
 uniform isampler2D u_cachedTilesScaleFactorsTexture;
+uniform isampler2D u_cachedTilesResourcePositionsAndDimensionsTexture;
+uniform sampler2D u_offscreenTexture;
 
 uniform vec4 u_colorDistortion00;
 uniform vec4 u_colorDistortion01;
@@ -46,6 +47,13 @@ in vec4 v_trianglePointBarycentric;
 out vec4 color;
 
 void main() {
+  // float maskValue = texture(u_offscreenTexture, v_resourceTrianglePoint).r; // Sample red channel of the mask
+  vec4 maskValue = texelFetch(u_offscreenTexture, ivec2(v_resourceTrianglePoint), 0);
+
+  if (maskValue.r < 0.5) { // Outside the mask
+    discard;
+  }
+
   float resourceTrianglePointX = v_resourceTrianglePoint.x;
   float resourceTrianglePointY = v_resourceTrianglePoint.y;
 
