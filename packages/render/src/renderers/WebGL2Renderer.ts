@@ -815,26 +815,6 @@ export default class WebGL2Renderer
 
       const gl = this.gl
 
-      gl.bindFramebuffer(gl.FRAMEBUFFER, warpedMap.offscreenFrameBuffer)
-      gl.viewport(
-        0,
-        0,
-        warpedMap.parsedImage.width,
-        warpedMap.parsedImage.height
-      )
-      gl.clearColor(0.0, 0.0, 0.0, 0.0)
-      gl.clear(gl.COLOR_BUFFER_BIT)
-
-      // Bind mask shader program and vao, then draw mask
-      gl.useProgram(this.mapStencilsProgram)
-      gl.bindVertexArray(warpedMap.mapStencilsVao)
-      gl.drawArrays(
-        gl.TRIANGLES,
-        0,
-        warpedMap.resourceMaskTrianglePoints.length
-      )
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-
       // TODO: check next lines
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
       // gl.clearColor(0.0, 0.0, 0.0, 0.0)

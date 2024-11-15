@@ -136,8 +136,6 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null = null
   offscreenTexture: WebGLTexture | null = null
 
-  offscreenFrameBuffer: WebGLFramebuffer | null = null
-
   private throttledUpdateTextures: DebouncedFunc<typeof this.updateTextures>
 
   /**
@@ -932,8 +930,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-    this.offscreenFrameBuffer = gl.createFramebuffer()
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.offscreenFrameBuffer)
+    const offscreenFrameBuffer = gl.createFramebuffer()
+    gl.bindFramebuffer(gl.FRAMEBUFFER, offscreenFrameBuffer)
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT0,
@@ -945,6 +943,15 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     // if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
     //   console.error('Framebuffer is not complete')
     // }
+
+    gl.viewport(0, 0, this.parsedImage.width, this.parsedImage.height)
+    gl.clearColor(0.0, 0.0, 0.0, 0.0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    // Bind mask shader program and vao, then draw mask
+    gl.useProgram(this.mapStencilsProgram)
+    gl.bindVertexArray(this.mapStencilsVao)
+    gl.drawArrays(gl.TRIANGLES, 0, this.resourceMaskTrianglePoints.length)
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   }
