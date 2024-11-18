@@ -65,6 +65,7 @@ export default abstract class BaseRenderer<
   warpedMapList: WarpedMapList<W>
   tileCache: TileCache<D>
 
+  mapsInPreviousViewport: Set<string> = new Set()
   mapsInViewport: Set<string> = new Set()
   mapsWithRequestedTilesForViewport: Set<string> = new Set()
   protected viewport: Viewport | undefined
@@ -433,7 +434,10 @@ export default abstract class BaseRenderer<
     return overviewFetchableTiles
   }
 
-  protected updateMapsForViewport(tiles: FetchableTile[]) {
+  protected updateMapsForViewport(tiles: FetchableTile[]): {
+    mapsEnteringViewport: string[]
+    mapsLeavingViewport: string[]
+  } {
     // Sort to process by zIndex later
     this.mapsWithRequestedTilesForViewport = new Set(
       tiles
@@ -452,30 +456,38 @@ export default abstract class BaseRenderer<
         })
     )
 
+    this.mapsInPreviousViewport = this.mapsInViewport
     this.mapsInViewport = this.findMapsInViewport()
 
     // TODO: handle everything as Set() once JS supports filter on sets.
     // And speed up with anonymous functions with the Set.prototype.difference() once broadly supported
-    const oldMapsInViewportAsArray = Array.from(this.mapsInViewport)
-    const newMapsInViewportAsArray = Array.from(this.mapsInViewport)
-
-    const enteringMapsInViewport = newMapsInViewportAsArray.filter(
-      (mapId) => !oldMapsInViewportAsArray.includes(mapId)
+    const mapsInPreviousViewportAsArray = Array.from(
+      this.mapsInPreviousViewport
     )
-    const leavingMapsInViewport = oldMapsInViewportAsArray.filter(
-      (mapId) => !newMapsInViewportAsArray.includes(mapId)
+    const mapsInViewportAsArray = Array.from(this.mapsInViewport)
+
+    const mapsEnteringViewport = mapsInViewportAsArray.filter(
+      (mapId) => !mapsInPreviousViewportAsArray.includes(mapId)
+    )
+    const mapsLeavingViewport = mapsInPreviousViewportAsArray.filter(
+      (mapId) => !mapsInViewportAsArray.includes(mapId)
     )
 
-    for (const mapId of enteringMapsInViewport) {
+    for (const mapId of mapsEnteringViewport) {
       this.dispatchEvent(
         new WarpedMapEvent(WarpedMapEventType.WARPEDMAPENTER, mapId)
       )
     }
-    for (const mapId of leavingMapsInViewport) {
+    for (const mapId of mapsLeavingViewport) {
       this.clearMap(mapId)
       this.dispatchEvent(
         new WarpedMapEvent(WarpedMapEventType.WARPEDMAPLEAVE, mapId)
       )
+    }
+
+    return {
+      mapsEnteringViewport,
+      mapsLeavingViewport
     }
   }
 

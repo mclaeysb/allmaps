@@ -36,9 +36,8 @@ import pointsFragmentShaderSource from '../shaders/points/fragment-shader.glsl'
 
 import type { DebouncedFunc } from 'lodash-es'
 
-import type { Transform } from '@allmaps/types'
-
 import type Viewport from '../viewport/Viewport.js'
+import type FetchableTile from '../tilecache/FetchableTile.js'
 
 import type {
   Renderer,
@@ -691,9 +690,31 @@ export default class WebGL2Renderer
     // https://stackoverflow.com/questions/14970206/deleting-webgl-contexts
   }
 
+  protected updateMapsForViewport(tiles: FetchableTile[]): {
+    mapsEnteringViewport: string[]
+    mapsLeavingViewport: string[]
+  } {
+    const { mapsEnteringViewport, mapsLeavingViewport } =
+      super.updateMapsForViewport(tiles)
+
+    for (const mapId of mapsEnteringViewport) {
+      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
+      if (!warpedMap) {
+        break
+      }
+
+      if (!this.viewport) {
+        break
+      }
+
+      warpedMap.updateVertexBuffers(this.viewport.projectedGeoToClipTransform)
+    }
+
+    return { mapsEnteringViewport, mapsLeavingViewport }
+  }
+
   private prepareRenderInternal(): void {
     this.requestFetchableTiles()
-    this.updateVertexBuffers()
   }
 
   protected shouldRequestFetchableTiles(): boolean {
@@ -744,38 +765,6 @@ export default class WebGL2Renderer
   protected shouldAnticipateInteraction() {
     // Get a map's overview tiles only for this render
     return true
-  }
-
-  private updateVertexBuffers() {
-    if (!this.viewport) {
-      return
-    }
-
-    for (const mapId of this.mapsWithRequestedTilesForViewport) {
-      const warpedMap = this.warpedMapList.getWarpedMap(mapId)
-      if (!warpedMap) {
-        break
-      }
-
-      if (warpedMap.shouldUpdateBuffers) {
-        console.log('update vertex buffers')
-
-        // renderTransform is the product of:
-        // - the viewport's projectedGeoToClipTransform (projected geo coordinates -> clip coordinates)
-        // - the saved invertedRenderTransform (projected clip coordinates -> geo coordinates)
-        // since updateVertexBuffers ('where to draw triangles') run with possibly a different Viewport then renderInternal ('drawing the triangles'), a difference caused by throttling, there needs to be an adjustment.
-        // this adjustment is minimal: indeed, since invertedRenderTransform is set as the inverse of the viewport's projectedGeoToClipTransform in updateVertexBuffers()
-        // this renderTransform is almost the identity transform [1, 0, 0, 1, 0, 0].
-
-        warpedMap.invertedRenderTransform = invertTransform(
-          this.viewport.projectedGeoToClipTransform
-        )
-
-        warpedMap.updateVertexBuffers(this.viewport.projectedGeoToClipTransform)
-
-        warpedMap.shouldUpdateBuffers = false
-      }
-    }
   }
 
   private renderInternal(): void {
@@ -1297,7 +1286,15 @@ export default class WebGL2Renderer
     )
   }
 
-  private startTransformationTransition() {
+  private startTransformationTransition(mapIds: string[]) {
+    for (const warpedMap of this.warpedMapList.getWarpedMaps(mapIds)) {
+      if (!this.viewport) {
+        break
+      }
+
+      warpedMap.updateVertexBuffers(this.viewport.projectedGeoToClipTransform)
+    }
+
     if (this.lastAnimationFrameRequestId !== undefined) {
       cancelAnimationFrame(this.lastAnimationFrameRequestId)
     }
@@ -1305,16 +1302,19 @@ export default class WebGL2Renderer
     this.animating = true
     this.transformationTransitionStart = undefined
     this.lastAnimationFrameRequestId = requestAnimationFrame(
-      this.transformationTransitionFrame.bind(this)
+      ((now: number) => this.transformationTransitionFrame(now, mapIds)).bind(
+        this
+      )
     )
   }
 
-  private transformationTransitionFrame(now: number) {
+  private transformationTransitionFrame(now: number, mapIds: string[]) {
     if (!this.transformationTransitionStart) {
       this.transformationTransitionStart = now
     }
 
     if (now - this.transformationTransitionStart < ANIMATION_DURATION) {
+      // Animation is ongoing
       // animationProgress goes from 0 to 1 throughout animation
       this.animationProgress =
         (now - this.transformationTransitionStart) / ANIMATION_DURATION
@@ -1322,13 +1322,21 @@ export default class WebGL2Renderer
       this.renderInternal()
 
       this.lastAnimationFrameRequestId = requestAnimationFrame(
-        this.transformationTransitionFrame.bind(this)
+        ((now: number) => this.transformationTransitionFrame(now, mapIds)).bind(
+          this
+        )
       )
     } else {
-      for (const warpedMap of this.warpedMapList.getWarpedMaps()) {
+      // Animation ended
+      for (const warpedMap of this.warpedMapList.getWarpedMaps(mapIds)) {
         warpedMap.resetPrevious()
+
+        if (!this.viewport) {
+          break
+        }
+
+        warpedMap.updateVertexBuffers(this.viewport.projectedGeoToClipTransform)
       }
-      this.updateVertexBuffers()
 
       this.animating = false
       this.animationProgress = 0
@@ -1413,15 +1421,15 @@ export default class WebGL2Renderer
 
   protected transformationChanged(event: Event) {
     if (event instanceof WarpedMapEvent) {
-      this.updateVertexBuffers()
-      this.startTransformationTransition() // TODO: pass mapIds here reset only those mapIds
+      const mapIds = event.data as string[]
+      this.startTransformationTransition(mapIds)
     }
   }
 
   protected distortionChanged(event: Event) {
     if (event instanceof WarpedMapEvent) {
-      this.updateVertexBuffers()
-      this.startTransformationTransition() // TODO: pass mapIds here reset only those mapIds
+      const mapIds = event.data as string[]
+      this.startTransformationTransition(mapIds)
     }
   }
 

@@ -19,7 +19,11 @@ import {
 
 import TriangulatedWarpedMap from './TriangulatedWarpedMap.js'
 import { WarpedMapEvent, WarpedMapEventType } from '../shared/events.js'
-import { applyTransform, createTransform } from '../shared/matrix.js'
+import {
+  applyTransform,
+  createTransform,
+  invertTransform
+} from '../shared/matrix.js'
 import { createBuffer } from '../shared/webgl2.js'
 import { getTilesAtOtherScaleFactors, tileKey } from '../shared/tiles.js'
 
@@ -135,6 +139,13 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null = null
   cachedTilesScaleFactorsTexture: WebGLTexture | null = null
 
+  // About renderTransform and InvertedRenderTransform:
+  // renderTransform is the product of:
+  // - the viewport's projectedGeoToClipTransform (projected geo coordinates -> clip coordinates)
+  // - the saved invertedRenderTransform (projected clip coordinates -> geo coordinates)
+  // since updateVertexBuffers ('where to draw triangles') run with possibly a different Viewport then renderInternal ('drawing the triangles'), a difference caused by throttling, there needs to be an adjustment.
+  // this adjustment is minimal: indeed, since invertedRenderTransform is set as the inverse of the viewport's projectedGeoToClipTransform in updateVertexBuffers()
+  // this renderTransform is almost the identity transform [1, 0, 0, 1, 0, 0].
   invertedRenderTransform: Transform
 
   private throttledUpdateTextures: DebouncedFunc<typeof this.updateTextures>
@@ -207,6 +218,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
    * @param {Transform} projectedGeoToClipTransform - Transform from projected geo coordinates to webgl2 coordinates in the [-1, 1] range. Equivalent to OpenLayers' projectionTransform.
    */
   updateVertexBuffers(projectedGeoToClipTransform: Transform) {
+    this.invertedRenderTransform = invertTransform(projectedGeoToClipTransform)
+
     if (RENDER_MAPS) {
       this.updateVertexBuffersMapStencils(projectedGeoToClipTransform)
       this.updateVertexBuffersMaps(projectedGeoToClipTransform)
