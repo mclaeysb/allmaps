@@ -83,6 +83,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   previousTrianglePointsDistortion: number[] = []
   trianglePointsDistortion: number[] = []
 
+  shouldUpdateBuffers = true
+
   /**
    * Creates an instance of a TriangulatedWarpedMap.
    *
@@ -141,6 +143,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     this.projectedPreviousGcpGrid = this.projectedGcpGrid
     this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     this.previousTrianglePointsDistortion = this.trianglePointsDistortion
+
+    this.shouldUpdateBuffers = true
   }
 
   /**
@@ -178,6 +182,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
         }
       )
     }
+
+    this.shouldUpdateBuffers = true
   }
 
   /**
@@ -188,6 +194,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     if (!this.resourceMaskTrianglePointIndices) {
       return
     }
+
+    this.shouldUpdateBuffers = true
 
     this.resourceMaskTrianglePointIndices = earcut(
       this.resourceFinerMask.flat()
@@ -291,7 +299,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
       return
     }
-    // TODO: Set 'shouldUpdateVertexBuffers' which is checked when updating buffer
+
+    this.shouldUpdateBuffers = true
 
     this.resourceTrianglePoints = getTypedGridTriangles(this.projectedGcpGrid)
       .flat(1)
@@ -321,6 +330,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
       return
     }
+
+    this.shouldUpdateBuffers = true
 
     this.projectedGcpGrid = mapTypedGrid(
       this.projectedGcpGrid,

@@ -19,7 +19,6 @@ import {
   WarpedMapTileEventDetail
 } from '../shared/events.js'
 import {
-  createTransform,
   multiplyTransform,
   invertTransform,
   transformToMatrix4
@@ -94,8 +93,6 @@ export default class WebGL2Renderer
   opacity: number = DEFAULT_OPACITY
   saturation: number = DEFAULT_SATURATION
   renderOptions: RenderOptions = {}
-
-  invertedRenderTransform: Transform
 
   lastAnimationFrameRequestId: number | undefined
   animating = false
@@ -211,8 +208,6 @@ export default class WebGL2Renderer
     gl.deleteShader(mapsFragmentShader)
 
     gl.disable(gl.DEPTH_TEST)
-
-    this.invertedRenderTransform = createTransform()
 
     this.addEventListeners()
 
@@ -756,17 +751,30 @@ export default class WebGL2Renderer
       return
     }
 
-    this.invertedRenderTransform = invertTransform(
-      this.viewport.projectedGeoToClipTransform
-    )
-
     for (const mapId of this.mapsWithRequestedTilesForViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
       if (!warpedMap) {
         break
       }
 
-      warpedMap.updateVertexBuffers(this.viewport.projectedGeoToClipTransform)
+      if (warpedMap.shouldUpdateBuffers) {
+        console.log('update vertex buffers')
+
+        // renderTransform is the product of:
+        // - the viewport's projectedGeoToClipTransform (projected geo coordinates -> clip coordinates)
+        // - the saved invertedRenderTransform (projected clip coordinates -> geo coordinates)
+        // since updateVertexBuffers ('where to draw triangles') run with possibly a different Viewport then renderInternal ('drawing the triangles'), a difference caused by throttling, there needs to be an adjustment.
+        // this adjustment is minimal: indeed, since invertedRenderTransform is set as the inverse of the viewport's projectedGeoToClipTransform in updateVertexBuffers()
+        // this renderTransform is almost the identity transform [1, 0, 0, 1, 0, 0].
+
+        warpedMap.invertedRenderTransform = invertTransform(
+          this.viewport.projectedGeoToClipTransform
+        )
+
+        warpedMap.updateVertexBuffers(this.viewport.projectedGeoToClipTransform)
+
+        warpedMap.shouldUpdateBuffers = false
+      }
     }
   }
 
@@ -775,36 +783,24 @@ export default class WebGL2Renderer
       return
     }
 
-    // renderTransform is the product of:
-    // - the viewport's projectedGeoToClipTransform (projected geo coordinates -> clip coordinates)
-    // - the saved invertedRenderTransform (projected clip coordinates -> geo coordinates)
-    // since updateVertexBuffers ('where to draw triangles') run with possibly a different Viewport then renderInternal ('drawing the triangles'), a difference caused by throttling, there needs to be an adjustment.
-    // this adjustment is minimal: indeed, since invertedRenderTransform is set as the inverse of the viewport's projectedGeoToClipTransform in updateVertexBuffers()
-    // this renderTransform is almost the identity transform [1, 0, 0, 1, 0, 0].
-
-    const renderTransform = multiplyTransform(
-      this.viewport.projectedGeoToClipTransform,
-      this.invertedRenderTransform
-    )
-
     const gl = this.gl
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 
-    this.renderMapsInternal(renderTransform)
-    this.renderLinesInternal(renderTransform)
-    this.renderPointsInternal(renderTransform)
+    this.renderMapsInternal()
+    this.renderLinesInternal()
+    this.renderPointsInternal()
   }
 
-  private renderMapsInternal(renderTransform: Transform): void {
+  private renderMapsInternal(): void {
     if (!this.viewport) {
       return
     }
 
-    this.setMapStencilProgramUniforms(renderTransform)
+    this.setMapStencilProgramUniforms()
 
-    this.setMapsProgramUniforms(renderTransform)
+    this.setMapsProgramUniforms()
 
     for (const mapId of this.mapsWithRequestedTilesForViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
@@ -812,6 +808,8 @@ export default class WebGL2Renderer
       if (!warpedMap) {
         continue
       }
+
+      this.setMapStencilProgramMapUniforms(warpedMap)
 
       this.enableMapStencilMask(warpedMap)
 
@@ -832,8 +830,8 @@ export default class WebGL2Renderer
     }
   }
 
-  private renderLinesInternal(renderTransform: Transform): void {
-    this.setLinesProgramUniforms(renderTransform)
+  private renderLinesInternal(): void {
+    this.setLinesProgramUniforms()
 
     for (const mapId of this.mapsWithRequestedTilesForViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
@@ -842,7 +840,7 @@ export default class WebGL2Renderer
         continue
       }
 
-      // (no lines program line uniforms)
+      this.setLinesProgramMapUniforms(warpedMap)
 
       // Draw lines for each map
       const count =
@@ -858,8 +856,8 @@ export default class WebGL2Renderer
     }
   }
 
-  private renderPointsInternal(renderTransform: Transform): void {
-    this.setPointsProgramUniforms(renderTransform)
+  private renderPointsInternal(): void {
+    this.setPointsProgramUniforms()
 
     for (const mapId of this.mapsWithRequestedTilesForViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
@@ -868,7 +866,7 @@ export default class WebGL2Renderer
         continue
       }
 
-      // (no points program point uniforms)
+      this.setPointsProgramMapUniforms(warpedMap)
 
       // Draw points for each map
       const count = warpedMap.pointLayers.reduce(
@@ -883,21 +881,10 @@ export default class WebGL2Renderer
     }
   }
 
-  private setMapStencilProgramUniforms(renderTransform: Transform) {
+  private setMapStencilProgramUniforms() {
     const program = this.mapStencilsProgram
     const gl = this.gl
     gl.useProgram(program)
-
-    // Render Transform
-    const renderTransformLocation = gl.getUniformLocation(
-      program,
-      'u_renderTransform'
-    )
-    gl.uniformMatrix4fv(
-      renderTransformLocation,
-      false,
-      transformToMatrix4(renderTransform)
-    )
 
     // Animation progress
     const animationProgressLocation = gl.getUniformLocation(
@@ -907,7 +894,7 @@ export default class WebGL2Renderer
     gl.uniform1f(animationProgressLocation, this.animationProgress)
   }
 
-  private setMapsProgramUniforms(renderTransform: Transform) {
+  private setMapsProgramUniforms() {
     const program = this.mapsProgram
     const gl = this.gl
     gl.useProgram(program)
@@ -915,17 +902,6 @@ export default class WebGL2Renderer
     // Debug
     const debugLocation = gl.getUniformLocation(program, 'u_debug')
     gl.uniform1f(debugLocation, DEBUG ? 1 : 0)
-
-    // Render transform
-    const renderTransformLocation = gl.getUniformLocation(
-      program,
-      'u_renderTransform'
-    )
-    gl.uniformMatrix4fv(
-      renderTransformLocation,
-      false,
-      transformToMatrix4(renderTransform)
-    )
 
     // Animation progress
     const animationProgressLocation = gl.getUniformLocation(
@@ -1011,6 +987,31 @@ export default class WebGL2Renderer
   private disableMapStencil() {
     const gl = this.gl
     gl.disable(gl.STENCIL_TEST)
+  }
+
+  private setMapStencilProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
+    if (!this.viewport) {
+      return
+    }
+
+    const gl = this.gl
+    const program = this.mapStencilsProgram
+    gl.useProgram(program)
+
+    // Render Transform
+    const renderTransform = multiplyTransform(
+      this.viewport.projectedGeoToClipTransform,
+      warpedMap.invertedRenderTransform
+    )
+    const renderTransformLocation = gl.getUniformLocation(
+      program,
+      'u_renderTransform'
+    )
+    gl.uniformMatrix4fv(
+      renderTransformLocation,
+      false,
+      transformToMatrix4(renderTransform)
+    )
   }
 
   private setMapsProgramRenderOptionsUniforms(
@@ -1101,9 +1102,28 @@ export default class WebGL2Renderer
   }
 
   private setMapProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
+    if (!this.viewport) {
+      return
+    }
+
     const gl = this.gl
     const program = this.mapsProgram
     gl.useProgram(program)
+
+    // Render Transform
+    const renderTransform = multiplyTransform(
+      this.viewport.projectedGeoToClipTransform,
+      warpedMap.invertedRenderTransform
+    )
+    const renderTransformLocation = gl.getUniformLocation(
+      program,
+      'u_renderTransform'
+    )
+    gl.uniformMatrix4fv(
+      renderTransformLocation,
+      false,
+      transformToMatrix4(renderTransform)
+    )
 
     // Opacity
     const opacityLocation = gl.getUniformLocation(program, 'u_opacity')
@@ -1171,7 +1191,7 @@ export default class WebGL2Renderer
     gl.bindTexture(gl.TEXTURE_2D, warpedMap.cachedTilesScaleFactorsTexture)
   }
 
-  private setLinesProgramUniforms(renderTransform: Transform) {
+  private setLinesProgramUniforms() {
     if (!this.viewport) {
       return
     }
@@ -1179,17 +1199,6 @@ export default class WebGL2Renderer
     const gl = this.gl
     const program = this.linesProgram
     gl.useProgram(program)
-
-    // Render Transform
-    const renderTransformLocation = gl.getUniformLocation(
-      program,
-      'u_renderTransform'
-    )
-    gl.uniformMatrix4fv(
-      renderTransformLocation,
-      false,
-      transformToMatrix4(renderTransform)
-    )
 
     // ViewportToClip Transform
     const viewportToClipTransformLocation = gl.getUniformLocation(
@@ -1221,16 +1230,20 @@ export default class WebGL2Renderer
     gl.uniform1f(animationProgressLocation, this.animationProgress)
   }
 
-  private setPointsProgramUniforms(renderTransform: Transform) {
+  private setLinesProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
     if (!this.viewport) {
       return
     }
 
     const gl = this.gl
-    const program = this.pointsProgram
+    const program = this.linesProgram
     gl.useProgram(program)
 
     // Render Transform
+    const renderTransform = multiplyTransform(
+      this.viewport.projectedGeoToClipTransform,
+      warpedMap.invertedRenderTransform
+    )
     const renderTransformLocation = gl.getUniformLocation(
       program,
       'u_renderTransform'
@@ -1240,6 +1253,16 @@ export default class WebGL2Renderer
       false,
       transformToMatrix4(renderTransform)
     )
+  }
+
+  private setPointsProgramUniforms() {
+    if (!this.viewport) {
+      return
+    }
+
+    const gl = this.gl
+    const program = this.pointsProgram
+    gl.useProgram(program)
 
     // Animation progress
     const animationProgressLocation = gl.getUniformLocation(
@@ -1247,6 +1270,31 @@ export default class WebGL2Renderer
       'u_animationProgress'
     )
     gl.uniform1f(animationProgressLocation, this.animationProgress)
+  }
+
+  private setPointsProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
+    if (!this.viewport) {
+      return
+    }
+
+    const gl = this.gl
+    const program = this.pointsProgram
+    gl.useProgram(program)
+
+    // Render Transform
+    const renderTransform = multiplyTransform(
+      this.viewport.projectedGeoToClipTransform,
+      warpedMap.invertedRenderTransform
+    )
+    const renderTransformLocation = gl.getUniformLocation(
+      program,
+      'u_renderTransform'
+    )
+    gl.uniformMatrix4fv(
+      renderTransformLocation,
+      false,
+      transformToMatrix4(renderTransform)
+    )
   }
 
   private startTransformationTransition() {

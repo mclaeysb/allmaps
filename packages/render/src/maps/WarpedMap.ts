@@ -40,8 +40,8 @@ import type FetchableTile from '../tilecache/FetchableTile.js'
 
 // TODO: consider to make the default options more precise
 const TRANSFORMER_OPTIONS = {
-  maxOffsetRatio: 0.05,
-  maxDepth: 2,
+  maxOffsetRatio: 0.01,
+  maxDepth: 5,
   differentHandedness: true
 } as Partial<TransformOptions>
 

@@ -19,7 +19,7 @@ import {
 
 import TriangulatedWarpedMap from './TriangulatedWarpedMap.js'
 import { WarpedMapEvent, WarpedMapEventType } from '../shared/events.js'
-import { applyTransform } from '../shared/matrix.js'
+import { applyTransform, createTransform } from '../shared/matrix.js'
 import { createBuffer } from '../shared/webgl2.js'
 import { getTilesAtOtherScaleFactors, tileKey } from '../shared/tiles.js'
 
@@ -126,9 +126,6 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesByTileUrl: Map<string, CachedTile<ImageBitmap>> = new Map()
   cachedTilesForTexture: CachedTile<ImageBitmap>[] = []
   previousCachedTilesForTexture: CachedTile<ImageBitmap>[] = []
-  textureWidth: number = 0
-  textureHeight: number = 0
-  textureDepth: number = 0
 
   opacity: number = DEFAULT_OPACITY
   saturation: number = DEFAULT_SATURATION
@@ -137,6 +134,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesTextureArray: WebGLTexture | null = null
   cachedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null = null
   cachedTilesScaleFactorsTexture: WebGLTexture | null = null
+
+  invertedRenderTransform: Transform
 
   private throttledUpdateTextures: DebouncedFunc<typeof this.updateTextures>
 
@@ -170,6 +169,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       linesProgram,
       pointsProgram
     )
+
+    this.invertedRenderTransform = createTransform()
 
     this.throttledUpdateTextures = throttle(
       this.updateTextures.bind(this),
@@ -207,6 +208,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
    */
   updateVertexBuffers(projectedGeoToClipTransform: Transform) {
     if (RENDER_MAPS) {
+      this.updateVertexBuffersMapStencils(projectedGeoToClipTransform)
       this.updateVertexBuffersMaps(projectedGeoToClipTransform)
     }
     if (RENDER_LINES) {
@@ -325,17 +327,15 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     ]
   }
 
-  private updateVertexBuffersMaps(projectedGeoToClipTransform: Transform) {
-    if (!this.mapsVao || !this.mapStencilsVao) {
+  private updateVertexBuffersMapStencils(
+    projectedGeoToClipTransform: Transform
+  ) {
+    if (!this.mapStencilsVao) {
       return
     }
 
     const gl = this.gl
-    let program
-
-    // Map Stencils
-
-    program = this.mapStencilsProgram
+    const program = this.mapStencilsProgram
     gl.bindVertexArray(this.mapStencilsVao)
 
     // Resource triangle points
@@ -363,10 +363,15 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       2,
       'a_clipPreviousMaskTrianglePoint'
     )
+  }
 
-    // Map
+  private updateVertexBuffersMaps(projectedGeoToClipTransform: Transform) {
+    if (!this.mapsVao) {
+      return
+    }
 
-    program = this.mapsProgram
+    const gl = this.gl
+    const program = this.mapsProgram
     gl.bindVertexArray(this.mapsVao)
 
     // Resource triangle points
