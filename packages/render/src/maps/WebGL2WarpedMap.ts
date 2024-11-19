@@ -940,22 +940,22 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
   private updateCachedTilesForTextures() {
     // Select tiles form tileCache that should be included in the texture
-    const currentCachedTiles = []
-    const currentCachedTilesAtOtherScaleFactors = []
-    const currentOverviewCachedTiles = []
+    const cachedTiles = []
+    const cachedTilesAtOtherScaleFactors = []
+    const overviewCachedTiles = []
 
     // Try to include tiles that were requested
     for (const fetchableTile of this.fetchableTilesForViewport) {
       const cachedTile = this.cachedTilesByTileUrl.get(fetchableTile.tileUrl)
       if (cachedTile) {
         // If they are available, include them
-        currentCachedTiles.push(cachedTile)
+        cachedTiles.push(cachedTile)
       } else {
         // If they are not available, include their parents or children if they are available
         for (const cachedTile of this.getCachedTilesAtOtherScaleFactors(
           fetchableTile.tile
         )) {
-          currentCachedTilesAtOtherScaleFactors.push(cachedTile)
+          cachedTilesAtOtherScaleFactors.push(cachedTile)
         }
       }
     }
@@ -965,25 +965,25 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       const cachedTile = this.cachedTilesByTileUrl.get(fetchableTile.tileUrl)
       if (cachedTile) {
         // If they are available, consider to include them
-        const currentTileZoolLevelTilesCount = this.tileZoomLevelForViewport
+        const tileZoolLevelTilesCount = this.tileZoomLevelForViewport
           ? this.tileZoomLevelForViewport.rows *
             this.tileZoomLevelForViewport.columns
           : undefined
         // If this map's cached tiles don't already cover the entire zoomlevel
         if (
-          currentCachedTiles.length == 0 ||
-          (currentTileZoolLevelTilesCount &&
-            currentCachedTiles.length < currentTileZoolLevelTilesCount)
+          cachedTiles.length == 0 ||
+          (tileZoolLevelTilesCount &&
+            cachedTiles.length < tileZoolLevelTilesCount)
         ) {
-          currentOverviewCachedTiles.push(cachedTile)
+          overviewCachedTiles.push(cachedTile)
         }
       }
     }
 
     let cachedTilesForTextures = [
-      ...currentCachedTiles,
-      ...currentCachedTilesAtOtherScaleFactors,
-      ...currentOverviewCachedTiles
+      ...cachedTiles,
+      ...cachedTilesAtOtherScaleFactors,
+      ...overviewCachedTiles
     ]
 
     // Making tiles unique by tileUrl

@@ -172,13 +172,13 @@ export default abstract class BaseRenderer<
         : 0
     )
 
-    // Reset current (overview) zoomlevels, resource viewport ring and fetchable tiles on maps
+    // For all maps, reset properties for the current viewport: the (overview) zoomlevels, resource viewport ring and fetchable tiles
     for (const warpedMap of this.warpedMapList.getWarpedMaps()) {
       warpedMap.resetForViewport()
     }
 
     // Get fetchable tiles for all maps in viewport with request buffer
-    // (and set current valies for all maps in viewport with prune buffer)
+    // (and set properties for the current viewport for all maps in viewport with prune buffer)
     for (const mapId of mapsInViewportForPrune) {
       fetchableTilesForViewport.push(
         ...this.getMapFetchableTilesForViewport(mapId, mapsInViewportForRequest)
@@ -186,7 +186,7 @@ export default abstract class BaseRenderer<
     }
 
     // Get overview fetchable tiles for all maps in viewport with overview buffer
-    // (and set current valies for all maps in viewport with prune buffer)
+    // (and set properties for the current viewport for all maps in viewport with prune buffer)
     if (this.shouldAnticipateInteraction()) {
       for (const mapId of mapsInViewportForOverviewPrune) {
         overviewFetchableTilesForViewport.push(
@@ -286,7 +286,7 @@ export default abstract class BaseRenderer<
       return []
     }
 
-    // Find TileZoomLevel for current viewport
+    // Find TileZoomLevel for the current viewport
     // Note the equivalence of the following two:
     // - warpedMap.getApproxResourceToCanvasScale(this.viewport)
     // - warpedMap.resourceToProjectedGeoScale * this.viewport.projectedGeoPerCanvasScale
@@ -324,7 +324,7 @@ export default abstract class BaseRenderer<
     warpedMap.setResourceViewportRingForViewport(resourceViewportRing)
 
     // If this map it ourside of the viewport with request buffer, stop here:
-    // in thise case we only ran this function to set the current variables
+    // in thise case we only ran this function to set the properties for the current viewport
     // so we can use them relyably while pruning
     if (!mapsInViewportForRequest.has(mapId)) {
       return []
@@ -401,13 +401,13 @@ export default abstract class BaseRenderer<
     warpedMap.setOverviewTileZoomLevelForViewport(overviewTileZoomLevel)
 
     // If this map it ourside of the viewport with overview buffer, stop here:
-    // in thise case we only ran this function to set the current variables
+    // in thise case we only ran this function to set the properties for the current viewport
     // so we can use them relyably while pruning
     if (!mapsInViewportForOverviewRequest.has(mapId)) {
       return []
     }
 
-    // If the overview tile zoomlevel scalefactor is the same or lower then the current tile zoom level scalefactor
+    // If the overview tile zoomlevel scalefactor is the same or lower then tile zoom level scalefactor for the current viewport
     // then this is not really an 'overview' tilezoomlevel, so don't proceed
     if (
       !overviewTileZoomLevel ||
@@ -497,10 +497,10 @@ export default abstract class BaseRenderer<
       mapsInViewportForOverviewPrune
     )) {
       pruneInfoByMapId.set(warpedMap.mapId, {
-        currentTileZoomLevel: warpedMap.tileZoomLevelForViewport,
-        currentOverviewTileZoomLevel:
+        tileZoomLevelForViewport: warpedMap.tileZoomLevelForViewport,
+        overviewTileZoomLevelForViewport:
           warpedMap.overviewTileZoomLevelForViewport,
-        currentResourceViewportRingBbox:
+        resourceViewportRingBboxForViewport:
           warpedMap.resourceViewportRingBboxForViewport
       })
     }

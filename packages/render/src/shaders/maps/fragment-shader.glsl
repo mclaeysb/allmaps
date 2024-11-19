@@ -25,7 +25,7 @@ uniform float u_saturation;
 uniform bool u_distortion;
 uniform int u_distortionOptionsdistortionMeasure;
 
-uniform int u_currentScaleFactor;
+uniform int u_scaleFactorForViewport;
 
 uniform lowp sampler2DArray u_cachedTilesTextureArray;
 uniform isampler2D u_cachedTilesResourcePositionsAndDimensionsTexture;
@@ -81,10 +81,10 @@ void main() {
       resourceTrianglePointY >= cachedTileResourcePositionY &&
       resourceTrianglePointY < cachedTileResourcePositionY + cachedTileDimensionHeight) {
 
-      // If the scale factor is smaller (more detailed) then the best scale factor for this map then currently known
-      // update the current best scale factor
+      // If the scale factor of this tile is smaller (more detailed) then the scale factor currently known
+      // update the smallest scale factor
       // and compute the cached tiles texture point that corresponds to the triangle point
-      // Note: we can safely take the deepest one, since the depth is limited when we gather texture tiles
+      // Note: we can safely take the most detailed tile, since the depth is limited when we gather texture tiles
       if(cachedTileScaleFactor < smallestScaleFactor) {
         smallestScaleFactor = cachedTileScaleFactor;
         found = true;

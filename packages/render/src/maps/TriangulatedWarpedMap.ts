@@ -45,23 +45,16 @@ type GcpAndDistortionMeasure = Gcp & {
  *
  * @export
  * @class TriangulatedWarpedMap
- * @param {Point[]} resourceMaskTrianglePointIndices - Triangle point incidices of the triangulated resourceMask. These are only used for the WebGL stencil, and dont correspont to the other triangle points used for drawing the maps
- * @param {Point[]} projectedGeoPreviousMaskTrianglePoints - The projectedGeoMaskTrianglePoints of the previous transformation type, used during transformation transitions
- * @param {Point[]} projectedGeoMaskTrianglePoints - The resourceMaskTrianglePoints in projected geospatial coordinated.
- * @param {QuadTree<Gcp>} projectedPreviousGeoQuadTree - QuadTree of the previous transformation type used to triangulate the map (at the current viewport)
- * @param {QuadTree<Gcp>} projectedGeoQuadTree - QuadTree used to triangulate the map (at the current viewport)
- * @param {Point[]} resourceTrianglepoints - Triangle points of the triangulated resourceMask (at the current scaleFactor)
- * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask (at the current scaleFactor)
- * @param {number[]} trianglePointsUniquePointsIndex - Index in resourceUniquepoints where a specific resourceTrianglepoint can be found
- * @param {number} triangulateErrorCount - Number of time the triangulation has resulted in an error
+ * @param {Point[]} resourceMaskTrianglePointIndices - Triangle point incidices of the triangulated resourceMask. These are only used to apply the mask. These don't correspond to the other triangle points which are used to render the map.
+ * @param {Point[]} projectedGeoPreviousMaskTrianglePoints - Triangle points of the triangulated resourceMask transformed to projected geospatial coordinates using the transformer of the previous transformation type.
+ * @param {Point[]} projectedGeoMaskTrianglePoints - Triangle points of the triangulated resourceMask transformed to projected geospatial coordinates.
+ * @param {QuadTree<Gcp>} projectedPreviousGcpGrid - Grid of Ground controle points, refined using the transformer of the previous transformation type.
+ * @param {QuadTree<Gcp>} projectedGcpGrid - Grid of Ground controle points, refined using the transformer, used to triangulate the ResourceMaskBbox and obtain triangles to render the map.
+ * @param {Point[]} resourceTrianglepoints - Triangle points of the triangulated resourceMask
  * @param {Point[]} projectedGeoPreviousTrianglePoints - The projectedGeoTrianglePoints of the previous transformation type, used during transformation transitions
  * @param {Point[]} projectedGeoTrianglePoints - The resourceTrianglePoints in projected geospatial coordinates
- * @param {Point[]} projectedGeoUniquePoints - The resourceUniquePoints in projected geospatial coordinates
- * @param {Point[]} projectedGeoUniquePointsPartialDerivativeX - Partial Derivative to X at the projectedGeoUniquePoints
- * @param {Point[]} projectedGeoUniquePointsPartialDerivativeY - Partial Derivative to Y at the projectedGeoUniquePoints
  * @param {number[]} previousTrianglePointsDistortion - The trianglePointsDistortion of the previous transformation type, used during transformation transitions
  * @param {number[]} trianglePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoTrianglePoints
- * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
   resourceMaskTrianglePointIndices: number[] = []
@@ -179,7 +172,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the earcut triangulation of the resourceMask.
+   * Update the triangulation of the resourceMask.
    */
   private updateMaskTriangulation() {
     // Ensure this function is only run after initialisation (see also updateTriangulation())
@@ -201,10 +194,9 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the triangulation of the resourceMask.
-   * Update the (previous and new) points of the triangulated resourceMask, at the current bestScaleFactor, in projectedGeo coordinates. Use cache if available.
+   * Update the triangulation of the resourceMaskBbox using a GcpGrid.
    *
-   * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same - true by default, false during a transformation transition
+   * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same. False by default and false during a transformation transition, true when changing refining the triangulation on zoom-in.
    */
   private updateGridTriangulation(previousIsNew = false) {
     const triangulationTransformOptions = {
@@ -241,7 +233,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       )
       this.projectedPreviousGcpGrid = this.projectedGcpGrid
     } else {
-      // Computing current grid from previous grid (or cache)
+      // Computing new grid from previous grid (or cache)
       this.projectedGcpGrid = getPropertyFromCacheOrComputation(
         this.projectedGcpGridByTransformationType,
         this.transformationType,
@@ -283,7 +275,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the points of the triangulated resourceMask. Use cache if available.
+   * Deduce the (previous and new) resource and projectedGeo points from their corresponding GcpGrid.
    */
   private updateTrianglePoints() {
     if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
@@ -310,9 +302,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the (previous and new) distortion at the points of the triangulated resourceMask. Use cache if available.
-   *
-   * @param {boolean} [previousIsNew=false]
+   * Deduce the (previous and new) resource and projectedGeo point distortions from their corresponding GcpGrid.
    */
   private updateTrianglePointsDistortion() {
     if (!this.projectedPreviousGcpGrid || !this.projectedGcpGrid) {
