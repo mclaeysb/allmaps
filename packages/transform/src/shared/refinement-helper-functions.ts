@@ -4,7 +4,6 @@ import {
   squaredDistance,
   conformLineString,
   conformRing,
-  mergeOptions,
   bboxToSize,
   mapTypedGrid,
   computeBboxTypedGrid,
@@ -56,13 +55,9 @@ export const defaultRefinementOptions: RefinementOptions = {
 export function refineLineString(
   lineString: LineString,
   refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
+  refinementOptions: RefinementOptions
 ): LineString {
   lineString = conformLineString(lineString)
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
 
   const gcps: GeneralGcp[] = lineString.map((point) => ({
     source: point,
@@ -85,13 +80,9 @@ export function refineLineString(
 export function refineRing(
   ring: Ring,
   refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
+  refinementOptions: RefinementOptions
 ): Ring {
   ring = conformRing(ring)
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
 
   const gcps: GeneralGcp[] = ring.map((point) => ({
     source: point,
@@ -244,13 +235,8 @@ function shouldSplitGcpLine(
 export function refineBboxToGcpGrid(
   bbox: Bbox,
   refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
+  refinementOptions: RefinementOptions
 ): TypedGrid<GeneralGcp> {
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
-
   const gcpGrid = bboxToGcpGrid(bbox, 1, 1, refinementFunction)
 
   return refineGcpGrid(gcpGrid, refinementFunction, refinementOptions)
@@ -259,13 +245,8 @@ export function refineBboxToGcpGrid(
 export function refineGcpGrid(
   gcpGrid: TypedGrid<GeneralGcp>,
   refinementFunction: (p: Point) => Point,
-  partialRefinementOptions: Partial<RefinementOptions>
+  refinementOptions: RefinementOptions
 ): TypedGrid<GeneralGcp> {
-  const refinementOptions = mergeOptions(
-    defaultRefinementOptions,
-    partialRefinementOptions
-  )
-
   let { cols, rows } = getTypedGridColsRows(gcpGrid)
 
   const { cols: refinedCols, rows: refinedRows } = refineGcpGridColsRows(

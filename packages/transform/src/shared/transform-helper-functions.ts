@@ -11,7 +11,8 @@ import {
   refineLineString,
   refineBboxToGcpGrid,
   refineGcpGrid,
-  refineRing
+  refineRing,
+  defaultRefinementOptions
 } from './refinement-helper-functions.js'
 
 import type { TransformOptions, RefinementOptions } from './types.js'
@@ -44,13 +45,13 @@ export const defaultTransformOptions: TransformOptions = {
 
 export function refinementOptionsFromForwardTransformOptions(
   transformOptions: TransformOptions
-): Partial<RefinementOptions> {
-  const refinementOptions: Partial<RefinementOptions> = {
+): RefinementOptions {
+  const refinementOptions = mergeOptions(defaultRefinementOptions, {
     maxOffsetRatio: transformOptions.maxOffsetRatio,
     minOffsetDistance: transformOptions.minOffsetDistance,
     minLineDistance: transformOptions.minLineDistance,
     maxDepth: transformOptions.maxDepth
-  }
+  })
 
   if (transformOptions.sourceIsGeographic) {
     refinementOptions.sourceMidPointFunction = (point0: Point, point1: Point) =>
@@ -71,13 +72,13 @@ export function refinementOptionsFromForwardTransformOptions(
 
 export function refinementOptionsFromBackwardTransformOptions(
   transformOptions: TransformOptions
-): Partial<RefinementOptions> {
-  const refinementOptions: Partial<RefinementOptions> = {
+): RefinementOptions {
+  const refinementOptions = mergeOptions(defaultRefinementOptions, {
     maxOffsetRatio: transformOptions.maxOffsetRatio,
     minOffsetDistance: transformOptions.minOffsetDistance,
     minLineDistance: transformOptions.minLineDistance,
     maxDepth: transformOptions.maxDepth
-  }
+  })
 
   if (transformOptions.destinationIsGeographic) {
     refinementOptions.sourceMidPointFunction = (point0: Point, point1: Point) =>
