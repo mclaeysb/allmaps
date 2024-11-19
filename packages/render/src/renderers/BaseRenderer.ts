@@ -174,7 +174,7 @@ export default abstract class BaseRenderer<
 
     // Reset current (overview) zoomlevels, resource viewport ring and fetchable tiles on maps
     for (const warpedMap of this.warpedMapList.getWarpedMaps()) {
-      warpedMap.resetCurrent()
+      warpedMap.resetForViewport()
     }
 
     // Get fetchable tiles for all maps in viewport with request buffer
@@ -296,7 +296,7 @@ export default abstract class BaseRenderer<
       SCALE_FACTOR_CORRECTION,
       LOG2_SCALE_FACTOR_CORRECTION
     )
-    warpedMap.setCurrentTileZoomLevel(tileZoomLevel)
+    warpedMap.setTileZoomLevelForViewport(tileZoomLevel)
 
     // Transforming the viewport back to resource
     const transformerOptions = {
@@ -318,11 +318,10 @@ export default abstract class BaseRenderer<
         [projectedGeoViewportRectangle],
         transformerOptions
       )[0]
-    warpedMap.setCurrentProjectedGeoViewportRectangle(
+    warpedMap.setProjectedGeoViewportRectangleForViewport(
       projectedGeoViewportRectangle
     )
-    warpedMap.setCurrentResourceViewportRing(resourceViewportRing)
-    // TODO: consider to transform viewport.projectedGeoRectable backward using projectedTransform
+    warpedMap.setResourceViewportRingForViewport(resourceViewportRing)
 
     // If this map it ourside of the viewport with request buffer, stop here:
     // in thise case we only ran this function to set the current variables
@@ -343,7 +342,7 @@ export default abstract class BaseRenderer<
     const fetchableTiles = tiles.map(
       (tile) => new FetchableTile(tile, warpedMap)
     )
-    warpedMap.setCurrentFetchableTiles(fetchableTiles)
+    warpedMap.setFetchableTilesForViewport(fetchableTiles)
 
     return fetchableTiles
   }
@@ -399,7 +398,7 @@ export default abstract class BaseRenderer<
         // Enforcing default ascending order, e.g. from 1 to 16
       )
       .at(-1)
-    warpedMap.setCurrentOverviewTileZoomLevel(overviewTileZoomLevel)
+    warpedMap.setOverviewTileZoomLevelForViewport(overviewTileZoomLevel)
 
     // If this map it ourside of the viewport with overview buffer, stop here:
     // in thise case we only ran this function to set the current variables
@@ -412,9 +411,9 @@ export default abstract class BaseRenderer<
     // then this is not really an 'overview' tilezoomlevel, so don't proceed
     if (
       !overviewTileZoomLevel ||
-      (warpedMap.currentTileZoomLevel &&
+      (warpedMap.tileZoomLevelForViewport &&
         overviewTileZoomLevel.scaleFactor <=
-          warpedMap.currentTileZoomLevel.scaleFactor)
+          warpedMap.tileZoomLevelForViewport.scaleFactor)
     ) {
       return []
     }
@@ -429,7 +428,7 @@ export default abstract class BaseRenderer<
     const overviewFetchableTiles = overviewTiles.map(
       (tile) => new FetchableTile(tile, warpedMap)
     )
-    warpedMap.setCurrentOverviewFetchableTiles(overviewFetchableTiles)
+    warpedMap.setOverviewFetchableTilesForViewport(overviewFetchableTiles)
 
     return overviewFetchableTiles
   }
@@ -498,10 +497,11 @@ export default abstract class BaseRenderer<
       mapsInViewportForOverviewPrune
     )) {
       pruneInfoByMapId.set(warpedMap.mapId, {
-        currentTileZoomLevel: warpedMap.currentTileZoomLevel,
-        currentOverviewTileZoomLevel: warpedMap.currentOverviewTileZoomLevel,
+        currentTileZoomLevel: warpedMap.tileZoomLevelForViewport,
+        currentOverviewTileZoomLevel:
+          warpedMap.overviewTileZoomLevelForViewport,
         currentResourceViewportRingBbox:
-          warpedMap.currentResourceViewportRingBbox
+          warpedMap.resourceViewportRingBboxForViewport
       })
     }
     this.tileCache.prune(pruneInfoByMapId)

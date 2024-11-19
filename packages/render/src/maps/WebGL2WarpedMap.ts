@@ -945,7 +945,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     const currentOverviewCachedTiles = []
 
     // Try to include tiles that were requested
-    for (const fetchableTile of this.currentFetchableTiles) {
+    for (const fetchableTile of this.fetchableTilesForViewport) {
       const cachedTile = this.cachedTilesByTileUrl.get(fetchableTile.tileUrl)
       if (cachedTile) {
         // If they are available, include them
@@ -961,12 +961,13 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     }
 
     // Try to include tiles that are at overview zoomlevel
-    for (const fetchableTile of this.currentOverviewFetchableTiles) {
+    for (const fetchableTile of this.overviewFetchableTilesForViewport) {
       const cachedTile = this.cachedTilesByTileUrl.get(fetchableTile.tileUrl)
       if (cachedTile) {
         // If they are available, consider to include them
-        const currentTileZoolLevelTilesCount = this.currentTileZoomLevel
-          ? this.currentTileZoomLevel.rows * this.currentTileZoomLevel.columns
+        const currentTileZoolLevelTilesCount = this.tileZoomLevelForViewport
+          ? this.tileZoomLevelForViewport.rows *
+            this.tileZoomLevelForViewport.columns
           : undefined
         // If this map's cached tiles don't already cover the entire zoomlevel
         if (
@@ -1007,7 +1008,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     if (this.cachedTilesByTileUrl.size == 0) {
       return []
     }
-    if (!this.currentTileZoomLevel) {
+    if (!this.tileZoomLevelForViewport) {
       return []
     }
 
@@ -1015,7 +1016,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     for (tile of getTilesAtOtherScaleFactors(
       tile,
       this.parsedImage,
-      this.currentTileZoomLevel.scaleFactor,
+      this.tileZoomLevelForViewport.scaleFactor,
       TEXTURES_MAX_LOWER_LOG2_SCALE_FACTOR_DIFF,
       TEXTURES_MAX_HIGHER_LOG2_SCALE_FACTOR_DIFF,
       this.tileInCachedTiles.bind(this) // Only consider tiles in cache,

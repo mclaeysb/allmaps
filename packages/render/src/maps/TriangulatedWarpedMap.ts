@@ -103,7 +103,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
     super(mapId, georeferencedMap, options)
 
-    this.updateMaskTriangulation()
     this.updateTriangulation()
   }
 
@@ -114,7 +113,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   setResourceMask(resourceMask: Ring): void {
     super.setResourceMask(resourceMask)
-    this.updateMaskTriangulation()
     this.updateTriangulation()
   }
 
@@ -123,12 +121,12 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    *
    * @param {TileZoomLevel} [tileZoomLevel] - tile zoom level
    */
-  setCurrentTileZoomLevel(tileZoomLevel?: TileZoomLevel) {
-    super.setCurrentTileZoomLevel(tileZoomLevel)
-    // TODO: this can be used to update the triangulation based on the scalefactor
+  setTileZoomLevelForViewport(tileZoomLevel?: TileZoomLevel) {
+    super.setTileZoomLevelForViewport(tileZoomLevel)
+    // Note: this function could be used to update the grid triangulation based on the scalefactor
     // By setting the allowed absolute error based on the scale and projectedGeo error
-    // Keeping this here for now since it's the only cases where updateTriangulation() is called with 'true'
-    // this.updateTriangulation(true)
+    // Keeping this here for now since it's the only cases where updateGridTriangulation() is called with 'true'
+    // this.updateGridTriangulation(true)
   }
 
   /**
@@ -208,7 +206,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    *
    * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same - true by default, false during a transformation transition
    */
-  private updateTriangulation(previousIsNew = false) {
+  private updateGridTriangulation(previousIsNew = false) {
     const triangulationTransformOptions = {
       maxOffsetRatio: 0.01,
       maxDepth: 5
@@ -362,8 +360,12 @@ export default class TriangulatedWarpedMap extends WarpedMap {
 
   protected updateTransformerProperties(useCache = true): void {
     super.updateTransformerProperties(useCache)
+    this.updateTriangulation()
+  }
+
+  protected updateTriangulation(): void {
     this.updateMaskTriangulation()
-    this.updateTriangulation(false)
+    this.updateGridTriangulation(false)
   }
 
   protected updateDistortionProperties(): void {

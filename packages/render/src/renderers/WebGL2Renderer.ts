@@ -800,7 +800,42 @@ export default class WebGL2Renderer
 
       this.setMapStencilProgramMapUniforms(warpedMap)
 
-      this.enableMapStencilMask(warpedMap)
+      // Apply mask using stencil buffers and mask triangles
+      // by setting stencil operations to mask where mask triangles will *not* be drawn
+
+      const gl = this.gl
+      const program = this.mapStencilsProgram
+      gl.useProgram(program)
+
+      // Enable stencil buffer and clear values
+      gl.enable(gl.STENCIL_TEST)
+      gl.clear(gl.STENCIL_BUFFER_BIT)
+
+      // Set stencil buffers to 1 where triangles are drawn
+      // - stencilFunc sets the test pass all pixels (regardless of the current stencil buffer value) and sets the referenc value to 1
+      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: replace the stencil buffer value (in this case the default value 0) with the reference value (1)
+      // This will set the stencil buffer to 1 for all drawn pixels
+      gl.stencilFunc(gl.ALWAYS, 1, 0xff)
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
+
+      // Draw mask triangles
+      // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
+      // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
+      gl.bindVertexArray(warpedMap.mapStencilsVao)
+      gl.drawArrays(
+        gl.TRIANGLES,
+        0,
+        warpedMap.projectedGeoMaskTrianglePoints.length
+      )
+
+      // Set stencil buffer to draw map triangles
+      // - stencilFunc sets the test to pass only on pixels who's stencil buffer already equals 1
+      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: keep the current stencil buffer value
+      // This will make each pixel within the mask triangles keep its value
+      gl.stencilFunc(gl.EQUAL, 1, 0xff)
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
+
+      // Now back to drawing the map
 
       this.setMapsProgramRenderOptionsUniforms(
         this.renderOptions,
@@ -808,14 +843,15 @@ export default class WebGL2Renderer
       )
       this.setMapProgramMapUniforms(warpedMap)
 
-      // Draw each map
+      // Draw map
       const count = warpedMap.resourceTrianglePoints.length
-      const primitiveType = this.gl.TRIANGLES
+      const primitiveType = gl.TRIANGLES
       const offset = 0
-      this.gl.bindVertexArray(warpedMap.mapsVao)
-      this.gl.drawArrays(primitiveType, offset, count)
+      gl.bindVertexArray(warpedMap.mapsVao)
+      gl.drawArrays(primitiveType, offset, count)
 
-      this.disableMapStencil()
+      // Disable stencil test
+      gl.disable(gl.STENCIL_TEST)
     }
   }
 
@@ -933,49 +969,6 @@ export default class WebGL2Renderer
 
     const colorGrid = gl.getUniformLocation(program, 'u_colorGrid')
     gl.uniform4f(colorGrid, ...hexToFractionalRgb(black), 1)
-  }
-
-  private enableMapStencilMask(warpedMap: WebGL2WarpedMap) {
-    // Apply mask using stencil buffers and earcut triangles
-    // by setting stencil operations to mask where earcut triangles will *not* be drawn
-
-    const gl = this.gl
-    const program = this.mapStencilsProgram
-    gl.useProgram(program)
-
-    // Enable stencil buffer and clear values
-    gl.enable(gl.STENCIL_TEST)
-    gl.clear(gl.STENCIL_BUFFER_BIT)
-
-    // Set stencil buffers to 1 where triangles are drawn
-    // - stencilFunc sets the test pass all pixels (regardless of the current stencil buffer value) and sets the referenc value to 1
-    // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: replace the stencil buffer value (in this case the default value 0) with the reference value (1)
-    // This will set the stencil buffer to 1 for all drawn pixels
-    gl.stencilFunc(gl.ALWAYS, 1, 0xff)
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
-
-    // Draw earcut triangles
-    // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
-    // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
-
-    gl.bindVertexArray(warpedMap.mapStencilsVao)
-    gl.drawArrays(
-      this.gl.TRIANGLES,
-      0,
-      warpedMap.projectedGeoMaskTrianglePoints.length
-    )
-
-    // Set stencil buffer to draw map triangles
-    // - stencilFunc sets the test to pass only on pixels who's stencil buffer already equals 1
-    // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: keep the current stencil buffer value
-    // This will make each pixel within the earcut triangles keep its value
-    gl.stencilFunc(gl.EQUAL, 1, 0xff)
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-  }
-
-  private disableMapStencil() {
-    const gl = this.gl
-    gl.disable(gl.STENCIL_TEST)
   }
 
   private setMapStencilProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
@@ -1142,8 +1135,8 @@ export default class WebGL2Renderer
       program,
       'u_currentScaleFactor'
     )
-    const currentScaleFactor = warpedMap.currentTileZoomLevel
-      ? warpedMap.currentTileZoomLevel.scaleFactor
+    const currentScaleFactor = warpedMap.tileZoomLevelForViewport
+      ? warpedMap.tileZoomLevelForViewport.scaleFactor
       : 1
     gl.uniform1i(currentScaleFactorLocation, currentScaleFactor)
 
@@ -1162,8 +1155,8 @@ export default class WebGL2Renderer
         program,
         'u_cachedTilesResourcePositionsAndDimensionsTexture'
       )
-    gl.uniform1i(cachedTilesResourcePositionsAndDimensionsLocation, 2)
-    gl.activeTexture(gl.TEXTURE2)
+    gl.uniform1i(cachedTilesResourcePositionsAndDimensionsLocation, 1)
+    gl.activeTexture(gl.TEXTURE1)
 
     gl.bindTexture(
       gl.TEXTURE_2D,
@@ -1175,8 +1168,8 @@ export default class WebGL2Renderer
       program,
       'u_cachedTilesScaleFactorsTexture'
     )
-    gl.uniform1i(cachedTileScaleFactorsTextureLocation, 3)
-    gl.activeTexture(gl.TEXTURE3)
+    gl.uniform1i(cachedTileScaleFactorsTextureLocation, 2)
+    gl.activeTexture(gl.TEXTURE2)
     gl.bindTexture(gl.TEXTURE_2D, warpedMap.cachedTilesScaleFactorsTexture)
   }
 

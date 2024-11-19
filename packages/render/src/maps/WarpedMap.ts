@@ -111,12 +111,12 @@ export function createWarpedMapFactory() {
  * @param {number} resourceToProjectedGeoScale - Scale of the warped map, in resource pixels per projected geospatial coordinates
  * @param {DistortionMeasure} [previousDistortionMeasure] - Previous distortion measure displayed for this map
  * @param {DistortionMeasure} [distortionMeasure] - Distortion measure displayed for this map
- * @param {TileZoomLevel} [currentTileZoomLevel] - The tile zoom level, at the current viewport
- * @param {TileZoomLevel} [currentOverviewTileZoomLevel] - The overview tile zoom level, at the current viewport
- * @param {Ring} [currentResourceViewportRing] - The (buffered) viewport transformed back to resource coordinates
- * @param {Bbox} [currentResourceViewportRingBbox] - Bbox of the resourceViewportRing
- * @param {Tile[]} currentFetchableTiles - The fetchable tiles for displaying this map, at the current viewport
- * @param {Tile[]} currentOverviewFetchableTiles - The overview fetchable tiles, at the current viewport
+ * @param {TileZoomLevel} [tileZoomLevelForViewport] - The tile zoom level, for the current viewport
+ * @param {TileZoomLevel} [overviewTileZoomLevelForViewport] - The overview tile zoom level, for the current viewport
+ * @param {Ring} [resourceViewportRingForViewport] - The (buffered) viewport transformed back to resource coordinates
+ * @param {Bbox} [resourceViewportRingBboxForViewport] - Bbox of the resourceViewportRing
+ * @param {Tile[]} fetchableTilesForViewport - The fetchable tiles for displaying this map, for the current viewport
+ * @param {Tile[]} overviewFetchableTilesForViewport - The overview fetchable tiles, for the current viewport
  */
 export default class WarpedMap extends EventTarget {
   mapId: string
@@ -184,19 +184,17 @@ export default class WarpedMap extends EventTarget {
   previousDistortionMeasure?: DistortionMeasure
   distortionMeasure?: DistortionMeasure
 
-  // The properties below are for the current viewport
+  tileZoomLevelForViewport?: TileZoomLevel
+  overviewTileZoomLevelForViewport?: TileZoomLevel
 
-  currentTileZoomLevel?: TileZoomLevel
-  currentOverviewTileZoomLevel?: TileZoomLevel
+  projectedGeoViewportRectangleForViewport?: Rectangle
+  projectedGeoViewportRectangleBboxForViewport?: Bbox
 
-  currentProjectedGeoViewportRectangle?: Rectangle
-  currentProjectedGeoViewportRectangleBbox?: Bbox
+  resourceViewportRingForViewport?: Ring
+  resourceViewportRingBboxForViewport?: Bbox
 
-  currentResourceViewportRing?: Ring
-  currentResourceViewportRingBbox?: Bbox
-
-  currentFetchableTiles: FetchableTile[] = []
-  currentOverviewFetchableTiles: FetchableTile[] = []
+  fetchableTilesForViewport: FetchableTile[] = []
+  overviewFetchableTilesForViewport: FetchableTile[] = []
 
   /**
    * Creates an instance of WarpedMap.
@@ -417,80 +415,83 @@ export default class WarpedMap extends EventTarget {
   /**
    * Set the tile zoom level for the current viewport
    *
-   * @param {number} [tileZoomLevel] - tile zoom level
+   * @param {number} [tileZoomLevel] - tile zoom level for the current viewport
    */
-  setCurrentTileZoomLevel(tileZoomLevel?: TileZoomLevel) {
-    this.currentTileZoomLevel = tileZoomLevel
+  setTileZoomLevelForViewport(tileZoomLevel?: TileZoomLevel) {
+    this.tileZoomLevelForViewport = tileZoomLevel
   }
 
   /**
    * Set the overview tile zoom level for the current viewport
    *
-   * @param {TileZoomLevel} [tileZoomLevel] - tile zoom level
+   * @param {TileZoomLevel} [tileZoomLevel] - tile zoom level for the current viewport
    */
-  setCurrentOverviewTileZoomLevel(tileZoomLevel?: TileZoomLevel) {
-    this.currentOverviewTileZoomLevel = tileZoomLevel
+  setOverviewTileZoomLevelForViewport(tileZoomLevel?: TileZoomLevel) {
+    this.overviewTileZoomLevelForViewport = tileZoomLevel
   }
 
   /**
-   * Set projectedGeoViewportRectangle of current viewport
+   * Set projectedGeoViewportRectangle for the current viewport
    *
    * @param {Rectangle} [projectedGeoViewportRectangle]
    */
-  setCurrentProjectedGeoViewportRectangle(
+  setProjectedGeoViewportRectangleForViewport(
     projectedGeoViewportRectangle?: Rectangle
   ) {
-    this.currentProjectedGeoViewportRectangle = projectedGeoViewportRectangle
-    this.currentProjectedGeoViewportRectangleBbox =
+    this.projectedGeoViewportRectangleForViewport =
+      projectedGeoViewportRectangle
+    this.projectedGeoViewportRectangleBboxForViewport =
       projectedGeoViewportRectangle
         ? computeBbox(projectedGeoViewportRectangle)
         : undefined
   }
 
   /**
-   * Set resourceViewportRing at current viewport
+   * Set resourceViewportRing for the current viewport
    *
    * @param {Ring} [resourceViewportRing]
    */
-  setCurrentResourceViewportRing(resourceViewportRing?: Ring) {
-    this.currentResourceViewportRing = resourceViewportRing
-    this.currentResourceViewportRingBbox = resourceViewportRing
+  setResourceViewportRingForViewport(resourceViewportRing?: Ring) {
+    this.resourceViewportRingForViewport = resourceViewportRing
+    this.resourceViewportRingBboxForViewport = resourceViewportRing
       ? computeBbox(resourceViewportRing)
       : undefined
   }
 
   /**
-   * Set tiles at current viewport
+   * Set tiles for the current viewport
    *
    * @param {FetchableTile[]} fetchableTiles
    */
-  setCurrentFetchableTiles(fetchableTiles: FetchableTile[]) {
-    this.currentFetchableTiles = fetchableTiles
+  setFetchableTilesForViewport(fetchableTiles: FetchableTile[]) {
+    this.fetchableTilesForViewport = fetchableTiles
   }
 
   /**
-   * Set overview tiles at current viewport
+   * Set overview tiles for the current viewport
    *
    * @param {FetchableTile[]} overviewFetchableTiles
    */
-  setCurrentOverviewFetchableTiles(overviewFetchableTiles: FetchableTile[]) {
-    this.currentOverviewFetchableTiles = overviewFetchableTiles
+  setOverviewFetchableTilesForViewport(
+    overviewFetchableTiles: FetchableTile[]
+  ) {
+    this.overviewFetchableTilesForViewport = overviewFetchableTiles
   }
 
   /**
-   * Reset current values
+   * Reset the properties for the current values
    */
-  resetCurrent() {
-    this.setCurrentTileZoomLevel()
-    this.setCurrentOverviewTileZoomLevel()
-    this.setCurrentProjectedGeoViewportRectangle()
-    this.setCurrentResourceViewportRing()
-    this.setCurrentFetchableTiles([])
-    this.setCurrentOverviewFetchableTiles([])
+  resetForViewport() {
+    this.setTileZoomLevelForViewport()
+    this.setOverviewTileZoomLevelForViewport()
+    this.setProjectedGeoViewportRectangleForViewport()
+    this.setResourceViewportRingForViewport()
+    this.setFetchableTilesForViewport([])
+    this.setOverviewFetchableTilesForViewport([])
   }
 
   /**
-   * Reset the previous points and values.
+   * Reset the properties of the previous and new transformationType.
    */
   resetPrevious() {
     this.mixed = false
@@ -505,7 +506,7 @@ export default class WarpedMap extends EventTarget {
   }
 
   /**
-   * Mix the previous and new points and values.
+   * Mix the properties of the previous and new transformationType.
    *
    * @param {number} t
    */
@@ -530,7 +531,7 @@ export default class WarpedMap extends EventTarget {
   }
 
   /**
-   * Check if warpedMap has image info
+   * Check if this instance has image info
    *
    * @returns {this is WarpedMapWithImageInfo}
    */
