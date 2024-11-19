@@ -5,7 +5,7 @@ import type {
   TypedGrid,
   TypedTriangle
 } from '@allmaps/types'
-import { computeBbox } from './bbox'
+import { computeBbox } from './bbox.js'
 
 export function getTypedGridColsRows<P>(typedGrid: TypedGrid<P>): ColsRows {
   return { rows: typedGrid.length - 1, cols: typedGrid[0].length - 1 }
