@@ -453,7 +453,9 @@ export default class WarpedMap extends EventTarget {
    *
    * @param {Ring} [resourceBufferedViewportRing]
    */
-  setResourceViewportRingForViewport(resourceBufferedViewportRing?: Ring) {
+  setResourceBufferedViewportRingForViewport(
+    resourceBufferedViewportRing?: Ring
+  ) {
     this.resourceBufferedViewportRingForViewport = resourceBufferedViewportRing
     this.resourceBufferedViewportRingBboxForViewport =
       resourceBufferedViewportRing
@@ -488,7 +490,7 @@ export default class WarpedMap extends EventTarget {
     this.setTileZoomLevelForViewport()
     this.setOverviewTileZoomLevelForViewport()
     this.setProjectedGeoBufferedViewportRectangleForViewport()
-    this.setResourceViewportRingForViewport()
+    this.setResourceBufferedViewportRingForViewport()
     this.setFetchableTilesForViewport([])
     this.setOverviewFetchableTilesForViewport([])
   }

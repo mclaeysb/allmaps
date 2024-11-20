@@ -309,19 +309,21 @@ export default abstract class BaseRenderer<
     // This can be expensive at high maxDepth and seems to work fine with maxDepth = 0
     // TODO: Consider recusive refinement via options like {maxOffsetRatio: 0.00001, maxDepth: 2}
     // Note: if recursive refinement, use geographic distances and midpoints for lon-lat destination points
-    const projectedGeoViewportRectangle =
+    const projectedGeoBufferedViewportRectangle =
       viewport.getProjectedGeoBufferedRectangle(
         this.shouldAnticipateInteraction() ? REQUEST_VIEWPORT_BUFFER_RATIO : 0
       )
-    const resourceViewportRing =
+    const resourceBufferedViewportRing =
       warpedMap.projectedTransformer.transformBackward(
-        [projectedGeoViewportRectangle],
+        [projectedGeoBufferedViewportRectangle],
         transformerOptions
       )[0]
     warpedMap.setProjectedGeoBufferedViewportRectangleForViewport(
-      projectedGeoViewportRectangle
+      projectedGeoBufferedViewportRectangle
     )
-    warpedMap.setResourceViewportRingForViewport(resourceViewportRing)
+    warpedMap.setResourceBufferedViewportRingForViewport(
+      resourceBufferedViewportRing
+    )
 
     // If this map it ourside of the viewport with request buffer, stop here:
     // in thise case we only ran this function to set the properties for the current viewport
@@ -333,7 +335,7 @@ export default abstract class BaseRenderer<
     // Find tiles covering this back-transformed viewport
     // This returns tiles sorted by distance from center of resourceViewportRing
     const tiles = computeTilesCoveringRingAtTileZoomLevel(
-      resourceViewportRing,
+      resourceBufferedViewportRing,
       tileZoomLevel,
       [warpedMap.parsedImage.width, warpedMap.parsedImage.height]
     )

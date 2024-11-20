@@ -251,7 +251,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       // Refine previous grid from grid (if needed)
       if (
         getTypedGridDepth(this.projectedPreviousGcpGrid) !=
-        getTypedGridDepth(this.projectedGcpGrid!)
+        getTypedGridDepth(this.projectedGcpGrid)
       ) {
         this.projectedPreviousGcpGrid = getPropertyFromCacheOrComputation(
           this.projectedGcpGridByTransformationType,
