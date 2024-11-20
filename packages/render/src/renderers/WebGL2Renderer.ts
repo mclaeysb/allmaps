@@ -61,6 +61,9 @@ const THROTTLE_CHANGED_OPTIONS = {
 }
 
 const DEBUG = false // TODO: set using options
+export const RENDER_MAPS = true // TODO: set using options
+export const RENDER_LINES = true // TODO: set using options
+export const RENDER_POINTS = true // TODO: set using options
 
 const DEFAULT_OPACITY = 1
 const DEFAULT_SATURATION = 1
@@ -777,9 +780,15 @@ export default class WebGL2Renderer
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 
-    this.renderMapsInternal()
-    this.renderLinesInternal()
-    this.renderPointsInternal()
+    if (RENDER_MAPS) {
+      this.renderMapsInternal()
+    }
+    if (RENDER_LINES) {
+      this.renderLinesInternal()
+    }
+    if (RENDER_POINTS) {
+      this.renderPointsInternal()
+    }
   }
 
   private renderMapsInternal(): void {

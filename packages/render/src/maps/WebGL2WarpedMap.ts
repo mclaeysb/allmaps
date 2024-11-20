@@ -38,6 +38,12 @@ import type {
   Transform
 } from '@allmaps/types'
 
+import {
+  RENDER_MAPS,
+  RENDER_LINES,
+  RENDER_POINTS
+} from '../renderers/WebGL2Renderer.js'
+
 import type {
   LineLayer,
   PointLayer,
@@ -53,9 +59,6 @@ const THROTTLE_UPDATE_TEXTURES_OPTIONS = {
 }
 
 const DEBUG = false // TODO: set using options
-const RENDER_MAPS = true // TODO: set using options
-const RENDER_LINES = true // TODO: set using options
-const RENDER_POINTS = true // TODO: set using options
 
 const DEFAULT_OPACITY = 1
 const DEFAULT_SATURATION = 1
