@@ -113,8 +113,10 @@ export function createWarpedMapFactory() {
  * @param {DistortionMeasure} [distortionMeasure] - Distortion measure displayed for this map
  * @param {TileZoomLevel} [tileZoomLevelForViewport] - The tile zoom level, for the current viewport
  * @param {TileZoomLevel} [overviewTileZoomLevelForViewport] - The overview tile zoom level, for the current viewport
- * @param {Ring} [resourceViewportRingForViewport] - The (buffered) viewport transformed back to resource coordinates
- * @param {Bbox} [resourceViewportRingBboxForViewport] - Bbox of the resourceViewportRing
+ * @param {Ring} [projectedGeoBufferedViewportRectangleForViewport] - The (buffered) viewport in projected geospatial coordinates, for the current viewport
+ * @param {Bbox} [projectedGeoBufferedViewportRectangleBboxForViewport] - Bbox of the projectedGeoBufferedViewportRectangle
+ * @param {Ring} [resourceBufferedViewportRingForViewport] - The (buffered) viewport transformed back to resource coordinates, for the current viewport
+ * @param {Bbox} [resourceBufferedViewportRingBboxForViewport] - Bbox of the resourceViewportRing
  * @param {Tile[]} fetchableTilesForViewport - The fetchable tiles for displaying this map, for the current viewport
  * @param {Tile[]} overviewFetchableTilesForViewport - The overview fetchable tiles, for the current viewport
  */
@@ -187,11 +189,11 @@ export default class WarpedMap extends EventTarget {
   tileZoomLevelForViewport?: TileZoomLevel
   overviewTileZoomLevelForViewport?: TileZoomLevel
 
-  projectedGeoViewportRectangleForViewport?: Rectangle
-  projectedGeoViewportRectangleBboxForViewport?: Bbox
+  projectedGeoBufferedViewportRectangleForViewport?: Rectangle
+  projectedGeoBufferedViewportRectangleBboxForViewport?: Bbox
 
-  resourceViewportRingForViewport?: Ring
-  resourceViewportRingBboxForViewport?: Bbox
+  resourceBufferedViewportRingForViewport?: Ring
+  resourceBufferedViewportRingBboxForViewport?: Bbox
 
   fetchableTilesForViewport: FetchableTile[] = []
   overviewFetchableTilesForViewport: FetchableTile[] = []
@@ -431,31 +433,32 @@ export default class WarpedMap extends EventTarget {
   }
 
   /**
-   * Set projectedGeoViewportRectangle for the current viewport
+   * Set projectedGeoBufferedViewportRectangle for the current viewport
    *
-   * @param {Rectangle} [projectedGeoViewportRectangle]
+   * @param {Rectangle} [projectedGeoBufferedViewportRectangle]
    */
-  setProjectedGeoViewportRectangleForViewport(
-    projectedGeoViewportRectangle?: Rectangle
+  setProjectedGeoBufferedViewportRectangleForViewport(
+    projectedGeoBufferedViewportRectangle?: Rectangle
   ) {
-    this.projectedGeoViewportRectangleForViewport =
-      projectedGeoViewportRectangle
-    this.projectedGeoViewportRectangleBboxForViewport =
-      projectedGeoViewportRectangle
-        ? computeBbox(projectedGeoViewportRectangle)
+    this.projectedGeoBufferedViewportRectangleForViewport =
+      projectedGeoBufferedViewportRectangle
+    this.projectedGeoBufferedViewportRectangleBboxForViewport =
+      projectedGeoBufferedViewportRectangle
+        ? computeBbox(projectedGeoBufferedViewportRectangle)
         : undefined
   }
 
   /**
-   * Set resourceViewportRing for the current viewport
+   * Set resourceBufferedViewportRing for the current viewport
    *
-   * @param {Ring} [resourceViewportRing]
+   * @param {Ring} [resourceBufferedViewportRing]
    */
-  setResourceViewportRingForViewport(resourceViewportRing?: Ring) {
-    this.resourceViewportRingForViewport = resourceViewportRing
-    this.resourceViewportRingBboxForViewport = resourceViewportRing
-      ? computeBbox(resourceViewportRing)
-      : undefined
+  setResourceViewportRingForViewport(resourceBufferedViewportRing?: Ring) {
+    this.resourceBufferedViewportRingForViewport = resourceBufferedViewportRing
+    this.resourceBufferedViewportRingBboxForViewport =
+      resourceBufferedViewportRing
+        ? computeBbox(resourceBufferedViewportRing)
+        : undefined
   }
 
   /**
@@ -484,7 +487,7 @@ export default class WarpedMap extends EventTarget {
   resetForViewport() {
     this.setTileZoomLevelForViewport()
     this.setOverviewTileZoomLevelForViewport()
-    this.setProjectedGeoViewportRectangleForViewport()
+    this.setProjectedGeoBufferedViewportRectangleForViewport()
     this.setResourceViewportRingForViewport()
     this.setFetchableTilesForViewport([])
     this.setOverviewFetchableTilesForViewport([])

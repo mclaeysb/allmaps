@@ -318,7 +318,7 @@ export default abstract class BaseRenderer<
         [projectedGeoViewportRectangle],
         transformerOptions
       )[0]
-    warpedMap.setProjectedGeoViewportRectangleForViewport(
+    warpedMap.setProjectedGeoBufferedViewportRectangleForViewport(
       projectedGeoViewportRectangle
     )
     warpedMap.setResourceViewportRingForViewport(resourceViewportRing)
@@ -501,7 +501,7 @@ export default abstract class BaseRenderer<
         overviewTileZoomLevelForViewport:
           warpedMap.overviewTileZoomLevelForViewport,
         resourceViewportRingBboxForViewport:
-          warpedMap.resourceViewportRingBboxForViewport
+          warpedMap.resourceBufferedViewportRingBboxForViewport
       })
     }
     this.tileCache.prune(pruneInfoByMapId)
