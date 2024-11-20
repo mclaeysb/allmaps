@@ -25,10 +25,10 @@ import {
 } from '../shared/matrix.js'
 import { createShader, createProgram } from '../shared/webgl2.js'
 
-import mapsVertexShaderSource from '../shaders/maps/vertex-shader.glsl'
-import mapsFragmentShaderSource from '../shaders/maps/fragment-shader.glsl'
-import mapStencilsVertexShaderSource from '../shaders/map-stencils/vertex-shader.glsl'
-import mapStencilsFragmentShaderSource from '../shaders/map-stencils/fragment-shader.glsl'
+import mapVertexShaderSource from '../shaders/map/vertex-shader.glsl'
+import mapFragmentShaderSource from '../shaders/map/fragment-shader.glsl'
+import mapStencilVertexShaderSource from '../shaders/map-stencil/vertex-shader.glsl'
+import mapStencilFragmentShaderSource from '../shaders/map-stencil/fragment-shader.glsl'
 import linesVertexShaderSource from '../shaders/lines/vertex-shader.glsl'
 import linesFragmentShaderSource from '../shaders/lines/fragment-shader.glsl'
 import pointsVertexShaderSource from '../shaders/points/vertex-shader.glsl'
@@ -82,8 +82,8 @@ export default class WebGL2Renderer
   implements Renderer
 {
   gl: WebGL2RenderingContext
-  mapsProgram: WebGLProgram
-  mapStencilsProgram: WebGLProgram
+  mapProgram: WebGLProgram
+  mapStencilProgram: WebGLProgram
   linesProgram: WebGLProgram
   pointsProgram: WebGLProgram
 
@@ -117,26 +117,26 @@ export default class WebGL2Renderer
     gl: WebGL2RenderingContext,
     options?: Partial<WebGL2RendererOptions>
   ) {
-    const mapsVertexShader = createShader(
+    const mapVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
-      mapsVertexShaderSource
+      mapVertexShaderSource
     )
-    const mapsFragmentShader = createShader(
+    const mapFragmentShader = createShader(
       gl,
       gl.FRAGMENT_SHADER,
-      mapsFragmentShaderSource
+      mapFragmentShaderSource
     )
 
-    const mapStencilsVertexShader = createShader(
+    const mapStencilVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
-      mapStencilsVertexShaderSource
+      mapStencilVertexShaderSource
     )
-    const mapStencilsFragmentShader = createShader(
+    const mapStencilFragmentShader = createShader(
       gl,
       gl.FRAGMENT_SHADER,
-      mapStencilsFragmentShaderSource
+      mapStencilFragmentShaderSource
     )
 
     const linesVertexShader = createShader(
@@ -161,11 +161,11 @@ export default class WebGL2Renderer
       pointsFragmentShaderSource
     )
 
-    const mapsProgram = createProgram(gl, mapsVertexShader, mapsFragmentShader)
-    const mapStencilsProgram = createProgram(
+    const mapProgram = createProgram(gl, mapVertexShader, mapFragmentShader)
+    const mapStencilProgram = createProgram(
       gl,
-      mapStencilsVertexShader,
-      mapStencilsFragmentShader
+      mapStencilVertexShader,
+      mapStencilFragmentShader
     )
     const linesProgram = createProgram(
       gl,
@@ -182,8 +182,8 @@ export default class WebGL2Renderer
       CachedImageBitmapTile.createFactory(),
       createWebGL2WarpedMapFactory(
         gl,
-        mapsProgram,
-        mapStencilsProgram,
+        mapProgram,
+        mapStencilProgram,
         linesProgram,
         pointsProgram
       ),
@@ -191,20 +191,20 @@ export default class WebGL2Renderer
     )
 
     this.gl = gl
-    this.mapsProgram = mapsProgram
-    this.mapStencilsProgram = mapStencilsProgram
+    this.mapProgram = mapProgram
+    this.mapStencilProgram = mapStencilProgram
     this.linesProgram = linesProgram
     this.pointsProgram = pointsProgram
 
     // Unclear how to remove shaders, possibly already after linking to program, see:
     // https://stackoverflow.com/questions/9113154/proper-way-to-delete-glsl-shader
     // https://stackoverflow.com/questions/27237696/webgl-detach-and-delete-shaders-after-linking
-    gl.deleteShader(mapsVertexShader)
-    gl.deleteShader(mapsFragmentShader)
-    gl.deleteShader(mapsVertexShader)
-    gl.deleteShader(mapsFragmentShader)
-    gl.deleteShader(mapsVertexShader)
-    gl.deleteShader(mapsFragmentShader)
+    gl.deleteShader(mapVertexShader)
+    gl.deleteShader(mapFragmentShader)
+    gl.deleteShader(mapVertexShader)
+    gl.deleteShader(mapFragmentShader)
+    gl.deleteShader(mapVertexShader)
+    gl.deleteShader(mapFragmentShader)
 
     gl.disable(gl.DEPTH_TEST)
 
@@ -226,26 +226,26 @@ export default class WebGL2Renderer
   initializeWebGL(gl: WebGL2RenderingContext) {
     // This code is duplicated from the constructor to allow for context loss and restoration
     // Can't call this function in the constructor, because 'super' must be called before accessing 'this'
-    const mapsVertexShader = createShader(
+    const mapVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
-      mapsVertexShaderSource
+      mapVertexShaderSource
     )
-    const mapsFragmentShader = createShader(
+    const mapFragmentShader = createShader(
       gl,
       gl.FRAGMENT_SHADER,
-      mapsFragmentShaderSource
+      mapFragmentShaderSource
     )
 
-    const mapStencilsVertexShader = createShader(
+    const mapStencilVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
-      mapStencilsVertexShaderSource
+      mapStencilVertexShaderSource
     )
-    const mapStencilsFragmentShader = createShader(
+    const mapStencilFragmentShader = createShader(
       gl,
       gl.FRAGMENT_SHADER,
-      mapStencilsFragmentShaderSource
+      mapStencilFragmentShaderSource
     )
 
     const linesVertexShader = createShader(
@@ -270,11 +270,11 @@ export default class WebGL2Renderer
       pointsFragmentShaderSource
     )
 
-    const mapsProgram = createProgram(gl, mapsVertexShader, mapsFragmentShader)
-    const mapStencilsProgram = createProgram(
+    const mapProgram = createProgram(gl, mapVertexShader, mapFragmentShader)
+    const mapStencilProgram = createProgram(
       gl,
-      mapStencilsVertexShader,
-      mapStencilsFragmentShader
+      mapStencilVertexShader,
+      mapStencilFragmentShader
     )
     const linesProgram = createProgram(
       gl,
@@ -288,8 +288,8 @@ export default class WebGL2Renderer
     )
 
     this.gl = gl
-    this.mapsProgram = mapsProgram
-    this.mapStencilsProgram = mapStencilsProgram
+    this.mapProgram = mapProgram
+    this.mapStencilProgram = mapStencilProgram
     this.linesProgram = linesProgram
     this.pointsProgram = pointsProgram
 
@@ -297,8 +297,8 @@ export default class WebGL2Renderer
 
     for (const warpedMap of this.warpedMapList.getWarpedMaps()) {
       warpedMap.initializeWebGL(
-        mapsProgram,
-        mapStencilsProgram,
+        mapProgram,
+        mapStencilProgram,
         linesProgram,
         pointsProgram
       )
@@ -682,8 +682,8 @@ export default class WebGL2Renderer
 
     super.destroy()
 
-    this.gl.deleteProgram(this.mapsProgram)
-    this.gl.deleteProgram(this.mapStencilsProgram)
+    this.gl.deleteProgram(this.mapProgram)
+    this.gl.deleteProgram(this.mapStencilProgram)
     this.gl.deleteProgram(this.linesProgram)
     this.gl.deleteProgram(this.pointsProgram)
     // Can't delete context, see:
@@ -789,7 +789,7 @@ export default class WebGL2Renderer
 
     this.setMapStencilProgramUniforms()
 
-    this.setMapsProgramUniforms()
+    this.setMapProgramUniforms()
 
     for (const mapId of this.mapsWithRequestedTilesForViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
@@ -804,7 +804,7 @@ export default class WebGL2Renderer
       // by setting stencil operations to mask where mask triangles will *not* be drawn
 
       const gl = this.gl
-      const program = this.mapStencilsProgram
+      const program = this.mapStencilProgram
       gl.useProgram(program)
 
       // Enable stencil buffer and clear values
@@ -821,7 +821,7 @@ export default class WebGL2Renderer
       // Draw mask triangles
       // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
       // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
-      gl.bindVertexArray(warpedMap.mapStencilsVao)
+      gl.bindVertexArray(warpedMap.mapStencilVao)
       gl.drawArrays(
         gl.TRIANGLES,
         0,
@@ -837,7 +837,7 @@ export default class WebGL2Renderer
 
       // Now back to drawing the map
 
-      this.setMapsProgramRenderOptionsUniforms(
+      this.setMapProgramRenderOptionsUniforms(
         this.renderOptions,
         warpedMap.renderOptions
       )
@@ -847,7 +847,7 @@ export default class WebGL2Renderer
       const count = warpedMap.resourceTrianglePoints.length
       const primitiveType = gl.TRIANGLES
       const offset = 0
-      gl.bindVertexArray(warpedMap.mapsVao)
+      gl.bindVertexArray(warpedMap.mapVao)
       gl.drawArrays(primitiveType, offset, count)
 
       // Disable stencil test
@@ -907,7 +907,7 @@ export default class WebGL2Renderer
   }
 
   private setMapStencilProgramUniforms() {
-    const program = this.mapStencilsProgram
+    const program = this.mapStencilProgram
     const gl = this.gl
     gl.useProgram(program)
 
@@ -919,8 +919,8 @@ export default class WebGL2Renderer
     gl.uniform1f(animationProgressLocation, this.animationProgress)
   }
 
-  private setMapsProgramUniforms() {
-    const program = this.mapsProgram
+  private setMapProgramUniforms() {
+    const program = this.mapProgram
     const gl = this.gl
     gl.useProgram(program)
 
@@ -977,7 +977,7 @@ export default class WebGL2Renderer
     }
 
     const gl = this.gl
-    const program = this.mapStencilsProgram
+    const program = this.mapStencilProgram
     gl.useProgram(program)
 
     // Render Transform
@@ -996,12 +996,12 @@ export default class WebGL2Renderer
     )
   }
 
-  private setMapsProgramRenderOptionsUniforms(
+  private setMapProgramRenderOptionsUniforms(
     layerRenderOptions: RenderOptions,
     mapRenderOptions: RenderOptions
   ) {
     const gl = this.gl
-    const program = this.mapsProgram
+    const program = this.mapProgram
     gl.useProgram(program)
 
     const renderOptions: RenderOptions = {
@@ -1089,7 +1089,7 @@ export default class WebGL2Renderer
     }
 
     const gl = this.gl
-    const program = this.mapsProgram
+    const program = this.mapProgram
     gl.useProgram(program)
 
     // Render Transform
