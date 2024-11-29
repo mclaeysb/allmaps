@@ -867,7 +867,7 @@ export default class WebGL2Renderer
   private renderLinesInternal(): void {
     this.setLinesProgramUniforms()
 
-    for (const mapId of this.mapsWithRequestedTilesForViewport) {
+    for (const mapId of this.mapsInViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
 
       if (!warpedMap) {
@@ -893,7 +893,7 @@ export default class WebGL2Renderer
   private renderPointsInternal(): void {
     this.setPointsProgramUniforms()
 
-    for (const mapId of this.mapsWithRequestedTilesForViewport) {
+    for (const mapId of this.mapsInViewport) {
       const warpedMap = this.warpedMapList.getWarpedMap(mapId)
 
       if (!warpedMap) {
