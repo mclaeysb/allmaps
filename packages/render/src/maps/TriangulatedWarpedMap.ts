@@ -199,12 +199,6 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    * @param {boolean} [previousIsNew] - whether the previous and new triangulation are the same. False by default and false during a transformation transition, true when changing refining the triangulation on zoom-in.
    */
   private updateGridTriangulation(previousIsNew = false) {
-    const triangulationTransformOptions = {
-      minOffsetRatio: 0.01,
-      minOffsetDistance: 4,
-      maxDepth: 5
-    }
-
     // Ensure this function is only run after initialisation
     // The TriangulatedMap constructor calls this function twice
     // Once via super() and updateTransformerProperties()
@@ -228,7 +222,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
           return transformBboxForwardToGcpGrid(
             this.resourceMaskBbox,
             this.projectedTransformer,
-            triangulationTransformOptions
+            {}
           )
         }
       )
@@ -242,7 +236,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
           return transformGcpGridForward(
             this.projectedPreviousGcpGrid!,
             this.projectedTransformer,
-            triangulationTransformOptions
+            {}
           )
         },
         () => !this.mixed,
@@ -261,7 +255,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
             return transformGcpGridForward(
               this.projectedGcpGrid!,
               this.projectedPreviousTransformer,
-              triangulationTransformOptions
+              {}
             )
           },
           (projectedPreviousGcpGrid) =>
