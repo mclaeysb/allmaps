@@ -31,10 +31,10 @@ import { mergeOptions } from '@allmaps/stdlib'
 // Options
 
 export const defaultTransformOptions: TransformOptions = {
-  maxOffsetRatio: 0,
+  maxDepth: 0,
+  minOffsetRatio: 0,
   minOffsetDistance: Infinity,
   minLineDistance: Infinity,
-  maxDepth: 0,
   destinationIsGeographic: false,
   sourceIsGeographic: false,
   inputIsMultiGeometry: false,
@@ -47,7 +47,7 @@ export function refinementOptionsFromForwardTransformOptions(
   transformOptions: TransformOptions
 ): RefinementOptions {
   const refinementOptions = mergeOptions(defaultRefinementOptions, {
-    maxOffsetRatio: transformOptions.maxOffsetRatio,
+    minOffsetRatio: transformOptions.minOffsetRatio,
     minOffsetDistance: transformOptions.minOffsetDistance,
     minLineDistance: transformOptions.minLineDistance,
     maxDepth: transformOptions.maxDepth
@@ -74,7 +74,7 @@ export function refinementOptionsFromBackwardTransformOptions(
   transformOptions: TransformOptions
 ): RefinementOptions {
   const refinementOptions = mergeOptions(defaultRefinementOptions, {
-    maxOffsetRatio: transformOptions.maxOffsetRatio,
+    minOffsetRatio: transformOptions.minOffsetRatio,
     minOffsetDistance: transformOptions.minOffsetDistance,
     minLineDistance: transformOptions.minLineDistance,
     maxDepth: transformOptions.maxDepth

@@ -40,8 +40,8 @@ import type {
 // with a different refinementFunction and refinementOptions for the forward and backward case.
 
 export const defaultRefinementOptions: RefinementOptions = {
-  maxOffsetRatio: 0,
   maxDepth: 0,
+  minOffsetRatio: 0,
   minOffsetDistance: Infinity,
   minLineDistance: Infinity,
   sourceMidPointFunction: midPoint,
@@ -224,9 +224,9 @@ function shouldSplitGcpLine(
 ): boolean {
   return (
     destinationMidPointsDistance / destinationLineDistance >
-      refinementOptions.maxOffsetRatio &&
-    destinationMidPointsDistance < refinementOptions.minOffsetDistance &&
-    destinationRefinedLineDistance < refinementOptions.minLineDistance
+      refinementOptions.minOffsetRatio ||
+    destinationMidPointsDistance > refinementOptions.minOffsetDistance ||
+    destinationRefinedLineDistance > refinementOptions.minLineDistance
   )
 }
 

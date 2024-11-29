@@ -90,7 +90,7 @@ const generalGcps7 = [
 ]
 
 const options = {
-  maxOffsetRatio: 0.001,
+  minOffsetRatio: 0.001,
   maxDepth: 2
 }
 // We transform backward (from destination to source) and have GeoJSON input.
@@ -156,7 +156,7 @@ const generalGcps6 = [
 ]
 
 const options = {
-  maxOffsetRatio: 0.00001,
+  minOffsetRatio: 0.00001,
   maxDepth: 1
 }
 
@@ -281,17 +281,17 @@ The `differentHandedness` option is used both when a transformer and when a geom
 
 Here's an overview of the available options:
 
-| Option                    | Description                                                                                                                                                                                                                                                  | Type                                                         | Default                                      |
-| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- | :------------------------------------------- |
-| `maxOffsetRatio`          | Maximum offset ratio when recursively adding midpoints (smaller means more midpoints)                                                                                                                                                                        | `number`                                                     | `0`                                          |
-| `minOffsetDistance`       | Minimum offset distance when recursively adding midpoints (higher means more midpoints)                                                                                                                                                                      | `number`                                                     | `Infinity`                                   |
-| `minLineDistance`         | Minimum line distance when recursively adding midpoints (higher means more midpoints)                                                                                                                                                                        | `number`                                                     | `Infinity`                                   |
-| `maxDepth`                | Maximum recursion depth when recursively adding midpoints (higher means more midpoints)                                                                                                                                                                      | `number`                                                     | `0` (i.e. no midpoints by default!)          |
-| `sourceIsGeographic`      | Use geographic distances and midpoints for lon-lat source points                                                                                                                                                                                             | `boolean`                                                    | `false` (`true` when source is GeoJSON)      |
-| `destinationIsGeographic` | Use geographic distances and midpoints for lon-lat destination points                                                                                                                                                                                        | `boolean`                                                    | `false` (`true` when destination is GeoJSON) |
-| `inputIsMultiGeometry`    | Whether the input should be considered as a MultiPoint, MultiLineString or MultiPolygon. This is necessary since the standard geometry (as opposed to GeoJSON geometries) types are not deterministic: the types of LineString and MultiPoint are identical. | `boolean`                                                    | `false`                                      |
-| `differentHandedness`     | Whether one of the axes should be flipped while computing the transformation parameters. Should be true if the handedness differs between the source and destination.                                                                                        | `boolean`                                                    | `false`                                      |
-| `evaluationType`          | Whether to evaluate the transformation function or one of it's derivatives.                                                                                                                                                                                  | `'function' \| 'partialDerivativeX' \| 'partialDerivativeY'` | `'function'`                                 |
+| Option                    | Description                                                                                                                                                                                                                                                  | Type                                                         | Default                                            |
+| :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------- | :------------------------------------------------- |
+| `maxDepth`                | Maximum recursion depth when recursively adding midpoints (higher means more midpoints)                                                                                                                                                                      | `number`                                                     | `0` (i.e. no midpoints by default!)                |
+| `minOffsetRatio`          | Minimum offset ratio when recursively adding midpoints (lower means more midpoints)                                                                                                                                                                          | `number`                                                     | `0`                                                |
+| `minOffsetDistance`       | Minimum offset distance when recursively adding midpoints (lower means more midpoints)                                                                                                                                                                       | `number`                                                     | `Infinity` (i.e. condition not applied by default) |
+| `minLineDistance`         | Minimum line distance when recursively adding midpoints (lower means more midpoints)                                                                                                                                                                         | `number`                                                     | `Infinity` (i.e. condition not applied by default) |
+| `sourceIsGeographic`      | Use geographic distances and midpoints for lon-lat source points                                                                                                                                                                                             | `boolean`                                                    | `false` (`true` when source is GeoJSON)            |
+| `destinationIsGeographic` | Use geographic distances and midpoints for lon-lat destination points                                                                                                                                                                                        | `boolean`                                                    | `false` (`true` when destination is GeoJSON)       |
+| `inputIsMultiGeometry`    | Whether the input should be considered as a MultiPoint, MultiLineString or MultiPolygon. This is necessary since the standard geometry (as opposed to GeoJSON geometries) types are not deterministic: the types of LineString and MultiPoint are identical. | `boolean`                                                    | `false`                                            |
+| `differentHandedness`     | Whether one of the axes should be flipped while computing the transformation parameters. Should be true if the handedness differs between the source and destination.                                                                                        | `boolean`                                                    | `false`                                            |
+| `evaluationType`          | Whether to evaluate the transformation function or one of it's derivatives.                                                                                                                                                                                  | `'function' \| 'partialDerivativeX' \| 'partialDerivativeY'` | `'function'`                                       |
 
 #### Recursively adding midpoints
 
@@ -299,12 +299,13 @@ When transforming LineStrings and Polygons, it can happen that simply transformi
 
 Two factors are at play which may require a more granular transformation: the transformation (which can be non-shape preserving, as is the case with all transformation in this package except for Helmert and 1st degree polynomial) or the geographic nature of the coordinates (where lines are generally meant as 'great arcs' but could be interpreted as lon-lat cartesian lines).
 
-An algorithm will therefore recursively add midpoints in each segment (i.e. between two Points) to make the line more granular. A midpoint is added at the transformed middle Point of the original segment if all of the following conditions are met:
+An algorithm will therefore recursively add midpoints in each segment (i.e. between two Points) to make the line more granular. A midpoint is added at the transformed middle Point of the original segment if the number of iterations is smaller than or equal to `maxDepth`, and if at least one of the following conditions are met:
 
-*   That the ratio of (the distance between the middle Point of the transformed segment and the transformed middle Point of the original segment) to the length of the transformed segment, is larger than the specified `maxOffsetRatio`.
-*   The distance between the middle Point of the transformed segment and the transformed middle Point of the original segment is smaller than the specified `minOffsetDistance`.
-*   The transformed segment is smaller than the specified `minLineDistance`.
-*   The process hasn't repeated more than `maxDepth` iterations.
+*   The ratio of (the distance between the middle Point of the transformed segment and the transformed middle Point of the original segment) to the length of the transformed segment, is larger than or equal to the specified `minOffsetRatio`.
+*   The distance between the middle Point of the transformed segment and the transformed middle Point of the original segment is larger than or equal to the specified `minOffsetDistance`.
+*   The transformed segment is larger than or equal to the specified `minLineDistance`.
+
+Note that only one is met by default. Set a value to a number to opt in to a condition, set a value to `Infinity` to opt out of a condition.
 
 The computation of the midpoints and distances in the source and destination domains during this process uses geometric algorithms, unless `sourceIsGeographic` or `destinationIsGeographic` are set to `true`, in which case geographic algorithms (such as 'Great-circle distance') are used.
 

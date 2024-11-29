@@ -200,7 +200,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   private updateGridTriangulation(previousIsNew = false) {
     const triangulationTransformOptions = {
-      maxOffsetRatio: 0.01,
+      minOffsetRatio: 0.01,
+      minOffsetDistance: 4,
       maxDepth: 5
     }
 

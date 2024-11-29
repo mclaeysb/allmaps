@@ -7,7 +7,7 @@ import type { Point } from '@allmaps/types'
 export type GeneralGcp = { source: Point; destination: Point }
 
 export type RefinementOptions = {
-  maxOffsetRatio: number
+  minOffsetRatio: number
   minOffsetDistance: number
   minLineDistance: number
   maxDepth: number
@@ -40,7 +40,7 @@ export type TransformationType =
   | 'thinPlateSpline'
 
 export type TransformOptions = {
-  maxOffsetRatio: number
+  minOffsetRatio: number
   minOffsetDistance: number
   minLineDistance: number
   maxDepth: number
