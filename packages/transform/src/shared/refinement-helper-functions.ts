@@ -342,10 +342,12 @@ export function refineGcpGridColsRows(
   // Compute cols and rows by comparing minimal line length to original length
   // Note: Tried to acchieve this by working with unflattened refined line and computing depth
   // but that proved difficult for TypeScript
-  const cols = Math.round(
-    sourceHorizontalLenght / sourceMinHorizontalLineLenght
+  const sourceMinLineLength = Math.min(
+    sourceMinHorizontalLineLenght,
+    sourceMinVerticalLineLenght
   )
-  const rows = Math.round(sourceVerticalLenght / sourceMinVerticalLineLenght)
+  const cols = Math.round(sourceHorizontalLenght / sourceMinLineLength)
+  const rows = Math.round(sourceVerticalLenght / sourceMinLineLength)
 
   return {
     cols,
