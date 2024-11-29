@@ -56,7 +56,7 @@ export function mixTypedGrids<P0, P1, P2>(
   const mixedGrid: TypedGrid<P2> = []
   for (let i = 0; i < typedGrid0.length; i++) {
     mixedGrid[i] = []
-    for (let j = 0; j < typedGrid0.length; j++) {
+    for (let j = 0; j < typedGrid0[i].length; j++) {
       mixedGrid[i].push(mixFunction(typedGrid0[i][j], typedGrid1[i][j]))
     }
   }
