@@ -1,7 +1,10 @@
-import { createGrid, makePointsOnRing } from './shared.js'
+import { getGridPointsInRing, interpolateRing } from './shared.js'
+import { midPoint } from '@allmaps/stdlib'
 
 import classifyPoint from 'robust-point-in-polygon'
-import * as poly2tri from 'poly2tri'
+import Delaunator from 'delaunator'
+import Constrainautor from '@kninnug/constrainautor'
+
 import type {
   Point,
   Ring,
@@ -9,57 +12,11 @@ import type {
   UniquePointsIndexTriangle
 } from '@allmaps/types'
 
-type PointLike = { x: number; y: number; type: string; item: number }
-type PointLikeTriangle = [PointLike, PointLike, PointLike]
-
-/**
- * Triangle object from [poly2tri](https://github.com/r3mi/poly2tri.js/) package
- * @typedef {Object} poly2tri.Triangle
- */
-
-/**
- * Triangulates a polygon (and returns the full Poly2tri output)
- *
- * @remark Use this function to access the rich poly2tri triangulation output (information on constrained edges, neighbours, interior).
- *
- * @param {Ring} polygon - Polygon
- * @param {number} distance - Distance between the Steiner points placed in a grid inside the polygon
- * @returns {poly2tri.Triangle[]} Array of triangles partitioning the polygon
- */
-export function triangulatePoly2tri(polygon: Ring, distance: number) {
-  let item = 0
-
-  // Initialize Constrained Delaunay Triangulation with polygon
-  const swctx = new poly2tri.SweepContext(
-    makePointsOnRing(polygon, distance).map((p) => {
-      return { x: p[0], y: p[1], type: 'p', item: item++ }
-    })
-  )
-
-  // Add grid points as Steiner points if they are inside the polygon
-  swctx.addPoints(
-    createGrid(polygon, distance)
-      .filter((p) => classifyPoint(polygon, p) === -1)
-      .map((p) => {
-        return {
-          x: p[0],
-          y: p[1],
-          type: 'g',
-          item: item++
-        }
-      })
-  )
-
-  // Triangulate
-  try {
-    swctx.triangulate()
-  } catch (e) {
-    // This is a poly2tri PointError. Check e.message and e.points for more information.
-    throw new Error(
-      'A Point Error occured during resource mask triangulation. This is typically because the resource mask contains duplicate or collinear points, or is self-intersecting.'
-    )
-  }
-  return swctx.getTriangles()
+export type triangulateConstrainautorOutput = {
+  con: Constrainautor
+  points: Point[]
+  triangles: Triangle[]
+  uniquePointsIndexTriangles: UniquePointsIndexTriangle[]
 }
 
 /**
@@ -68,24 +25,28 @@ export function triangulatePoly2tri(polygon: Ring, distance: number) {
  * @remark Polygons with < 3 points just return an empty array.
  *
  * @param {Ring} polygon - Polygon
- * @param {number} distance - Distance between the Steiner points placed in a grid inside the polygon
+ * @param {number} distance - Distance between the grid points placed inside the polygon
  * @returns {Triangle[]} Array of triangles partitioning the polygon
  */
 export function triangulate(polygon: Ring, distance: number): Triangle[] {
-  return triangulatePoly2tri(polygon, distance).map(
-    (t) => t.getPoints().map((p) => [p.x, p.y]) as Triangle
-  )
+  if (polygon.length < 3) {
+    return []
+  }
+
+  {
+    const { triangles } = triangulateConstrainautor(polygon, distance)
+    return triangles
+  }
 }
 
 /**
  * Triangulates a polygon and return unique points.
- * Grid points typically occure in 6 triangles
- * This function reutrns the list of unique points, and returns the triangles as uniquePointsIndexTriangles with indices refering to the unique points
+ * This function returns the list of unique points, and returns the triangles as uniquePointsIndexTriangles with indices refering to the unique points
  *
- * @remark Polygons with < 3 points just return an empty array.
+ * @remark Polygons with < 3 points just return an empty array for uniquePointsIndexTriangles.
  *
  * @param {Ring} polygon - Polygon
- * @param {number} distance - Distance between the Steiner points placed in a grid inside the polygon
+ * @param {number} distance - Distance between the grid points placed inside the polygon
  * @returns {{uniquePointsIndexTriangles: UniquePointsIndexTriangle[], uniquePoints: Point[]}} Object with uniquePointsIndexTriangles and uniquePoints
  */
 export function triangulateToUnique(
@@ -95,27 +56,108 @@ export function triangulateToUnique(
   uniquePointsIndexTriangles: UniquePointsIndexTriangle[]
   uniquePoints: Point[]
 } {
-  const pointLikeTriangles = triangulatePoly2tri(polygon, distance).map((t) =>
-    t.getPoints().map((p) => p as PointLike)
-  ) as PointLikeTriangle[]
+  if (polygon.length < 3) {
+    return {
+      uniquePointsIndexTriangles: [],
+      uniquePoints: polygon
+    }
+  }
 
-  const pointLikesByItem = new Map(
-    pointLikeTriangles.flat().map((pl) => [pl.item, pl]) as [
-      number,
-      PointLike
-    ][]
+  const { points, uniquePointsIndexTriangles } = triangulateConstrainautor(
+    polygon,
+    distance
   )
-  const uniquePointLikes = [...pointLikesByItem.values()].sort(
-    (pl0, pl1) => pl0.item - pl1.item
-  )
-
-  const uniquePoints = uniquePointLikes.map((pl) => [pl.x, pl.y] as Point)
-  const uniquePointsIndexTriangles = pointLikeTriangles.map((t) =>
-    t.map((pl) => pl.item as number)
-  ) as UniquePointsIndexTriangle[]
-
   return {
     uniquePointsIndexTriangles,
-    uniquePoints
+    uniquePoints: points
+  }
+}
+
+/**
+ * Triangulates a polygon using Constrainautor
+ *
+ * @param {Ring} polygon - Polygon
+ * @param {number} [distance] - Distance between the grid points placed inside the polygon
+ * @returns {triangulateConstrainautorOutput} Constrainautor object
+ */
+export function triangulateConstrainautor(
+  polygon: Ring,
+  distance?: number
+): triangulateConstrainautorOutput {
+  let polygonOrInterpolatedPolygon: Point[]
+  let points: Point[]
+  if (distance) {
+    // Interpolate polygon
+    polygonOrInterpolatedPolygon = interpolateRing(polygon, distance)
+
+    // Add grid points inside the polygon
+    const gridPoints = getGridPointsInRing(polygon, distance)
+    const gridPointsInPolygon = gridPoints.filter((point) => {
+      if (classifyPoint(polygon, point) == -1) {
+        return true
+      }
+    })
+    points = [...polygonOrInterpolatedPolygon, ...gridPointsInPolygon]
+  } else {
+    polygonOrInterpolatedPolygon = polygon
+    points = polygon
+  }
+
+  // Initialize Delaunay triangulation from polygon + grid points
+  const del = new Delaunator(points.flat())
+
+  // Collect indices of (interpolated) polygon edges
+  const edgeIndices = []
+  for (let i = 0; i < polygonOrInterpolatedPolygon.length - 1; i++) {
+    edgeIndices.push([i, i + 1] as [number, number])
+  }
+  edgeIndices.push([polygonOrInterpolatedPolygon.length - 1, 0] as [
+    number,
+    number
+  ])
+
+  // Constrain triangulation
+  const con = new Constrainautor(del, edgeIndices)
+
+  let uniquePointsIndexTriangles: UniquePointsIndexTriangle[] = []
+  let triangles: Triangle[] = []
+  const shouldClassify: boolean[] = []
+  for (let i = 0; i < con.del.triangles.length; i += 3) {
+    uniquePointsIndexTriangles.push([
+      con.del.triangles[i],
+      con.del.triangles[i + 1],
+      con.del.triangles[i + 2]
+    ])
+    triangles.push([
+      points[con.del.triangles[i]],
+      points[con.del.triangles[i + 1]],
+      points[con.del.triangles[i + 2]]
+    ])
+    shouldClassify.push(
+      con.del.triangles[i] < polygonOrInterpolatedPolygon.length ||
+        con.del.triangles[i + 1] < polygonOrInterpolatedPolygon.length ||
+        con.del.triangles[i + 2] < polygonOrInterpolatedPolygon.length
+    )
+  }
+
+  // Check if triangles inside
+  const classifications = triangles.map((triangle, index) => {
+    // TODO: speed up by checking only if at least one point is on polygon
+
+    // Only keep if inside
+    return shouldClassify[index]
+      ? classifyPoint(polygon, midPoint(triangle)) == -1
+      : true
+  })
+  uniquePointsIndexTriangles = uniquePointsIndexTriangles.filter(
+    (_triangle, index) => classifications[index]
+  )
+  triangles = triangles.filter((_triangle, index) => classifications[index])
+
+  return {
+    con,
+    points,
+    triangles,
+    uniquePointsIndexTriangles
   }
 }

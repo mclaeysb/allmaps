@@ -734,7 +734,7 @@ importers:
         version: link:../../packages/openlayers
       '@allmaps/render':
         specifier: ^1.0.0-beta.67
-        version: link:../../packages/render
+        version: 1.0.0-beta.68
       '@allmaps/stdlib':
         specifier: ^1.0.0-beta.30
         version: link:../../packages/stdlib
@@ -1089,7 +1089,7 @@ importers:
         version: link:../render
       '@allmaps/stdlib':
         specifier: ^1.0.0-beta.30
-        version: link:../stdlib
+        version: 1.0.0-beta.31
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -1412,10 +1412,16 @@ importers:
     dependencies:
       '@allmaps/stdlib':
         specifier: ^1.0.0-beta.30
-        version: 1.0.0-beta.31
+        version: link:../stdlib
       '@allmaps/types':
         specifier: ^1.0.0-beta.14
         version: 1.0.0-beta.15
+      '@kninnug/constrainautor':
+        specifier: ^4.0.0
+        version: 4.0.0
+      delaunator:
+        specifier: ^5.0.1
+        version: 5.0.1
       poly2tri:
         specifier: ^1.5.0
         version: 1.5.0
@@ -1423,6 +1429,9 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
+      '@types/delaunator':
+        specifier: ^5.0.3
+        version: 5.0.3
       '@types/eslint':
         specifier: ^8.56.0
         version: 8.56.10
@@ -3250,6 +3259,12 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
+  /@kninnug/constrainautor@4.0.0:
+    resolution: {integrity: sha512-tIlqPYscvULOA4jkAYxczIXm8bX7t9h2cvnE0p5KYHVQai58XkjoxCWRDhdmEEub/pLurFKdhWmuJrOxKD1qzw==}
+    dependencies:
+      robust-predicates: 3.0.2
+    dev: false
+
   /@lerna/child-process@7.4.2:
     resolution: {integrity: sha512-je+kkrfcvPcwL5Tg8JRENRqlbzjdlZXyaR88UcnCdNW0AJ1jX9IfHRys1X7AwSroU2ug8ESNC+suoBw1vX833Q==}
     engines: {node: '>=16.0.0'}
@@ -4398,6 +4413,10 @@ packages:
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
     dependencies:
       '@types/ms': 0.7.34
+
+  /@types/delaunator@5.0.3:
+    resolution: {integrity: sha512-6tTLP8NX0OwtB/fmW9bXp4EWPptawTSsrSGjboWRuzqkxNEEJGyzRPHbr8wnV2DBWfAZ+EPTOvW3B/KysJrl2g==}
+    dev: true
 
   /@types/earcut@2.1.4:
     resolution: {integrity: sha512-qp3m9PPz4gULB9MhjGID7wpo3gJ4bTGXm7ltNDsmOvsPduTeHp8wSW9YckBj3mljeOh4F0m2z/0JKAALRKbmLQ==}
@@ -6378,6 +6397,12 @@ packages:
     resolution: {integrity: sha512-Ds09qNh8yw3khSjiJjiUInaGX9xlqZDY7JVryGxdxV7NPeuqQfplOpQ66yJFZut3jLa5zOwkXw1g9EI2uKh4Og==}
     engines: {node: '>=8'}
     dev: true
+
+  /delaunator@5.0.1:
+    resolution: {integrity: sha512-8nvh+XBe96aCESrGOqMp/84b13H9cdKbG5P2ejQCh4d4sK9RL4371qou9drQjMhvnPmhWl5hnmqbEE0fXr9Xnw==}
+    dependencies:
+      robust-predicates: 3.0.2
+    dev: false
 
   /delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
@@ -12190,6 +12215,10 @@ packages:
     resolution: {integrity: sha512-pPzz7AevOOcPYnFv4Vs5L0C7BKOq6C/TfAw5EUE58CylbjGiPyMjAnPLzzSuPZ2zftUGwWbmLWPOjPOz61tAcA==}
     dependencies:
       robust-orientation: 1.2.1
+
+  /robust-predicates@3.0.2:
+    resolution: {integrity: sha512-IXgzBWvWQwE6PrDI05OvmXUIruQTcoMDzRsOd5CDvHCVLcLHMTSYvOK5Cm46kWqlV3yAbuSpBZdJ5oP5OUoStg==}
+    dev: false
 
   /robust-scale@1.0.2:
     resolution: {integrity: sha512-jBR91a/vomMAzazwpsPTPeuTPPmWBacwA+WYGNKcRGSh6xweuQ2ZbjRZ4v792/bZOhRKXRiQH0F48AvuajY0tQ==}
