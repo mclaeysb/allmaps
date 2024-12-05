@@ -66,8 +66,7 @@ export default class WarpedMapLayer extends Layer {
     container.appendChild(canvas)
 
     const gl = canvas.getContext('webgl2', {
-      premultipliedAlpha: true,
-      stencil: true
+      premultipliedAlpha: true
     })
 
     if (!gl) {

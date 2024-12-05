@@ -15,10 +15,8 @@ import {
 
 import {
   defaultTransformOptions,
-  transformBboxForwardToGcpGrid,
-  transformBboxBackwardToGcpGrid,
-  transformGcpGridForward,
-  transformGcpGridBackward
+  getForwardTransformResolution,
+  getBackwardTransformResolution
 } from './shared/transform-helper-functions.js'
 import { defaultRefinementOptions } from './shared/refinement-helper-functions.js'
 
@@ -35,10 +33,8 @@ export {
   Straight,
   supportedDistortionMeasures,
   computeDistortionFromPartialDerivatives,
-  transformBboxForwardToGcpGrid,
-  transformBboxBackwardToGcpGrid,
-  transformGcpGridForward,
-  transformGcpGridBackward,
+  getForwardTransformResolution,
+  getBackwardTransformResolution,
   defaultTransformOptions,
   defaultRefinementOptions
 }

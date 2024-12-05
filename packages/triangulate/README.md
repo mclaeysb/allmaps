@@ -56,12 +56,12 @@ const triangles = triangulate(polygon, distance)
 
 #### Table of Contents
 
-- [triangulate](#triangulate)
-  - [Parameters](#parameters)
-- [triangulateToUnique](#triangulatetounique)
-  - [Parameters](#parameters-1)
-- [triangulateConstrainautor](#triangulateconstrainautor)
-  - [Parameters](#parameters-2)
+*   [triangulate](#triangulate)
+    *   [Parameters](#parameters)
+*   [triangulateToUnique](#triangulatetounique)
+    *   [Parameters](#parameters-1)
+*   [triangulateConstrainautor](#triangulateconstrainautor)
+    *   [Parameters](#parameters-2)
 
 ### triangulate
 
@@ -69,8 +69,8 @@ Triangulates a polygon
 
 #### Parameters
 
-- `polygon` **Ring** Polygon
-- `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** Distance between the grid points placed inside the polygon
+*   `polygon` **Ring** Polygon
+*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** Distance between the grid points placed inside the polygon
 
 Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Triangle>** Array of triangles partitioning the polygon
 
@@ -81,8 +81,8 @@ This function returns the list of unique points, and returns the triangles as un
 
 #### Parameters
 
-- `polygon` **Ring** Polygon
-- `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** Distance between the grid points placed inside the polygon
+*   `polygon` **Ring** Polygon
+*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance between the grid points placed inside the polygon
 
 Returns **{uniquePointsIndexTriangles: [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<UniquePointsIndexTriangle>, uniquePoints: [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Point>}** Object with uniquePointsIndexTriangles and uniquePoints
 
@@ -92,8 +92,8 @@ Triangulates a polygon using Constrainautor
 
 #### Parameters
 
-- `polygon` **Ring** Polygon
-- `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance between the grid points placed inside the polygon
+*   `polygon` **Ring** Polygon
+*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance between the grid points placed inside the polygon
 
 Returns **triangulateConstrainautorOutput** Constrainautor object
 
@@ -101,16 +101,16 @@ Returns **triangulateConstrainautorOutput** Constrainautor object
 
 ### Stability
 
-- Constrainautor doesn't allow self-intersection polygons and will raise an error for such inputs.
+*   Constrainautor doesn't allow self-intersection polygons and will raise an error for such inputs.
 
 ### Benchmark
 
 For a 10 point polygon (with diameter ~ 200), here are some benchmarks for computing the triangulation with given distances:
 
-- `triangulate(polygon, 1000)` (no grid points): 154685 ops/s to compute 8 triangles
-- `triangulate(polygon, 100)`: 120094 ops/s to compute 11 triangles
-- `triangulate(polygon, 10)`: 6783 ops/s to compute 454 triangles
-- `triangulate(polygon, 1)`: 61 ops/s to compute 38535 triangles
+*   `triangulate(polygon, 1000)` (no grid points): 154685 ops/s to compute 8 triangles
+*   `triangulate(polygon, 100)`: 120094 ops/s to compute 11 triangles
+*   `triangulate(polygon, 10)`: 6783 ops/s to compute 454 triangles
+*   `triangulate(polygon, 1)`: 61 ops/s to compute 38535 triangles
 
 See [`./bench/index.js`](`./bench/index.js`).
 

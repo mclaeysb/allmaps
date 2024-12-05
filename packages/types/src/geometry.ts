@@ -69,29 +69,6 @@ export type TypedLine<P> = [P, P]
 export type TypedTriangle<P> = [P, P, P]
 export type TypedRectangle<P> = [P, P, P, P]
 
-// Indexed like a matrix: Top to down, then left to right
-export type TypedGrid<P> = P[][]
-
-export type QuadTree<P> = {
-  tl: P
-  tr: P
-  bl: P
-  br: P
-
-  parent?: QuadTree<P>
-
-  tc?: P
-  cl?: P
-  cc?: P
-  cr?: P
-  bc?: P
-
-  tlQuadTree?: QuadTree<P>
-  trQuadTree?: QuadTree<P>
-  blQuadTree?: QuadTree<P>
-  brQuadTree?: QuadTree<P>
-}
-
 export type Gcp = { resource: Point; geo: Point }
 
 /**
@@ -110,16 +87,6 @@ export type Bbox = [number, number, number, number]
  * @typedef {Size}
  */
 export type Size = [number, number]
-
-/**
- * The number of columns of an Image, Matrix or TypedGrid
- * This is an Object, not an Array like Size to prevent confusion with the order
- * Since for Images, Matrices or Grids the rows would often come first
- *
- * @export
- * @typedef {ColsRows}
- */
-export type ColsRows = { cols: number; rows: number }
 
 // TODO: change name to something like 'helmert transformation signature'
 export type Transform = [number, number, number, number, number, number]

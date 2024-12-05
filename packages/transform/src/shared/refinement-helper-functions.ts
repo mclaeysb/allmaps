@@ -4,10 +4,7 @@ import {
   squaredDistance,
   conformLineString,
   conformRing,
-  bboxToSize,
-  mapTypedGrid,
-  computeBboxTypedGrid,
-  getTypedGridColsRows
+  bboxToRectangle
 } from '@allmaps/stdlib'
 
 import type {
@@ -16,10 +13,8 @@ import type {
   Ring,
   Gcp,
   TypedLine,
-  TypedGrid,
   Bbox,
-  Line,
-  ColsRows
+  Line
 } from '@allmaps/types'
 
 import type {
@@ -230,52 +225,19 @@ function shouldSplitGcpLine(
   )
 }
 
-// Refine Bbox to GcpGrid
+// Get refinement source resolution
 
-export function refineBboxToGcpGrid(
-  bbox: Bbox,
+export function getRefinementSourceResolution(
+  sourceBbox: Bbox,
   refinementFunction: (p: Point) => Point,
   refinementOptions: RefinementOptions
-): TypedGrid<GeneralGcp> {
-  const gcpGrid = bboxToGcpGrid(bbox, 1, 1, refinementFunction)
+): number | undefined {
+  const sourceRectangle = bboxToRectangle(sourceBbox)
 
-  return refineGcpGrid(gcpGrid, refinementFunction, refinementOptions)
-}
-
-export function refineGcpGrid(
-  gcpGrid: TypedGrid<GeneralGcp>,
-  refinementFunction: (p: Point) => Point,
-  refinementOptions: RefinementOptions
-): TypedGrid<GeneralGcp> {
-  let { cols, rows } = getTypedGridColsRows(gcpGrid)
-
-  const { cols: refinedCols, rows: refinedRows } = refineGcpGridColsRows(
-    gcpGrid,
-    refinementFunction,
-    refinementOptions
-  )
-
-  if (refinedCols * refinedRows > cols * rows) {
-    cols = refinedCols
-    rows = refinedRows
-  }
-
-  const bbox = computeBboxTypedGrid(gcpGrid, (generalGcp) => generalGcp.source)
-
-  return bboxToGcpGrid(bbox, cols, rows, refinementFunction)
-}
-
-export function refineGcpGridColsRows(
-  gcpGrid: TypedGrid<GeneralGcp>,
-  refinementFunction: (p: Point) => Point,
-  refinementOptions: RefinementOptions
-): ColsRows {
-  // Get grid points
-  const sourcePointNE = gcpGrid[0][0].source
-  const sourcePointNW = gcpGrid[0][gcpGrid[0].length - 1].source
-  const sourcePointSE = gcpGrid[gcpGrid.length - 1][0].source
-  const sourcePointSW =
-    gcpGrid[gcpGrid.length - 1][gcpGrid[gcpGrid.length - 1].length - 1].source
+  const sourcePointNE = sourceRectangle[2]
+  const sourcePointNW = sourceRectangle[3]
+  const sourcePointSE = sourceRectangle[1]
+  const sourcePointSW = sourceRectangle[0]
 
   const sourcePointCE = refinementOptions.sourceMidPointFunction(
     sourcePointNE,
@@ -298,9 +260,6 @@ export function refineGcpGridColsRows(
   const sourceHorizontalLine = [sourcePointCE, sourcePointCW] as Line
   const sourceVerticalLine = [sourcePointNC, sourcePointSC] as Line
 
-  const sourceHorizontalLenght = distance(sourceHorizontalLine)
-  const sourceVerticalLenght = distance(sourceVerticalLine)
-
   // Refine lines
   const sourceRefinedHorizontalLineString = refineLineString(
     sourceHorizontalLine,
@@ -312,6 +271,13 @@ export function refineGcpGridColsRows(
     refinementFunction,
     { ...refinementOptions, returnDomain: 'source' }
   )
+
+  if (
+    sourceRefinedHorizontalLineString.length == 2 &&
+    sourceRefinedVerticalLineString.length == 2
+  ) {
+    return undefined
+  }
 
   // Compute minimal line length of refinement
   const sourceMinHorizontalLineSquaredLenghts = []
@@ -346,13 +312,8 @@ export function refineGcpGridColsRows(
     sourceMinHorizontalLineLenght,
     sourceMinVerticalLineLenght
   )
-  const cols = Math.round(sourceHorizontalLenght / sourceMinLineLength)
-  const rows = Math.round(sourceVerticalLenght / sourceMinLineLength)
 
-  return {
-    cols,
-    rows
-  }
+  return sourceMinLineLength
 }
 
 // Convert
@@ -396,38 +357,4 @@ export function gcpLinesToGcps(
     gcps.push(lines[lines.length - 1][1])
   }
   return gcps
-}
-
-export function bboxToGcpGrid(
-  bbox: Bbox,
-  cols = 1,
-  rows = 1,
-  refinementFunction: (p: Point) => Point
-): TypedGrid<GeneralGcp> {
-  const pointGrid = bboxToPointGrid(bbox, cols, rows)
-
-  return mapTypedGrid(pointGrid, (point) => ({
-    source: point,
-    destination: refinementFunction(point)
-  }))
-}
-
-export function bboxToPointGrid(
-  bbox: Bbox,
-  cols = 1,
-  rows = 1
-): TypedGrid<Point> {
-  const grid: TypedGrid<Point> = []
-  const size = bboxToSize(bbox)
-  const stepX = size[0] / cols
-  const stepY = size[1] / rows
-
-  for (let i = 0; i <= rows; i++) {
-    grid[i] = []
-    for (let j = 0; j <= cols; j++) {
-      grid[i].push([bbox[0] + j * stepX, bbox[1] + i * stepY] as Point)
-    }
-  }
-
-  return grid
 }

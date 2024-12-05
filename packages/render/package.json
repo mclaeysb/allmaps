@@ -76,9 +76,7 @@
     "@allmaps/triangulate": "^1.0.0-beta.22",
     "@allmaps/types": "^1.0.0-beta.14",
     "@turf/boolean-point-in-polygon": "^6.5.0",
-    "@types/earcut": "^2.1.4",
     "comlink": "^4.4.1",
-    "earcut": "^3.0.0",
     "lodash-es": "^4.17.21",
     "rbush": "^3.0.1",
     "robust-point-in-polygon": "^1.0.3"

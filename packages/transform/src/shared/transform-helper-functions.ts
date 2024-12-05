@@ -4,28 +4,15 @@ import getWorldDistance from '@turf/distance'
 
 import GcpTransformer from '../transformer'
 import {
-  generalGcpToGcpForForward,
-  generalGcpToGcpForBackward,
-  gcpToGeneralGcpForForward,
-  gcpToGeneralGcpForBackward,
   refineLineString,
-  refineBboxToGcpGrid,
-  refineGcpGrid,
   refineRing,
-  defaultRefinementOptions
+  defaultRefinementOptions,
+  getRefinementSourceResolution
 } from './refinement-helper-functions.js'
 
 import type { TransformOptions, RefinementOptions } from './types.js'
 
-import type {
-  Point,
-  LineString,
-  Ring,
-  Polygon,
-  Bbox,
-  Gcp,
-  TypedGrid
-} from '@allmaps/types'
+import type { Point, LineString, Ring, Polygon, Bbox } from '@allmaps/types'
 import { mergeOptions } from '@allmaps/stdlib'
 
 // Options
@@ -167,86 +154,36 @@ export function transformPolygonBackwardToPolygon(
   })
 }
 
-// Transform GcpGrid
+// Get transform resource resolution
 
-export function transformBboxForwardToGcpGrid(
+export function getForwardTransformResolution(
   bbox: Bbox,
   transformer: GcpTransformer,
   partialTransformOptions: Partial<TransformOptions>
-): TypedGrid<Gcp> {
+): number | undefined {
   const transformOptions = mergeOptions(
     transformer.options,
     partialTransformOptions
   )
-  const generalGcpGrid = refineBboxToGcpGrid(
+  return getRefinementSourceResolution(
     bbox,
-    (p) => transformer.transformForward(p, transformOptions),
+    (p) => transformer.transformForward(p),
     refinementOptionsFromForwardTransformOptions(transformOptions)
-  )
-  return generalGcpGrid.map((typedRow) =>
-    typedRow.map(generalGcpToGcpForForward)
   )
 }
 
-export function transformBboxBackwardToGcpGrid(
+export function getBackwardTransformResolution(
   bbox: Bbox,
   transformer: GcpTransformer,
   partialTransformOptions: Partial<TransformOptions>
-): TypedGrid<Gcp> {
+): number | undefined {
   const transformOptions = mergeOptions(
     transformer.options,
     partialTransformOptions
   )
-  const generalGcpGrid = refineBboxToGcpGrid(
+  return getRefinementSourceResolution(
     bbox,
-    (p) => transformer.transformBackward(p, transformOptions),
+    (p) => transformer.transformBackward(p),
     refinementOptionsFromBackwardTransformOptions(transformOptions)
-  )
-  return generalGcpGrid.map((typedRow) =>
-    typedRow.map(generalGcpToGcpForBackward)
-  )
-}
-
-export function transformGcpGridForward(
-  gcpGrid: TypedGrid<Gcp>,
-  transformer: GcpTransformer,
-  partialTransformOptions: Partial<TransformOptions>
-): TypedGrid<Gcp> {
-  const transformOptions = mergeOptions(
-    transformer.options,
-    partialTransformOptions
-  )
-  let generalGcpGrid = gcpGrid.map((typedRow) =>
-    typedRow.map(gcpToGeneralGcpForForward)
-  )
-  generalGcpGrid = refineGcpGrid(
-    generalGcpGrid,
-    (p) => transformer.transformForward(p, transformOptions),
-    refinementOptionsFromForwardTransformOptions(transformOptions)
-  )
-  return generalGcpGrid.map((typedRow) =>
-    typedRow.map(generalGcpToGcpForForward)
-  )
-}
-
-export function transformGcpGridBackward(
-  gcpGrid: TypedGrid<Gcp>,
-  transformer: GcpTransformer,
-  partialTransformOptions: Partial<TransformOptions>
-): TypedGrid<Gcp> {
-  const transformOptions = mergeOptions(
-    transformer.options,
-    partialTransformOptions
-  )
-  let generalGcpGrid = gcpGrid.map((typedRow) =>
-    typedRow.map(gcpToGeneralGcpForBackward)
-  )
-  generalGcpGrid = refineGcpGrid(
-    generalGcpGrid,
-    (p) => transformer.transformBackward(p, transformOptions),
-    refinementOptionsFromBackwardTransformOptions(transformOptions)
-  )
-  return generalGcpGrid.map((typedRow) =>
-    typedRow.map(generalGcpToGcpForBackward)
   )
 }

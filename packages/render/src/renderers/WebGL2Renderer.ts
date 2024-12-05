@@ -27,8 +27,6 @@ import { createShader, createProgram } from '../shared/webgl2.js'
 
 import mapVertexShaderSource from '../shaders/map/vertex-shader.glsl'
 import mapFragmentShaderSource from '../shaders/map/fragment-shader.glsl'
-import mapStencilVertexShaderSource from '../shaders/map-stencil/vertex-shader.glsl'
-import mapStencilFragmentShaderSource from '../shaders/map-stencil/fragment-shader.glsl'
 import linesVertexShaderSource from '../shaders/lines/vertex-shader.glsl'
 import linesFragmentShaderSource from '../shaders/lines/fragment-shader.glsl'
 import pointsVertexShaderSource from '../shaders/points/vertex-shader.glsl'
@@ -86,7 +84,6 @@ export default class WebGL2Renderer
 {
   gl: WebGL2RenderingContext
   mapProgram: WebGLProgram
-  mapStencilProgram: WebGLProgram
   linesProgram: WebGLProgram
   pointsProgram: WebGLProgram
 
@@ -131,17 +128,6 @@ export default class WebGL2Renderer
       mapFragmentShaderSource
     )
 
-    const mapStencilVertexShader = createShader(
-      gl,
-      gl.VERTEX_SHADER,
-      mapStencilVertexShaderSource
-    )
-    const mapStencilFragmentShader = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      mapStencilFragmentShaderSource
-    )
-
     const linesVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -165,11 +151,6 @@ export default class WebGL2Renderer
     )
 
     const mapProgram = createProgram(gl, mapVertexShader, mapFragmentShader)
-    const mapStencilProgram = createProgram(
-      gl,
-      mapStencilVertexShader,
-      mapStencilFragmentShader
-    )
     const linesProgram = createProgram(
       gl,
       linesVertexShader,
@@ -183,19 +164,12 @@ export default class WebGL2Renderer
 
     super(
       CachedImageBitmapTile.createFactory(),
-      createWebGL2WarpedMapFactory(
-        gl,
-        mapProgram,
-        mapStencilProgram,
-        linesProgram,
-        pointsProgram
-      ),
+      createWebGL2WarpedMapFactory(gl, mapProgram, linesProgram, pointsProgram),
       options
     )
 
     this.gl = gl
     this.mapProgram = mapProgram
-    this.mapStencilProgram = mapStencilProgram
     this.linesProgram = linesProgram
     this.pointsProgram = pointsProgram
 
@@ -240,17 +214,6 @@ export default class WebGL2Renderer
       mapFragmentShaderSource
     )
 
-    const mapStencilVertexShader = createShader(
-      gl,
-      gl.VERTEX_SHADER,
-      mapStencilVertexShaderSource
-    )
-    const mapStencilFragmentShader = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      mapStencilFragmentShaderSource
-    )
-
     const linesVertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -274,11 +237,6 @@ export default class WebGL2Renderer
     )
 
     const mapProgram = createProgram(gl, mapVertexShader, mapFragmentShader)
-    const mapStencilProgram = createProgram(
-      gl,
-      mapStencilVertexShader,
-      mapStencilFragmentShader
-    )
     const linesProgram = createProgram(
       gl,
       linesVertexShader,
@@ -292,19 +250,13 @@ export default class WebGL2Renderer
 
     this.gl = gl
     this.mapProgram = mapProgram
-    this.mapStencilProgram = mapStencilProgram
     this.linesProgram = linesProgram
     this.pointsProgram = pointsProgram
 
     gl.disable(gl.DEPTH_TEST)
 
     for (const warpedMap of this.warpedMapList.getWarpedMaps()) {
-      warpedMap.initializeWebGL(
-        mapProgram,
-        mapStencilProgram,
-        linesProgram,
-        pointsProgram
-      )
+      warpedMap.initializeWebGL(mapProgram, linesProgram, pointsProgram)
     }
   }
 
@@ -661,11 +613,7 @@ export default class WebGL2Renderer
     this.warpedMapList.clear()
     this.mapsInViewport = new Set()
     this.mapsWithRequestedTilesForViewport = new Set()
-    this.gl.clear(
-      this.gl.DEPTH_BUFFER_BIT |
-        this.gl.COLOR_BUFFER_BIT |
-        this.gl.STENCIL_BUFFER_BIT
-    )
+    this.gl.clear(this.gl.DEPTH_BUFFER_BIT | this.gl.COLOR_BUFFER_BIT)
     this.tileCache.clear()
   }
 
@@ -686,7 +634,6 @@ export default class WebGL2Renderer
     super.destroy()
 
     this.gl.deleteProgram(this.mapProgram)
-    this.gl.deleteProgram(this.mapStencilProgram)
     this.gl.deleteProgram(this.linesProgram)
     this.gl.deleteProgram(this.pointsProgram)
     // Can't delete context, see:
@@ -796,8 +743,6 @@ export default class WebGL2Renderer
       return
     }
 
-    this.setMapStencilProgramUniforms()
-
     this.setMapProgramUniforms()
 
     for (const mapId of this.mapsWithRequestedTilesForViewport) {
@@ -807,45 +752,6 @@ export default class WebGL2Renderer
         continue
       }
 
-      this.setMapStencilProgramMapUniforms(warpedMap)
-
-      // Apply mask using stencil buffers and mask triangles
-      // by setting stencil operations to mask where mask triangles will *not* be drawn
-
-      const gl = this.gl
-      const program = this.mapStencilProgram
-      gl.useProgram(program)
-
-      // Enable stencil buffer and clear values
-      gl.enable(gl.STENCIL_TEST)
-      gl.clear(gl.STENCIL_BUFFER_BIT)
-
-      // Set stencil buffers to 1 where triangles are drawn
-      // - stencilFunc sets the test pass all pixels (regardless of the current stencil buffer value) and sets the referenc value to 1
-      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: replace the stencil buffer value (in this case the default value 0) with the reference value (1)
-      // This will set the stencil buffer to 1 for all drawn pixels
-      gl.stencilFunc(gl.ALWAYS, 1, 0xff)
-      gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE)
-
-      // Draw mask triangles
-      // This draws only the pixels in these triangles, and sets the stencil buffer to 1 for them
-      // The pixels are drawn in a transparent color in the stencil fragment shader, so this has no visual effect
-      gl.bindVertexArray(warpedMap.mapStencilVao)
-      gl.drawArrays(
-        gl.TRIANGLES,
-        0,
-        warpedMap.projectedGeoMaskTrianglePoints.length
-      )
-
-      // Set stencil buffer to draw map triangles
-      // - stencilFunc sets the test to pass only on pixels who's stencil buffer already equals 1
-      // - stencilOp set the action to perform for each drawn pixel when the stencil and depth test pass: keep the current stencil buffer value
-      // This will make each pixel within the mask triangles keep its value
-      gl.stencilFunc(gl.EQUAL, 1, 0xff)
-      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-
-      // Now back to drawing the map
-
       this.setMapProgramRenderOptionsUniforms(
         this.renderOptions,
         warpedMap.renderOptions
@@ -854,13 +760,10 @@ export default class WebGL2Renderer
 
       // Draw map
       const count = warpedMap.resourceTrianglePoints.length
-      const primitiveType = gl.TRIANGLES
+      const primitiveType = this.gl.TRIANGLES
       const offset = 0
-      gl.bindVertexArray(warpedMap.mapVao)
-      gl.drawArrays(primitiveType, offset, count)
-
-      // Disable stencil test
-      gl.disable(gl.STENCIL_TEST)
+      this.gl.bindVertexArray(warpedMap.mapVao)
+      this.gl.drawArrays(primitiveType, offset, count)
     }
   }
 
@@ -915,19 +818,6 @@ export default class WebGL2Renderer
     }
   }
 
-  private setMapStencilProgramUniforms() {
-    const program = this.mapStencilProgram
-    const gl = this.gl
-    gl.useProgram(program)
-
-    // Animation progress
-    const animationProgressLocation = gl.getUniformLocation(
-      program,
-      'u_animationProgress'
-    )
-    gl.uniform1f(animationProgressLocation, this.animationProgress)
-  }
-
   private setMapProgramUniforms() {
     const program = this.mapProgram
     const gl = this.gl
@@ -978,31 +868,6 @@ export default class WebGL2Renderer
 
     const colorGrid = gl.getUniformLocation(program, 'u_colorGrid')
     gl.uniform4f(colorGrid, ...hexToFractionalRgb(black), 1)
-  }
-
-  private setMapStencilProgramMapUniforms(warpedMap: WebGL2WarpedMap) {
-    if (!this.viewport) {
-      return
-    }
-
-    const gl = this.gl
-    const program = this.mapStencilProgram
-    gl.useProgram(program)
-
-    // Render Transform
-    const renderTransform = multiplyTransform(
-      this.viewport.projectedGeoToClipTransform,
-      warpedMap.invertedRenderTransform
-    )
-    const renderTransformLocation = gl.getUniformLocation(
-      program,
-      'u_renderTransform'
-    )
-    gl.uniformMatrix4fv(
-      renderTransformLocation,
-      false,
-      transformToMatrix4(renderTransform)
-    )
   }
 
   private setMapProgramRenderOptionsUniforms(

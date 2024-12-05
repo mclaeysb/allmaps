@@ -28,7 +28,7 @@ export type triangulateConstrainautorOutput = {
  * @param {number} distance - Distance between the grid points placed inside the polygon
  * @returns {Triangle[]} Array of triangles partitioning the polygon
  */
-export function triangulate(polygon: Ring, distance: number): Triangle[] {
+export function triangulate(polygon: Ring, distance?: number): Triangle[] {
   if (polygon.length < 3) {
     return []
   }
@@ -46,12 +46,12 @@ export function triangulate(polygon: Ring, distance: number): Triangle[] {
  * @remark Polygons with < 3 points just return an empty array for uniquePointsIndexTriangles.
  *
  * @param {Ring} polygon - Polygon
- * @param {number} distance - Distance between the grid points placed inside the polygon
+ * @param {number} [distance] - Distance between the grid points placed inside the polygon
  * @returns {{uniquePointsIndexTriangles: UniquePointsIndexTriangle[], uniquePoints: Point[]}} Object with uniquePointsIndexTriangles and uniquePoints
  */
 export function triangulateToUnique(
   polygon: Ring,
-  distance: number
+  distance?: number
 ): {
   uniquePointsIndexTriangles: UniquePointsIndexTriangle[]
   uniquePoints: Point[]

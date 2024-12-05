@@ -99,8 +99,8 @@ export function bufferBbox(bbox: Bbox, dist0: number, dist1: number): Bbox {
   return [bbox[0] - dist0, bbox[1] - dist1, bbox[2] + dist0, bbox[3] + dist1]
 }
 
-// Ratio 2 add half the current width (or height) both left and right of the current (width or height)
-// so the total resolution goes * 4
+// Ratio 2 adds half the current width (or height) both left and right of the current (width or height)
+// so the total width (or height) goes * 2 and the total surface goes * 4
 export function bufferBboxByRatio(bbox: Bbox, ratio: number): Bbox {
   if (ratio == 0) {
     return bbox
