@@ -63,24 +63,31 @@ const triangles = triangulate(polygon, distance)
 
 ### triangulate
 
-Triangulates a polygon
+Triangulate a polygon to triangles smaller then a distance
+
+Grid points are placed inside the polygon to obtain small, well conditioned triangles.
 
 #### Parameters
 
-*   `polygon` **Ring** Polygon
-*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** Distance between the grid points placed inside the polygon
+*   `polygon` **Polygon** Polygon
+*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance that conditions the triangles
+*   `minimumTriangleArea` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Minimum area of the resulting triangles (filters out slivers) (optional, default `EPSILON`)
 
 Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Triangle>** Array of triangles partitioning the polygon
 
 ### triangulateToUnique
 
-Triangulates a polygon and return unique points.
-This function returns the list of unique points, and returns the triangles as uniquePointIndexTriangles with indices refering to the unique points
+Triangulate a polygon to triangles smaller then a distance, and return them via unique points.
+
+Grid points are placed inside the polygon to obtain small, well conditioned triangles.
+
+This function returns the triangulation as an array of unique points, and triangles of indices refering to those unique points.
 
 #### Parameters
 
-*   `polygon` **Ring** Polygon
-*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance between the grid points placed inside the polygon
+*   `polygon` **Polygon** Polygon
+*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance that conditions the triangles
+*   `minimumTriangleArea` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Minimum area of the resulting triangles (filters out slivers) (optional, default `EPSILON`)
 
 Returns **TriangulationToUnique** Triangulation Object with uniquePointIndexTriangles and uniquePoints
 

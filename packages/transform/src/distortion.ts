@@ -38,7 +38,7 @@ export function computeDistortionsFromPartialDerivatives(
     partialDerivativeX,
     partialDerivativeY
   )
-  const map = new Map(
+  return new Map(
     distortionMeasures.map((distortionMeasure) => {
       if (supportedDistortionMeasures.indexOf(distortionMeasure) == -1) {
         throw new Error('Distortion ' + distortionMeasure + ' not supported')
@@ -62,7 +62,6 @@ export function computeDistortionsFromPartialDerivatives(
       }
     })
   )
-  return map
 }
 
 function computeDistortionIntermediates(

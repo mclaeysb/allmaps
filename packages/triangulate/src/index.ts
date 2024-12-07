@@ -154,7 +154,7 @@ export function triangulateToUnique(
     // Only keep if inside
     if (shouldClassifyTriangles[index]) {
       return (
-        pointInPolygon(midPoint(triangle), polygon) &&
+        pointInPolygon(midPoint(...triangle), polygon) &&
         triangleArea(triangle) > minimumTriangleArea
       )
     } else {

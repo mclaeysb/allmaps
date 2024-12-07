@@ -329,26 +329,15 @@ export function mixPoints(point0: Point, point1: Point, t: number): Point {
 
 // Compute
 
-export function midPoint(points: Point[]): Point
-export function midPoint(point0: Point, point1: Point): Point
-export function midPoint(point: Point[] | Point, point1?: Point): Point {
-  if (point1) {
-    const point0 = point as Point
-    return [
-      (point1[0] - point0[0]) / 2 + point0[0],
-      (point1[1] - point0[1]) / 2 + point0[1]
-    ]
-  } else {
-    const points = point as Point[]
-    const result: Point = [0, 0]
-    for (let i = 0; i < points.length; i++) {
-      result[0] += points[i][0]
-      result[1] += points[i][1]
-    }
-    result[0] = result[0] / points.length
-    result[1] = result[1] / points.length
-    return result
+export function midPoint(...points: Point[]): Point {
+  const result: Point = [0, 0]
+  for (let i = 0; i < points.length; i++) {
+    result[0] += points[i][0]
+    result[1] += points[i][1]
   }
+  result[0] = result[0] / points.length
+  result[1] = result[1] / points.length
+  return result
 }
 
 // Return angle of line (in radians, signed)

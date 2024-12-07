@@ -540,7 +540,7 @@ The benchmark can be run with `pnpm run bench`.
     *   [transformGeojsonFeatureCollectionToSvgString](#transformgeojsonfeaturecollectiontosvgstring)
 *   [Transformation](#transformation)
     *   [Parameters](#parameters-13)
-*   [computeDistortionFromPartialDerivatives](#computedistortionfrompartialderivatives)
+*   [computeDistortionsFromPartialDerivatives](#computedistortionsfrompartialderivatives)
     *   [Parameters](#parameters-14)
 
 ### allmaps/transform
@@ -715,15 +715,15 @@ Transformation class. Abstract class, extended by the various transformations.
 *   `type` **TransformationType** The transformation type
 *   `pointCountMinimum` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** The minimum number of points for the transformation type
 
-### computeDistortionFromPartialDerivatives
+### computeDistortionsFromPartialDerivatives
 
-Compute distortion from partial derivatives
+Compute the distortion value of selected distortion measures from the partial derivatives at a specific point
 
 #### Parameters
 
-*   `partialDerivativeX` **Point** the partial derivative to 'x' of the transformation, evaluated at a set point
-*   `partialDerivativeY` **Point** the partial derivative to 'x' of the transformation, evaluated at a set point
-*   `distortionMeasure` **DistortionMeasure?** the requested distortion measure, or undefined to return 0
-*   `referenceScale` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** the reference area scaling (sigma) to take into account, e.g. computed via a helmert transform (optional, default `1`)
+*   `distortionMeasures` **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<DistortionMeasures>** The requested distortion measures
+*   `partialDerivativeX` **Point** The partial derivative to 'x' of the transformation, evaluated at a set point
+*   `partialDerivativeY` **Point** The partial derivative to 'y' of the transformation, evaluated at a set point
+*   `referenceScale` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** The reference area scaling (sigma) to take into account for certain distortion measures (like 'log2sigma'), e.g. computed via a helmert transform (optional, default `1`)
 
-Returns **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)** the distortion measure at the set point
+Returns **[Map](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map)\<DistortionMeasure, [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** A map of distortion measures and distortion values at the point

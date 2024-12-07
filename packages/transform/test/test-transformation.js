@@ -3,7 +3,7 @@ import { describe, it } from 'mocha'
 import { expectToBeCloseToArray } from '../../stdlib/test/helper-functions.js'
 import {
   GcpTransformer,
-  computeDistortionFromPartialDerivatives
+  computeDistortionsFromPartialDerivatives
 } from '../dist/index.js'
 
 import {
@@ -105,12 +105,13 @@ describe('Thin plate spline transformation distortion', async () => {
   const partialDerivativeY = transformer.transformForward(input, {
     evaluationType: 'partialDerivativeY'
   })
-  const distortion = computeDistortionFromPartialDerivatives(
+  const distortions = computeDistortionsFromPartialDerivatives(
+    ['log2sigma'],
     partialDerivativeX,
     partialDerivativeY,
-    'log2sigma',
     referenceScale
   )
+  const distortion = distortions.get('log2sigma')
   const output = 1.7800137112938559
 
   it(`should be able to compute distortion`, () => {

@@ -3,8 +3,7 @@ import { expect } from 'chai'
 
 import {
   geometriesToFeatureCollection,
-  geometryToGeojsonGeometry,
-  mapTypedGrid
+  geometryToGeojsonGeometry
 } from '@allmaps/stdlib'
 
 import {
@@ -12,7 +11,7 @@ import {
   expectToBeCloseToArrayArrayArray
 } from '../../stdlib/test/helper-functions.js'
 
-import { GcpTransformer, transformBboxForwardToGcpGrid } from '../dist/index.js'
+import { GcpTransformer } from '../dist/index.js'
 
 import { generalGcps6, gcps6, generalGcps7 } from './input/gcps-test.js'
 
@@ -595,71 +594,6 @@ describe('Transform LineString Forward To LineString, with inverse returnDomain'
   it(`should give the same result as with normal returnDomain, but return the corresponding points in the source domain`, () => {
     expectToBeCloseToArrayArray(
       transformer.transformForward(input, transformOptions),
-      output
-    )
-  })
-})
-
-describe('Transform Bbox Forward To GcpGrid', async () => {
-  let transformOptions = {
-    minOffsetRatio: 0.001,
-    maxDepth: 1
-  }
-  const transformer = new GcpTransformer(generalGcps6, 'thinPlateSpline')
-  const input = [1000, 1000, 2000, 2000]
-  const output = [
-    [
-      [4.388957777030093, 51.959084191571606],
-      [4.404906205946158, 51.959549039424715],
-      [4.420666790347598, 51.959985351835975]
-    ],
-    [
-      [4.390889520773774, 51.94984430356657],
-      [4.407069026480558, 51.95034509744362],
-      [4.4230497784967655, 51.950815146974556]
-    ],
-    [
-      [4.392938913951547, 51.94062947962427],
-      [4.409493277493718, 51.94119110133424],
-      [4.425874493300959, 51.94172557475595]
-    ]
-  ]
-
-  it(`should create refined 3x3 grid`, () => {
-    expectToBeCloseToArrayArrayArray(
-      mapTypedGrid(
-        transformBboxForwardToGcpGrid(input, transformer, transformOptions),
-        (gcp) => gcp.geo
-      ),
-      output
-    )
-  })
-})
-
-describe('Transform Rectangle Forward To Rectangles, with polynomial transform', async () => {
-  let transformOptions = {
-    minOffsetRatio: 0.001,
-    maxDepth: 1
-  }
-  const transformer = new GcpTransformer(generalGcps6, 'polynomial')
-  const input = [1000, 1000, 2000, 2000]
-  const output = [
-    [
-      [4.395266464181372, 51.96017747257062],
-      [4.425498923984651, 51.96084947699783]
-    ],
-    [
-      [4.397082957501063, 51.941330961850724],
-      [4.427315417304341, 51.94200296627793]
-    ]
-  ]
-
-  it(`should create unrefined 2x2 grid`, () => {
-    expectToBeCloseToArrayArrayArray(
-      mapTypedGrid(
-        transformBboxForwardToGcpGrid(input, transformer, transformOptions),
-        (gcp) => gcp.geo
-      ),
       output
     )
   })

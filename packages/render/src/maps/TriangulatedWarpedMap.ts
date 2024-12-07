@@ -60,7 +60,7 @@ type GcpTriangulation = {
  *
  * @param {Point[]} resourceTrianglePoints - Triangle points of the triangles the triangulated resourceMask
  * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask
- * @param {number[]} trianglePointsUniquePointsIndex - Index in resourceUniquepoints where a specific resourceTrianglepoint can be found
+ * @param {number[]} trianglePointsUniquePointIndex - Index in resourceUniquepoints where a specific resourceTrianglepoint can be found
  * @param {number} triangulateErrorCount - Number of time the triangulation has resulted in an error
  * @param {Point[]} projectedGeoPreviousTrianglePoints - The projectedGeoTrianglePoints of the previous transformation type, used during transformation transitions
  * @param {Point[]} projectedGeoTrianglePoints - The resourceTrianglePoints in projected geospatial coordinates
