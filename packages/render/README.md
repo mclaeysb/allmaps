@@ -553,8 +553,8 @@ Creates an instance of a TriangulatedWarpedMap.
 
 #### Parameters
 
-*   `e` &#x20;
 *   `i` &#x20;
+*   `e` &#x20;
 *   `o` &#x20;
 *   `mapId` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** ID of the map
 *   `georeferencedMap` **GeoreferencedMap** Georeferenced map used to construct the WarpedMap
@@ -566,7 +566,7 @@ Update the resourceMask.
 
 #### Parameters
 
-*   `e` &#x20;
+*   `i` &#x20;
 *   `resourceMask` **Ring**&#x20;
 
 ### resetPrevious
@@ -579,7 +579,7 @@ Mix the previous and new points and values.
 
 #### Parameters
 
-*   `e` &#x20;
+*   `i` &#x20;
 *   `t` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)**&#x20;
 
 ### updateTriangulation

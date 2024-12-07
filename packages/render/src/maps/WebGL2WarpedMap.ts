@@ -351,7 +351,6 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       this.projectedGeoPreviousTrianglePoints.map((point) =>
         applyTransform(projectedGeoToClipTransform, point)
       )
-
     createBuffer(
       gl,
       program,
@@ -363,7 +362,6 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     const clipTrianglePoints = this.projectedGeoTrianglePoints.map((point) =>
       applyTransform(projectedGeoToClipTransform, point)
     )
-
     createBuffer(
       gl,
       program,

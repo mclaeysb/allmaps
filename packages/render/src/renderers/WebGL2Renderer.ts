@@ -993,16 +993,16 @@ export default class WebGL2Renderer
     const distortionLocation = gl.getUniformLocation(program, 'u_distortion')
     gl.uniform1f(distortionLocation, warpedMap.distortionMeasure ? 1 : 0)
 
-    if (warpedMap.distortionMeasure) {
-      const distortionOptionsDistortionMeasureLocation = gl.getUniformLocation(
-        program,
-        'u_distortionOptionsdistortionMeasure'
-      )
-      gl.uniform1i(
-        distortionOptionsDistortionMeasureLocation,
-        supportedDistortionMeasures.indexOf(warpedMap.distortionMeasure)
-      )
-    }
+    const distortionOptionsDistortionMeasureLocation = gl.getUniformLocation(
+      program,
+      'u_distortionOptionsdistortionMeasure'
+    )
+    gl.uniform1i(
+      distortionOptionsDistortionMeasureLocation,
+      warpedMap.distortionMeasure
+        ? supportedDistortionMeasures.indexOf(warpedMap.distortionMeasure)
+        : 0
+    )
 
     // Best scale factor
     const scaleFactorForViewportLocation = gl.getUniformLocation(
