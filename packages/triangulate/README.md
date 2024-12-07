@@ -60,8 +60,6 @@ const triangles = triangulate(polygon, distance)
     *   [Parameters](#parameters)
 *   [triangulateToUnique](#triangulatetounique)
     *   [Parameters](#parameters-1)
-*   [triangulateConstrainautor](#triangulateconstrainautor)
-    *   [Parameters](#parameters-2)
 
 ### triangulate
 
@@ -77,25 +75,14 @@ Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Gl
 ### triangulateToUnique
 
 Triangulates a polygon and return unique points.
-This function returns the list of unique points, and returns the triangles as uniquePointsIndexTriangles with indices refering to the unique points
+This function returns the list of unique points, and returns the triangles as uniquePointIndexTriangles with indices refering to the unique points
 
 #### Parameters
 
 *   `polygon` **Ring** Polygon
 *   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance between the grid points placed inside the polygon
 
-Returns **{uniquePointsIndexTriangles: [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<UniquePointsIndexTriangle>, uniquePoints: [Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Point>}** Object with uniquePointsIndexTriangles and uniquePoints
-
-### triangulateConstrainautor
-
-Triangulates a polygon using Constrainautor
-
-#### Parameters
-
-*   `polygon` **Ring** Polygon
-*   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance between the grid points placed inside the polygon
-
-Returns **triangulateConstrainautorOutput** Constrainautor object
+Returns **TriangulationToUnique** Triangulation Object with uniquePointIndexTriangles and uniquePoints
 
 ## Notes
 

@@ -1,163 +1,167 @@
-import { getGridPointsInRing, interpolateRing } from './shared.js'
-import { midPoint } from '@allmaps/stdlib'
+import {
+  getGridPointsInBbox,
+  interpolatePolygon,
+  pointInPolygon
+} from './shared.js'
+import { computeBbox, conformPolygon, midPoint } from '@allmaps/stdlib'
 
-import classifyPoint from 'robust-point-in-polygon'
 import Delaunator from 'delaunator'
 import Constrainautor from '@kninnug/constrainautor'
 
 import type {
+  Line,
   Point,
-  Ring,
+  Polygon,
   Triangle,
-  UniquePointsIndexTriangle
+  TypedLine,
+  TypedPolygon,
+  TypedTriangle
 } from '@allmaps/types'
 
-export type triangulateConstrainautorOutput = {
-  con: Constrainautor
-  points: Point[]
+export type TriangulationToUnique = {
+  constrainautor: Constrainautor
+  interpolatedPolygon: Polygon
+  interpolatedPolygonPoints: Point[]
+  gridPoints: Point[]
+  gridPointsInPolygon: Point[]
+  uniquePoints: Point[]
   triangles: Triangle[]
-  uniquePointsIndexTriangles: UniquePointsIndexTriangle[]
+  uniquePointIndexTriangles: TypedTriangle<number>[]
+  uniquePointIndexInterpolatedPolygon: TypedPolygon<number>
+  uniquePointIndexEdges: TypedLine<number>[]
 }
 
 /**
- * Triangulates a polygon
+ * Triangulate a polygon to triangles smaller then a distance
  *
- * @remark Polygons with < 3 points just return an empty array.
+ * Grid points are placed inside the polygon to obtain small, well conditioned triangles.
  *
- * @param {Ring} polygon - Polygon
- * @param {number} distance - Distance between the grid points placed inside the polygon
+ * @param {Polygon} polygon - Polygon
+ * @param {number} [distance] - Distance that conditions the triangles
  * @returns {Triangle[]} Array of triangles partitioning the polygon
  */
-export function triangulate(polygon: Ring, distance?: number): Triangle[] {
-  if (polygon.length < 3) {
-    return []
-  }
-
+export function triangulate(polygon: Polygon, distance?: number): Triangle[] {
   {
-    const { triangles } = triangulateConstrainautor(polygon, distance)
+    const { triangles } = triangulateToUnique(polygon, distance)
     return triangles
   }
 }
 
 /**
- * Triangulates a polygon and return unique points.
- * This function returns the list of unique points, and returns the triangles as uniquePointsIndexTriangles with indices refering to the unique points
+ * Triangulate a polygon to triangles smaller then a distance, and return them via unique points.
  *
- * @remark Polygons with < 3 points just return an empty array for uniquePointsIndexTriangles.
+ * Grid points are placed inside the polygon to obtain small, well conditioned triangles.
  *
- * @param {Ring} polygon - Polygon
- * @param {number} [distance] - Distance between the grid points placed inside the polygon
- * @returns {{uniquePointsIndexTriangles: UniquePointsIndexTriangle[], uniquePoints: Point[]}} Object with uniquePointsIndexTriangles and uniquePoints
+ * This function returns the triangulation as an array of unique points, and triangles of indices refering to those unique points.
+ *
+ * @param {Polygon} polygon - Polygon
+ * @param {number} [distance] - Distance that conditions the triangles
+ * @returns {TriangulationToUnique} Triangulation Object with uniquePointIndexTriangles and uniquePoints
  */
 export function triangulateToUnique(
-  polygon: Ring,
+  polygon: Polygon,
   distance?: number
-): {
-  uniquePointsIndexTriangles: UniquePointsIndexTriangle[]
-  uniquePoints: Point[]
-} {
-  if (polygon.length < 3) {
-    return {
-      uniquePointsIndexTriangles: [],
-      uniquePoints: polygon
-    }
-  }
+): TriangulationToUnique {
+  // Conform polygon (this also checks if there are at least 3 points)
+  polygon = conformPolygon(polygon)
 
-  const { points, uniquePointsIndexTriangles } = triangulateConstrainautor(
-    polygon,
-    distance
-  )
-  return {
-    uniquePointsIndexTriangles,
-    uniquePoints: points
-  }
-}
-
-/**
- * Triangulates a polygon using Constrainautor
- *
- * @param {Ring} polygon - Polygon
- * @param {number} [distance] - Distance between the grid points placed inside the polygon
- * @returns {triangulateConstrainautorOutput} Constrainautor object
- */
-export function triangulateConstrainautor(
-  polygon: Ring,
-  distance?: number
-): triangulateConstrainautorOutput {
-  let polygonOrInterpolatedPolygon: Point[]
-  let points: Point[]
+  let interpolatedPolygon: Polygon = []
+  let interpolatedPolygonPoints: Point[] = []
+  let gridPoints: Point[] = []
+  let gridPointsInPolygon: Point[] = []
   if (distance) {
     // Interpolate polygon
-    polygonOrInterpolatedPolygon = interpolateRing(polygon, distance)
+    interpolatedPolygon = interpolatePolygon(polygon, distance)
+    interpolatedPolygonPoints = interpolatedPolygon.flat()
 
     // Add grid points inside the polygon
-    const gridPoints = getGridPointsInRing(polygon, distance)
-    const gridPointsInPolygon = gridPoints.filter((point) => {
-      if (classifyPoint(polygon, point) == -1) {
-        return true
-      }
-    })
-    points = [...polygonOrInterpolatedPolygon, ...gridPointsInPolygon]
+    gridPoints = getGridPointsInBbox(computeBbox(polygon), distance)
+    gridPointsInPolygon = gridPoints.filter((point) =>
+      pointInPolygon(point, polygon)
+    )
   } else {
-    polygonOrInterpolatedPolygon = polygon
-    points = polygon
+    interpolatedPolygon = polygon
+    interpolatedPolygonPoints = polygon.flat()
   }
+  const uniquePoints = [...interpolatedPolygonPoints, ...gridPointsInPolygon]
 
   // Initialize Delaunay triangulation from polygon + grid points
-  const del = new Delaunator(points.flat())
+  const delautator = new Delaunator(uniquePoints.flat())
 
   // Collect indices of (interpolated) polygon edges
-  const edgeIndices = []
-  for (let i = 0; i < polygonOrInterpolatedPolygon.length - 1; i++) {
-    edgeIndices.push([i, i + 1] as [number, number])
-  }
-  edgeIndices.push([polygonOrInterpolatedPolygon.length - 1, 0] as [
-    number,
-    number
-  ])
+  let ringOffset = 0
+  const uniquePointIndexInterpolatedPolygon: TypedPolygon<number> =
+    interpolatedPolygon.map((ring) => {
+      const uniqueIndexRing = ring.map((_point, index) => ringOffset + index)
+      ringOffset += ring.length
+      return uniqueIndexRing
+    })
+  const uniquePointIndexEdges: TypedLine<number>[] =
+    uniquePointIndexInterpolatedPolygon
+      .map((ring) =>
+        ring.map(
+          (uniqueIndex) =>
+            [uniqueIndex, (uniqueIndex + 1) % ring.length] as [number, number]
+        )
+      )
+      .flat()
 
   // Constrain triangulation
-  const con = new Constrainautor(del, edgeIndices)
+  const constrainautor = new Constrainautor(delautator, uniquePointIndexEdges)
 
-  let uniquePointsIndexTriangles: UniquePointsIndexTriangle[] = []
+  let uniquePointIndexTriangles: TypedTriangle<number>[] = []
   let triangles: Triangle[] = []
-  const shouldClassify: boolean[] = []
-  for (let i = 0; i < con.del.triangles.length; i += 3) {
-    uniquePointsIndexTriangles.push([
-      con.del.triangles[i],
-      con.del.triangles[i + 1],
-      con.del.triangles[i + 2]
+  const shouldClassifyTriangles: boolean[] = []
+  for (let i = 0; i < constrainautor.del.triangles.length; i += 3) {
+    uniquePointIndexTriangles.push([
+      constrainautor.del.triangles[i],
+      constrainautor.del.triangles[i + 1],
+      constrainautor.del.triangles[i + 2]
     ])
     triangles.push([
-      points[con.del.triangles[i]],
-      points[con.del.triangles[i + 1]],
-      points[con.del.triangles[i + 2]]
+      uniquePoints[constrainautor.del.triangles[i]],
+      uniquePoints[constrainautor.del.triangles[i + 1]],
+      uniquePoints[constrainautor.del.triangles[i + 2]]
     ])
-    shouldClassify.push(
-      con.del.triangles[i] < polygonOrInterpolatedPolygon.length ||
-        con.del.triangles[i + 1] < polygonOrInterpolatedPolygon.length ||
-        con.del.triangles[i + 2] < polygonOrInterpolatedPolygon.length
+    shouldClassifyTriangles.push(
+      constrainautor.del.triangles[i] < interpolatedPolygonPoints.length ||
+        constrainautor.del.triangles[i + 1] <
+          interpolatedPolygonPoints.length ||
+        constrainautor.del.triangles[i + 2] < interpolatedPolygonPoints.length
     )
   }
 
   // Check if triangles inside
   const classifications = triangles.map((triangle, index) => {
-    // TODO: speed up by checking only if at least one point is on polygon
-
     // Only keep if inside
-    return shouldClassify[index]
-      ? classifyPoint(polygon, midPoint(triangle)) == -1
+    return shouldClassifyTriangles[index]
+      ? pointInPolygon(midPoint(triangle), polygon)
       : true
   })
-  uniquePointsIndexTriangles = uniquePointsIndexTriangles.filter(
+  uniquePointIndexTriangles = uniquePointIndexTriangles.filter(
     (_triangle, index) => classifications[index]
   )
   triangles = triangles.filter((_triangle, index) => classifications[index])
 
+  // Fill in edges using unique
+  const edges: Line[] = []
+  for (let i = 0; i < uniquePointIndexEdges.length; i += 1) {
+    edges.push([
+      uniquePoints[uniquePointIndexEdges[i][0]],
+      uniquePoints[uniquePointIndexEdges[i][1]]
+    ])
+  }
+
   return {
-    con,
-    points,
+    constrainautor,
+    interpolatedPolygon,
+    interpolatedPolygonPoints,
+    gridPoints,
+    gridPointsInPolygon,
+    uniquePoints,
     triangles,
-    uniquePointsIndexTriangles
+    uniquePointIndexTriangles,
+    uniquePointIndexInterpolatedPolygon,
+    uniquePointIndexEdges
   }
 }

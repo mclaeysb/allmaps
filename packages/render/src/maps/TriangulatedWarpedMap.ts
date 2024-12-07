@@ -19,7 +19,7 @@ import type {
   GcpTransformer,
   TransformationType
 } from '@allmaps/transform'
-import type { Gcp, Point, Ring } from '@allmaps/types'
+import type { Gcp, Point, Ring, TypedPolygon } from '@allmaps/types'
 
 const DEFAULT_RESOURCE_RESOLUTION = undefined // TODO: allow to set via options
 const DEFAULT_DISTORTION_MEASURES: DistortionMeasure[] = [
@@ -49,6 +49,7 @@ type GcpTriangulation = {
   resourceResolution: number | undefined
   gcpUniquePoints: GcpAndDistortions[]
   uniquePointIndices: number[]
+  uniquePointIndexInterpolatedPolygon: TypedPolygon<number>
 }
 
 /**
@@ -145,6 +146,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   mixPreviousAndNew(t: number) {
     super.mixPreviousAndNew(t)
 
+    this.previousResourceResolution = this.resourceResolution
+
     if (
       this.projectedGcpPreviousTriangulation &&
       this.projectedGcpTriangulation
@@ -237,8 +240,11 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       () => {
         try {
           // Triangulate resource mask
-          const { uniquePointsIndexTriangles, uniquePoints } =
-            triangulateToUnique(this.resourceMask, this.resourceResolution)
+          const {
+            uniquePoints,
+            uniquePointIndexTriangles,
+            uniquePointIndexInterpolatedPolygon
+          } = triangulateToUnique([this.resourceMask], this.resourceResolution)
 
           // Extend Triangulation to ProjectedGcpTriangulation
           // By inclusing projectedGeo and distortions
@@ -252,12 +258,13 @@ export default class TriangulatedWarpedMap extends WarpedMap {
             )
           )
           const uniquePointIndices =
-            uniquePointsIndexTriangles.flat() as number[]
+            uniquePointIndexTriangles.flat() as number[]
 
           return {
             resourceResolution,
             gcpUniquePoints,
-            uniquePointIndices
+            uniquePointIndices,
+            uniquePointIndexInterpolatedPolygon
           }
         } catch (err) {
           // TODO: check if this try/catch can be removed
@@ -277,8 +284,10 @@ export default class TriangulatedWarpedMap extends WarpedMap {
           }
         }
       },
-      () => !this.mixed,
-      () => !this.mixed
+      // TODO: fix issue when memoising this and updating transformation fast
+      // Otherwise at least memoise the triangulateToUnique step
+      () => false, // !this.mixed,
+      () => false // !this.mixed
     )
     if (!this.projectedGcpPreviousTriangulation) {
       this.projectedGcpPreviousTriangulation = this.projectedGcpTriangulation
@@ -307,7 +316,10 @@ export default class TriangulatedWarpedMap extends WarpedMap {
                     )
                 ),
               uniquePointIndices:
-                this.projectedGcpTriangulation!.uniquePointIndices
+                this.projectedGcpTriangulation!.uniquePointIndices,
+              uniquePointIndexInterpolatedPolygon:
+                this.projectedGcpTriangulation!
+                  .uniquePointIndexInterpolatedPolygon
             }
           },
           () => !this.mixed,

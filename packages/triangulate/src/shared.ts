@@ -1,15 +1,19 @@
-import {
-  computeBbox,
-  distance,
-  stepDistanceAngle,
-  lineAngle
-} from '@allmaps/stdlib'
+import classifyPoint from 'robust-point-in-polygon'
 
-import type { Bbox, Line, Ring, Point } from '@allmaps/types'
+import { distance, stepDistanceAngle, lineAngle } from '@allmaps/stdlib'
+
+import type {
+  Bbox,
+  Line,
+  LineString,
+  Ring,
+  Polygon,
+  Point
+} from '@allmaps/types'
 
 // Return an array of points containing the first line point,
 // and betwen the first and last line point other points every `dist`
-function interpolateLine(line: Line, dist: number): Point[] {
+function interpolateLine(line: Line, dist: number): LineString {
   let currentPoint = line[0]
   const result = [currentPoint]
 
@@ -24,7 +28,7 @@ function interpolateLine(line: Line, dist: number): Point[] {
 
 // Return an array of points containing the ring points,
 // and between every pair of ring points other points every `dist`
-export function interpolateRing(ring: Ring, dist: number): Point[] {
+export function interpolateRing(ring: Ring, dist: number): Ring {
   // close ring
   ring = [...ring, ring[0]]
 
@@ -35,13 +39,34 @@ export function interpolateRing(ring: Ring, dist: number): Point[] {
   return result
 }
 
-export function getGridPointsInRing(ring: Ring, gridSize: number): Point[] {
+export function interpolatePolygon(polygon: Polygon, dist: number): Polygon {
+  return polygon.map((ring) => interpolateRing(ring, dist))
+}
+
+export function getGridPointsInBbox(bbox: Bbox, gridSize: number): Point[] {
   const grid = []
-  const bbox: Bbox = computeBbox(ring)
   for (let x = bbox[0] + gridSize, i = 0; x <= bbox[2]; i++, x += gridSize) {
     for (let y = bbox[1] + gridSize, j = 0; y <= bbox[3]; j++, y += gridSize) {
       grid.push([x, y] as Point)
     }
   }
   return grid
+}
+
+// Returns true if point is inside of polygon with holes
+// Note: classifyPoint return -1 when inside (i.e. not outside or on edge)
+export function pointInPolygon(point: Point, polygon: Polygon): boolean {
+  // Check that inside outer ring
+  let inside = classifyPoint(polygon[0], point) == -1
+  if (!inside) {
+    return inside
+  }
+  // Check that not inside inner rings
+  for (let i = 1; i < polygon.length; i++) {
+    if (classifyPoint(polygon[i], point) == -1) {
+      inside = false
+      break
+    }
+  }
+  return inside
 }
