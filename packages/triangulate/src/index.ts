@@ -3,7 +3,12 @@ import {
   interpolatePolygon,
   pointInPolygon
 } from './shared.js'
-import { computeBbox, conformPolygon, midPoint } from '@allmaps/stdlib'
+import {
+  computeBbox,
+  conformPolygon,
+  midPoint,
+  triangleArea
+} from '@allmaps/stdlib'
 
 import Delaunator from 'delaunator'
 import Constrainautor from '@kninnug/constrainautor'
@@ -31,6 +36,8 @@ export type TriangulationToUnique = {
   uniquePointIndexEdges: TypedLine<number>[]
 }
 
+const EPSILON = 0.001
+
 /**
  * Triangulate a polygon to triangles smaller then a distance
  *
@@ -38,11 +45,20 @@ export type TriangulationToUnique = {
  *
  * @param {Polygon} polygon - Polygon
  * @param {number} [distance] - Distance that conditions the triangles
+ * @param {number} [minimumTriangleArea] - Minimum area of the resulting triangles (filters out slivers)
  * @returns {Triangle[]} Array of triangles partitioning the polygon
  */
-export function triangulate(polygon: Polygon, distance?: number): Triangle[] {
+export function triangulate(
+  polygon: Polygon,
+  distance?: number,
+  minimumTriangleArea = EPSILON
+): Triangle[] {
   {
-    const { triangles } = triangulateToUnique(polygon, distance)
+    const { triangles } = triangulateToUnique(
+      polygon,
+      distance,
+      minimumTriangleArea
+    )
     return triangles
   }
 }
@@ -56,11 +72,13 @@ export function triangulate(polygon: Polygon, distance?: number): Triangle[] {
  *
  * @param {Polygon} polygon - Polygon
  * @param {number} [distance] - Distance that conditions the triangles
+ * @param {number} [minimumTriangleArea] - Minimum area of the resulting triangles (filters out slivers)
  * @returns {TriangulationToUnique} Triangulation Object with uniquePointIndexTriangles and uniquePoints
  */
 export function triangulateToUnique(
   polygon: Polygon,
-  distance?: number
+  distance?: number,
+  minimumTriangleArea = EPSILON
 ): TriangulationToUnique {
   // Conform polygon (this also checks if there are at least 3 points)
   polygon = conformPolygon(polygon)
@@ -134,9 +152,14 @@ export function triangulateToUnique(
   // Check if triangles inside
   const classifications = triangles.map((triangle, index) => {
     // Only keep if inside
-    return shouldClassifyTriangles[index]
-      ? pointInPolygon(midPoint(triangle), polygon)
-      : true
+    if (shouldClassifyTriangles[index]) {
+      return (
+        pointInPolygon(midPoint(triangle), polygon) &&
+        triangleArea(triangle) > minimumTriangleArea
+      )
+    } else {
+      return true
+    }
   })
   uniquePointIndexTriangles = uniquePointIndexTriangles.filter(
     (_triangle, index) => classifications[index]

@@ -18,7 +18,8 @@ import type {
   GeojsonMultiLineString,
   GeojsonMultiPolygon,
   GeojsonGeometry,
-  Size
+  Size,
+  Triangle
 } from '@allmaps/types'
 
 // Assert
@@ -395,4 +396,15 @@ export function squaredDistance(from: Point | Line, to?: Point): number {
   } else {
     throw new Error('Input type not supported')
   }
+}
+
+export function triangleArea(triangle: Triangle): number {
+  return (
+    0.5 *
+    Math.abs(
+      triangle[0][0] * (triangle[1][1] - triangle[2][1]) +
+        triangle[1][0] * (triangle[2][1] - triangle[0][1]) +
+        triangle[2][0] * (triangle[0][1] - triangle[1][1])
+    )
+  )
 }
