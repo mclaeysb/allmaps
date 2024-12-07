@@ -10,7 +10,7 @@ import Straight from './transformation-types/straight.js'
 
 import {
   supportedDistortionMeasures,
-  computeDistortionFromPartialDerivatives
+  computeDistortionsFromPartialDerivatives
 } from './distortion.js'
 
 import {
@@ -32,7 +32,7 @@ export {
   RBF,
   Straight,
   supportedDistortionMeasures,
-  computeDistortionFromPartialDerivatives,
+  computeDistortionsFromPartialDerivatives,
   getForwardTransformResolution,
   getBackwardTransformResolution,
   defaultTransformOptions,
