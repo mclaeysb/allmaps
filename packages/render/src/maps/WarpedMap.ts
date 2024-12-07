@@ -619,7 +619,7 @@ export default class WarpedMap extends EventTarget {
 
   private updateProjectedGeoTransformedResourcePoints(): void {
     this.projectedGeoTransformedResourcePoints = this.gcps.map((projectedGcp) =>
-      this.projectedTransformer.transformForward(projectedGcp.resource)
+      this.projectedTransformer.transformToGeo(projectedGcp.resource)
     )
 
     if (!this.projectedGeoPreviousTransformedResourcePoints) {
@@ -629,45 +629,43 @@ export default class WarpedMap extends EventTarget {
   }
 
   private updateGeoMask(): void {
-    this.geoMask = this.transformer.transformForwardAsGeojson([
-      this.resourceMask
-    ])
+    this.geoMask = this.transformer.transformToGeoAsGeojson([this.resourceMask])
     this.geoMaskBbox = computeBbox(this.geoMask)
-    this.geoMaskRectangle = this.transformer.transformForward(
+    this.geoMaskRectangle = this.transformer.transformToGeo(
       [this.resourceMaskRectangle],
       { maxDepth: 0 }
     )[0] as Rectangle
   }
 
   private updateFullGeoMask(): void {
-    this.geoFullMask = this.transformer.transformForwardAsGeojson([
+    this.geoFullMask = this.transformer.transformToGeoAsGeojson([
       this.resourceFullMask
     ])
     this.geoFullMaskBbox = computeBbox(this.geoFullMask)
-    this.geoFullMaskRectangle = this.transformer.transformForward(
+    this.geoFullMaskRectangle = this.transformer.transformToGeo(
       [this.resourceFullMaskRectangle],
       { maxDepth: 0 }
     )[0] as Rectangle
   }
 
   private updateProjectedGeoMask(): void {
-    this.projectedGeoMask = this.projectedTransformer.transformForward([
+    this.projectedGeoMask = this.projectedTransformer.transformToGeo([
       this.resourceMask
     ])[0]
     this.projectedGeoMaskBbox = computeBbox(this.projectedGeoMask)
-    this.projectedGeoMaskRectangle = this.projectedTransformer.transformForward(
+    this.projectedGeoMaskRectangle = this.projectedTransformer.transformToGeo(
       [this.resourceMaskRectangle],
       { maxDepth: 0 }
     )[0] as Rectangle
   }
 
   private updateProjectedFullGeoMask(): void {
-    this.projectedGeoFullMask = this.projectedTransformer.transformForward([
+    this.projectedGeoFullMask = this.projectedTransformer.transformToGeo([
       this.resourceFullMask
     ])[0]
     this.projectedGeoFullMaskBbox = computeBbox(this.projectedGeoFullMask)
     this.projectedGeoFullMaskRectangle =
-      this.projectedTransformer.transformForward(
+      this.projectedTransformer.transformToGeo(
         [this.resourceFullMaskRectangle],
         { maxDepth: 0 }
       )[0] as Rectangle

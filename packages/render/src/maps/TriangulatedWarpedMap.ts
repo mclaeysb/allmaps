@@ -422,7 +422,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     transformer: GcpTransformer,
     referenceScale?: number
   ): GcpAndDistortions {
-    const projectedGeoPoint = transformer.transformForward(resourcePoint)
+    const projectedGeoPoint = transformer.transformToGeo(resourcePoint)
     const partialDerivativeX = transformer.transformToGeo(resourcePoint, {
       evaluationType: 'partialDerivativeX'
     })
