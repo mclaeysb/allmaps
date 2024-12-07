@@ -92,7 +92,8 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   previousTrianglePointsDistortion: number[] = []
   trianglePointsDistortion: number[] = []
 
-  ////
+  projectedGeoPreviousTriangulationMask: Ring = []
+  projectedGeoTriangulationMask: Ring = []
 
   /**
    * Creates an instance of a TriangulatedWarpedMap.
@@ -136,6 +137,9 @@ export default class TriangulatedWarpedMap extends WarpedMap {
     this.projectedGcpPreviousTriangulation = this.projectedGcpTriangulation
     this.projectedGeoPreviousTrianglePoints = this.projectedGeoTrianglePoints
     this.previousTrianglePointsDistortion = this.trianglePointsDistortion
+
+    this.projectedGeoPreviousTriangulationMask =
+      this.projectedGeoTriangulationMask
   }
 
   /**
@@ -187,6 +191,15 @@ export default class TriangulatedWarpedMap extends WarpedMap {
               .distortion as number
         )
     }
+
+    this.projectedGeoPreviousTriangulationMask =
+      this.projectedGeoTriangulationMask.map((point, index) => {
+        return mixPoints(
+          point,
+          this.projectedGeoPreviousTriangulationMask[index],
+          t
+        )
+      })
   }
 
   /**
@@ -353,6 +366,24 @@ export default class TriangulatedWarpedMap extends WarpedMap {
       this.projectedGcpPreviousTriangulation.uniquePointIndices.map(
         (i) => this.projectedGcpPreviousTriangulation!.gcpUniquePoints[i].geo
       )
+
+    this.projectedGeoTriangulationMask =
+      this.projectedGcpTriangulation.uniquePointIndexInterpolatedPolygon
+        .map((typedRing) =>
+          typedRing.map(
+            (i) => this.projectedGcpTriangulation!.gcpUniquePoints[i].geo
+          )
+        )
+        .flat()
+    this.projectedGeoPreviousTriangulationMask =
+      this.projectedGcpPreviousTriangulation.uniquePointIndexInterpolatedPolygon
+        .map((typedRing) =>
+          typedRing.map(
+            (i) =>
+              this.projectedGcpPreviousTriangulation!.gcpUniquePoints[i].geo
+          )
+        )
+        .flat()
 
     this.updateTrianglePointsDistortion()
   }

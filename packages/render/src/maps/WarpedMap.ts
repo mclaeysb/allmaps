@@ -77,9 +77,7 @@ export function createWarpedMapFactory() {
  * @param {Point[]} projectedGeoControlPoints - The projected geospatial coordinates of the projected ground control points
  * @param {Point[]} projectedGeoPreviousTransformedResourcePoints - The projectedGeoTransformedResourcePoints of the previous transformation type, used during transformation transitions
  * @param {Point[]} projectedGeoTransformedResourcePoints - The resource coordinates of the ground control points, transformed to projected geospatial coordinates using the projected transformer
- * @param {Ring} resourcePreviousFinerMask - Previous resourceFinerMask
  * @param {Ring} resourcePreviousMask - Resource mask of the previous transformation type
- * @param {Ring} resourceFinerMask - Resource mask, possibly longer so it's the same length as the longest of projectedGeoMask and projectedGeoPreviousMask
  * @param {Ring} resourceMask - Resource mask
  * @param {Bbox} resourceMaskBbox - Bbox of the resourceMask
  * @param {Rectangle} resourceMaskRectangle - Rectangle of the resourceMaskBbox
@@ -100,9 +98,7 @@ export function createWarpedMapFactory() {
  * @param {GeojsonPolygon} geoFullMask - resourceFullMask in geospatial coordinates
  * @param {Bbox} geoFullMaskBbox - Bbox of the geoFullMask
  * @param {Rectangle} geoFullMaskRectangle - resourceFullMaskRectangle in geospatial coordinates
- * @param {Ring} projectedGeoPreviousFinerMask - The projectedGeoMask of the previous transformation type, possibly longer so it's the same length as the longest of projectedGeoPreviousMask and projectedGeoMask, used during transformation transitions
  * @param {Ring} projectedGeoPreviousMask - The projectedGeoMask of the previous transformation type, used during transformation transitions
- * @param {Ring} projectedGeoFinerMask - The projectedGeoMask of the previous transformation type, possibly longer so it's the same length as the longest of projectedGeoPreviousMask and projectedGeoMask, used during transformation transitions
  * @param {Ring} projectedGeoMask - resourceMask in projected geospatial coordinates
  * @param {Bbox} projectedGeoMaskBbox - Bbox of the projectedGeoMask
  * @param {Rectangle} projectedGeoMaskRectangle - resourceMaskRectanglee in projected geospatial coordinates
@@ -131,9 +127,7 @@ export default class WarpedMap extends EventTarget {
   projectedGeoPreviousTransformedResourcePoints!: Point[]
   projectedGeoTransformedResourcePoints!: Point[]
 
-  resourcePreviousFinerMask!: Ring
   resourcePreviousMask!: Ring
-  resourceFinerMask!: Ring
   resourceMask: Ring
   resourceMaskBbox!: Bbox
   resourceMaskRectangle!: Rectangle
@@ -173,8 +167,6 @@ export default class WarpedMap extends EventTarget {
   geoFullMaskBbox!: Bbox
   geoFullMaskRectangle!: Rectangle
 
-  projectedGeoPreviousFinerMask!: Ring
-  projectedGeoFinerMask!: Ring
   projectedGeoMask!: Ring
   projectedGeoMaskBbox!: Bbox
   projectedGeoMaskRectangle!: Rectangle
@@ -507,8 +499,6 @@ export default class WarpedMap extends EventTarget {
     this.projectedGeoPreviousTransformedResourcePoints =
       this.projectedGeoTransformedResourcePoints
     this.resourcePreviousMask = this.resourceMask
-    this.resourcePreviousFinerMask = this.resourceFinerMask
-    this.projectedGeoPreviousFinerMask = this.projectedGeoFinerMask
   }
 
   /**
@@ -529,11 +519,6 @@ export default class WarpedMap extends EventTarget {
           t
         )
       })
-    this.projectedGeoPreviousFinerMask = this.projectedGeoFinerMask.map(
-      (point, index) => {
-        return mixPoints(point, this.projectedGeoPreviousFinerMask[index], t)
-      }
-    )
   }
 
   /**
@@ -674,38 +659,6 @@ export default class WarpedMap extends EventTarget {
       [this.resourceMaskRectangle],
       { maxDepth: 0 }
     )[0] as Rectangle
-
-    // Computing the resourceFinerMask as the finest (most detailed) mask
-    // coordinates corresponding to projectedGeoMask and projectedGeoPreviousMask
-    // such that projectedGeoPreviousFinerMask and projectedGeoFinerMask
-    // can both be computed from this starting point to be equally fine
-    this.resourceFinerMask = this.projectedTransformer.transformForward(
-      [this.resourceMask],
-      { returnDomain: 'inverse' } // refine this lineString but return resource coordinates
-    )[0]
-    if (!this.resourcePreviousFinerMask) {
-      this.resourcePreviousFinerMask = this.resourceFinerMask
-    }
-    const previousWasFiner =
-      this.resourceFinerMask.length < this.resourcePreviousFinerMask.length
-    const newIsFiner =
-      this.resourceFinerMask.length > this.resourcePreviousFinerMask.length
-    if (previousWasFiner) {
-      this.resourceFinerMask = this.resourcePreviousFinerMask
-    }
-    this.projectedGeoFinerMask = this.projectedTransformer.transformForward(
-      this.resourceFinerMask,
-      { inputIsMultiGeometry: true } // treat the input as an array of points instead of a lineString to refine
-    )
-    if (!this.projectedGeoPreviousFinerMask || newIsFiner) {
-      this.projectedGeoPreviousFinerMask =
-        this.projectedPreviousTransformer.transformForward(
-          this.resourceFinerMask,
-          {
-            inputIsMultiGeometry: true
-          }
-        )
-    }
   }
 
   private updateProjectedFullGeoMask(): void {
