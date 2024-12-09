@@ -215,7 +215,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
    */
   private updateTriangulation() {
     // The following ensures this function is only run after initialisation
-    // The TriangulatedMap constructor calls this function twice
+    // This class' constructor calls this function twice
     // Once via super() and updateTransformerProperties()
     // but then the cache is not ready yet, so we make it return
     // And once at the end
