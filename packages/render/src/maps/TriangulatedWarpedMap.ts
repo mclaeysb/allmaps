@@ -25,7 +25,7 @@ const DEFAULT_RESOURCE_RESOLUTION = undefined // TODO: allow to set via options
 const DEFAULT_DISTORTION_MEASURES: DistortionMeasure[] = [
   'log2sigma',
   'twoOmega'
-]
+] // TODO: allow to set via options
 const MAX_TRIANGULATE_ERROR_COUNT = 10
 
 function createDefaultTriangulatedWarpedMapOptions(): Partial<WarpedMapOptions> {
