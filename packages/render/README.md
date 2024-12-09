@@ -823,13 +823,13 @@ Returns **([number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/
 
 ### getBbox
 
-Return the bounding box of all visible maps in this list, in longitude/latitude coordinates
+Return the bounding box of all visible maps in this list, in geospatial coordinates ('WGS84', i.e. `[lon, lat]`)
 
 Returns **(Bbox | [undefined](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined))**&#x20;
 
 ### getProjectedBbox
 
-Return the bounding box of all visible maps in this list, in projected coordinates
+Return the bounding box of all visible maps in this list, in projected geospatial coordinates
 
 Returns **(Bbox | [undefined](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/undefined))**&#x20;
 
