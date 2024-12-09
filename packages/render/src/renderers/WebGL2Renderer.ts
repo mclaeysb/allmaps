@@ -1028,18 +1028,18 @@ export default class WebGL2Renderer
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, webgl2WarpedMap.cachedTilesTextureArray)
 
-    // Cached tiles resource positions and dimensions texture
-    const cachedTilesResourcePositionsAndDimensionsLocation =
+    // Cached tiles resource origin points and dimensions texture
+    const cachedTilesResourceOriginPointsAndDimensionsLocation =
       gl.getUniformLocation(
         program,
-        'u_cachedTilesResourcePositionsAndDimensionsTexture'
+        'u_cachedTilesResourceOriginPointsAndDimensionsTexture'
       )
-    gl.uniform1i(cachedTilesResourcePositionsAndDimensionsLocation, 1)
+    gl.uniform1i(cachedTilesResourceOriginPointsAndDimensionsLocation, 1)
     gl.activeTexture(gl.TEXTURE1)
 
     gl.bindTexture(
       gl.TEXTURE_2D,
-      webgl2WarpedMap.cachedTilesResourcePositionsAndDimensionsTexture
+      webgl2WarpedMap.cachedTilesResourceOriginPointsAndDimensionsTexture
     )
 
     // Cached tiles scale factors texture

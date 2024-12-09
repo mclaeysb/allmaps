@@ -4,7 +4,8 @@ import {
   distance,
   doBboxesIntersect,
   bufferBboxByRatio,
-  squaredDistance
+  squaredDistance,
+  sizeToResolution
 } from '@allmaps/stdlib'
 import { MapPruneConstants, MapPruneInfo } from './types'
 import FetchableTile from '../tilecache/FetchableTile'
@@ -331,17 +332,17 @@ export function tileCenter(tile: Tile): Point {
 }
 
 /**
- * Returns the resource position of the tile's origin
+ * Returns the resource coordinates of the tile's origin point
  *
  * @export
  * @param {Tile} tile
  * @returns {Point}
  */
-export function tilePosition(tile: Tile): Point {
-  const resourceTilePositionX = tile.column * tile.tileZoomLevel.originalWidth
-  const resourceTilePositionY = tile.row * tile.tileZoomLevel.originalHeight
-
-  return [resourceTilePositionX, resourceTilePositionY]
+export function computeResourceTileOriginPoint(tile: Tile): Point {
+  return [
+    tile.column * tile.tileZoomLevel.originalWidth,
+    tile.row * tile.tileZoomLevel.originalHeight
+  ]
 }
 
 export function clipTilePointToTile(tilePoint: Point, tile: Tile): Point {
@@ -353,16 +354,26 @@ export function clipTilePointToTile(tilePoint: Point, tile: Tile): Point {
   }) as Point
 }
 
+/**
+ * From the input point in resource coordinates, returns the same point in tile coordinates
+ * I.e. relative to the tile's origin point and scaled using the scale factor
+ *
+ * @export
+ * @param {Point} resourcePoint
+ * @param {Tile} tile
+ * @param {boolean} [clip=true]
+ * @returns {Point | undefined}
+ */
 export function resourcePointToTilePoint(
   resourcePoint: Point,
   tile: Tile,
   clip = true
 ): Point | undefined {
-  const resourceTilePosition = tilePosition(tile)
+  const resourceTileOriginPoint = computeResourceTileOriginPoint(tile)
   const tilePoint = [
-    (resourcePoint[0] - resourceTilePosition[0]) /
+    (resourcePoint[0] - resourceTileOriginPoint[0]) /
       tile.tileZoomLevel.scaleFactor,
-    (resourcePoint[1] - resourceTilePosition[1]) /
+    (resourcePoint[1] - resourceTileOriginPoint[1]) /
       tile.tileZoomLevel.scaleFactor
   ] as Point
 
@@ -376,15 +387,15 @@ export function resourcePointToTilePoint(
 }
 
 export function resourcePointInTile(resourcePoint: Point, tile: Tile): boolean {
-  const resourceTilePosition = tilePosition(tile)
+  const resourceTileOrigin = computeResourceTileOriginPoint(tile)
 
   return (
-    resourcePoint[0] >= resourceTilePosition[0] &&
+    resourcePoint[0] >= resourceTileOrigin[0] &&
     resourcePoint[0] <=
-      resourceTilePosition[0] + tile.tileZoomLevel.originalWidth &&
-    resourcePoint[1] >= resourceTilePosition[1] &&
+      resourceTileOrigin[0] + tile.tileZoomLevel.originalWidth &&
+    resourcePoint[1] >= resourceTileOrigin[1] &&
     resourcePoint[1] <=
-      resourceTilePosition[1] + tile.tileZoomLevel.originalHeight
+      resourceTileOrigin[1] + tile.tileZoomLevel.originalHeight
   )
 }
 
@@ -401,20 +412,20 @@ export function resourcePointInImage(
 }
 
 export function computeBboxTile(tile: Tile): Bbox {
-  const resourceTilePosition = tilePosition(tile)
+  const resourceTileOriginPoint = computeResourceTileOriginPoint(tile)
 
   const resourceTileMaxX = Math.min(
-    resourceTilePosition[0] + tile.tileZoomLevel.originalWidth,
+    resourceTileOriginPoint[0] + tile.tileZoomLevel.originalWidth,
     tile.imageSize[0]
   )
   const resourceTileMaxY = Math.min(
-    resourceTilePosition[1] + tile.tileZoomLevel.originalHeight,
+    resourceTileOriginPoint[1] + tile.tileZoomLevel.originalHeight,
     tile.imageSize[1]
   )
 
   return [
-    resourceTilePosition[0],
-    resourceTilePosition[1],
+    resourceTileOriginPoint[0],
+    resourceTileOriginPoint[1],
     resourceTileMaxX,
     resourceTileMaxY
   ]
@@ -422,12 +433,20 @@ export function computeBboxTile(tile: Tile): Bbox {
 
 // Resolution
 
+export function getTileSize(tile: Tile): Size {
+  return [tile.tileZoomLevel.width, tile.tileZoomLevel.height]
+}
+
+export function getTileOriginalSize(tile: Tile): Size {
+  return [tile.tileZoomLevel.originalWidth, tile.tileZoomLevel.originalHeight]
+}
+
 export function getTileResolution(tile: Tile): number {
-  return tile.tileZoomLevel.width * tile.tileZoomLevel.height
+  return sizeToResolution(getTileSize(tile))
 }
 
 export function getTileOriginalResolution(tile: Tile): number {
-  return tile.tileZoomLevel.originalWidth * tile.tileZoomLevel.originalHeight
+  return sizeToResolution(getTileOriginalSize(tile))
 }
 
 export function getTilesResolution(tiles: Tile[]): number {

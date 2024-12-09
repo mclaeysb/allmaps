@@ -186,6 +186,10 @@ export function sizesToScale(size0: Size, size1: Size, fit?: Fit): number {
   }
 }
 
+export function sizeToResolution(size: Size): number {
+  return size[0] * size[1]
+}
+
 export function bboxesToScale(bbox0: Bbox, bbox1: Bbox): number {
   return sizesToScale(bboxToSize(bbox0), bboxToSize(bbox1))
 }

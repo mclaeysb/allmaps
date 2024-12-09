@@ -135,7 +135,8 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
   renderOptions: RenderOptions = {}
 
   cachedTilesTextureArray: WebGLTexture | null = null
-  cachedTilesResourcePositionsAndDimensionsTexture: WebGLTexture | null = null
+  cachedTilesResourceOriginPointsAndDimensionsTexture: WebGLTexture | null =
+    null
   cachedTilesScaleFactorsTexture: WebGLTexture | null = null
 
   // About renderTransform and InvertedRenderTransform:
@@ -197,7 +198,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     this.cachedTilesTextureArray = this.gl.createTexture()
     this.cachedTilesScaleFactorsTexture = this.gl.createTexture()
-    this.cachedTilesResourcePositionsAndDimensionsTexture =
+    this.cachedTilesResourceOriginPointsAndDimensionsTexture =
       this.gl.createTexture()
   }
 
@@ -263,7 +264,9 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     this.gl.deleteVertexArray(this.pointsVao)
     this.gl.deleteTexture(this.cachedTilesTextureArray)
     this.gl.deleteTexture(this.cachedTilesScaleFactorsTexture)
-    this.gl.deleteTexture(this.cachedTilesResourcePositionsAndDimensionsTexture)
+    this.gl.deleteTexture(
+      this.cachedTilesResourceOriginPointsAndDimensionsTexture
+    )
 
     this.cancelThrottledFunctions()
 
@@ -818,9 +821,9 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-    // Cached tiles resource positions and dimensions texture
+    // Cached tiles resource origin points and dimensions texture
 
-    const cachedTilesResourcePositionsAndDimensions =
+    const cachedTilesResourceOriginPointsAndDimensions =
       this.cachedTilesForTexture.map((textureTile) => {
         if (
           textureTile &&
@@ -838,7 +841,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     gl.bindTexture(
       gl.TEXTURE_2D,
-      this.cachedTilesResourcePositionsAndDimensionsTexture
+      this.cachedTilesResourceOriginPointsAndDimensionsTexture
     )
 
     // A previous verions used gl.RGBA_INTEGER as this texture's format
@@ -854,7 +857,7 @@ export default class WebGL2WarpedMap extends TriangulatedWarpedMap {
       0,
       gl.RED_INTEGER,
       gl.INT,
-      new Int32Array(cachedTilesResourcePositionsAndDimensions.flat())
+      new Int32Array(cachedTilesResourceOriginPointsAndDimensions.flat())
     )
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
