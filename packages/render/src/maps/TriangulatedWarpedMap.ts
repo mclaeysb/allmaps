@@ -58,18 +58,18 @@ type GcpTriangulation = {
  * @export
  * @class TriangulatedWarpedMap
  *
- * @param {Point[]} resourceTrianglePoints - Triangle points of the triangles the triangulated resourceMask
- * @param {Point[]} resourceUniquepoints - Unique points of the triangles the triangulated resourceMask
- * @param {number[]} trianglePointsUniquePointIndex - Index in resourceUniquepoints where a specific resourceTrianglepoint can be found
+ * @param {number} resourcePreviousResolution - Resolution (or 'distance') used during the previous triangulation of the resource mask
+ * @param {number} resourceResolution - Resolution (or 'distance') used during the triangulation of the resource mask, computed as the finest resource segment resulting from a resource-to-geo transformation of the horizontal and vertical midline of the resource bbox using the current transformation type
  * @param {number} triangulateErrorCount - Number of time the triangulation has resulted in an error
+ * @param {GcpTriangulation} projectedGcpPreviousTriangulation - Previous triangulation of the resource mask
+ * @param {GcpTriangulation} projectedGcpTriangulation - Triangulation of the resource mask of a specific resource resolution, with unique points in resource and projected geospatial coordinates with distortions, and indices pointing to the triangles points and indices pointing to the triangulation-refined resource mask
+ * @param {Point[]} resourceTrianglePoints - Triangle points of the triangles the triangulated resourceMask
  * @param {Point[]} projectedGeoPreviousTrianglePoints - The projectedGeoTrianglePoints of the previous transformation type, used during transformation transitions
  * @param {Point[]} projectedGeoTrianglePoints - The resourceTrianglePoints in projected geospatial coordinates
- * @param {Point[]} projectedGeoUniquePoints - The resourceUniquePoints in projected geospatial coordinates
- * @param {Point[]} projectedGeoUniquePointsPartialDerivativeX - Partial Derivative to X at the projectedGeoUniquePoints
- * @param {Point[]} projectedGeoUniquePointsPartialDerivativeY - Partial Derivative to Y at the projectedGeoUniquePoints
  * @param {number[]} previousTrianglePointsDistortion - The trianglePointsDistortion of the previous transformation type, used during transformation transitions
  * @param {number[]} trianglePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoTrianglePoints
- * @param {number[]} uniquePointsDistortion - Distortion amount of the distortionMeasure at the projectedGeoUniquePoints
+ * @param {Ring[]} projectedGeoPreviousTriangulationMask - The resource mask refined by the previous triangulation, in projected geospatial coordinates
+ * @param {Ring[]} projectedGeoTriangulationMask - The resource mask refined by the triangulation, in projected geospatial coordinates
  */
 export default class TriangulatedWarpedMap extends WarpedMap {
   previousResourceResolution: number | undefined
@@ -150,35 +150,43 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   mixPreviousAndNew(t: number) {
     super.mixPreviousAndNew(t)
 
-    this.previousResourceResolution = this.resourceResolution
-
     if (
       this.projectedGcpPreviousTriangulation &&
       this.projectedGcpTriangulation
     ) {
-      this.projectedGcpPreviousTriangulation.gcpUniquePoints =
-        this.projectedGcpPreviousTriangulation.gcpUniquePoints.map(
-          (projectedGcp, index) => {
-            return {
-              resource: projectedGcp.resource,
-              geo: mixPoints(
-                this.projectedGcpTriangulation!.gcpUniquePoints[index].geo,
-                projectedGcp.geo,
-                t
-              ),
-              // Note: Not mixing the distortions Map, only the active distortion
-              distortions:
-                this.projectedGcpTriangulation!.gcpUniquePoints[index]
-                  .distortions,
-              distortion: mixNumbers(
-                this.projectedGcpTriangulation!.gcpUniquePoints[index]
-                  .distortion || 0,
-                projectedGcp.distortion || 0,
-                t
-              )
+      this.previousResourceResolution = this.resourceResolution
+      this.projectedGcpPreviousTriangulation = {
+        resourceResolution:
+          this.projectedGcpPreviousTriangulation.resourceResolution,
+        gcpUniquePoints:
+          this.projectedGcpPreviousTriangulation.gcpUniquePoints.map(
+            (projectedGcp, index) => {
+              return {
+                resource: projectedGcp.resource,
+                geo: mixPoints(
+                  this.projectedGcpTriangulation!.gcpUniquePoints[index].geo,
+                  projectedGcp.geo,
+                  t
+                ),
+                // Note: Not mixing the distortions Map, only the active distortion
+                distortions:
+                  this.projectedGcpTriangulation!.gcpUniquePoints[index]
+                    .distortions,
+                distortion: mixNumbers(
+                  this.projectedGcpTriangulation!.gcpUniquePoints[index]
+                    .distortion || 0,
+                  projectedGcp.distortion || 0,
+                  t
+                )
+              }
             }
-          }
-        )
+          ),
+        uniquePointIndices:
+          this.projectedGcpPreviousTriangulation.uniquePointIndices,
+        uniquePointIndexInterpolatedPolygon:
+          this.projectedGcpPreviousTriangulation
+            .uniquePointIndexInterpolatedPolygon
+      }
 
       this.projectedGeoPreviousTrianglePoints =
         this.projectedGcpPreviousTriangulation.uniquePointIndices.map(
@@ -203,7 +211,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the triangulation of the resourceMask. Use cache if available.
+   * Update the (previous and new) triangulation of the resourceMask. Use cache if available.
    */
   private updateTriangulation() {
     // The following ensures this function is only run after initialisation
@@ -296,11 +304,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
             }
           }
         }
-      },
-      // TODO: fix issue when memoising this and updating transformation fast
-      // Otherwise at least memoise the triangulateToUnique step
-      () => false, // !this.mixed,
-      () => false // !this.mixed
+      }
     )
     if (!this.projectedGcpPreviousTriangulation) {
       this.projectedGcpPreviousTriangulation = this.projectedGcpTriangulation
@@ -344,7 +348,9 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the (previous and new) resource and projectedGeo points of the triangulated resourceMask.
+   * Derive the (previous and new) resource and projectedGeo points from their corresponding triangulations.
+   *
+   * Also derive the (previous and new) triangulation-refined resource and projectedGeo mask
    */
   private updateTrianglePoints() {
     if (
@@ -389,7 +395,7 @@ export default class TriangulatedWarpedMap extends WarpedMap {
   }
 
   /**
-   * Update the (previous and new) resource and projectedGeo point distortions of the triangulated resourceMask.
+   * Derive the (previous and new) distortions from their corresponding triangulations.
    */
   private updateTrianglePointsDistortion() {
     if (
