@@ -45,7 +45,7 @@ const EPSILON = 0.001
  *
  * @param {Polygon} polygon - Polygon
  * @param {number} [distance] - Distance that conditions the triangles
- * @param {number} [minimumTriangleArea] - Minimum area of the resulting triangles (filters out slivers)
+ * @param {number} [minimumTriangleArea] - Minimum area of the resulting triangles (filters out slivers), absolute if no distance provided, relative to distance * distance otherwise
  * @returns {Triangle[]} Array of triangles partitioning the polygon
  */
 export function triangulate(
@@ -72,7 +72,7 @@ export function triangulate(
  *
  * @param {Polygon} polygon - Polygon
  * @param {number} [distance] - Distance that conditions the triangles
- * @param {number} [minimumTriangleArea] - Minimum area of the resulting triangles (filters out slivers)
+ * @param {number} [minimumTriangleArea] - Minimum area of the resulting triangles (filters out slivers), absolute if no distance provided, relative to distance * distance otherwise
  * @returns {TriangulationToUnique} Triangulation Object with uniquePointIndexTriangles and uniquePoints
  */
 export function triangulateToUnique(
@@ -150,6 +150,9 @@ export function triangulateToUnique(
   }
 
   // Check if triangles inside
+  minimumTriangleArea = distance
+    ? distance * distance * minimumTriangleArea
+    : minimumTriangleArea
   const classifications = triangles.map((triangle, index) => {
     // Only keep if inside
     if (shouldClassifyTriangles[index]) {

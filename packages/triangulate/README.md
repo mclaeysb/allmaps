@@ -27,12 +27,14 @@ npm install @allmaps/triangulate
 ```js
 import { triangulate } from '@allmaps/triangulate'
 
-// Note that polygons are not round-trip
+// Note that polygons are in double brackets (an array of an outer ring, and possibly inner rings if there are holes) and their rings are not round-trip (the first coordinate is not repeated at the and)
 const polygon = [
-  [0.592, 0.953],
-  [0.304, 2.394],
-  [2.904, 2.201],
-  [2.394, 0.232]
+  [
+    [0.592, 0.953],
+    [0.304, 2.394],
+    [2.904, 2.201],
+    [2.394, 0.232]
+  ]
 ]
 
 const distance = 1
@@ -71,7 +73,7 @@ Grid points are placed inside the polygon to obtain small, well conditioned tria
 
 *   `polygon` **Polygon** Polygon
 *   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance that conditions the triangles
-*   `minimumTriangleArea` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Minimum area of the resulting triangles (filters out slivers) (optional, default `EPSILON`)
+*   `minimumTriangleArea` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Minimum area of the resulting triangles (filters out slivers), absolute if no distance provided, relative to distance \* distance otherwise (optional, default `EPSILON`)
 
 Returns **[Array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)\<Triangle>** Array of triangles partitioning the polygon
 
@@ -87,7 +89,7 @@ This function returns the triangulation as an array of unique points, and triang
 
 *   `polygon` **Polygon** Polygon
 *   `distance` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Distance that conditions the triangles
-*   `minimumTriangleArea` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Minimum area of the resulting triangles (filters out slivers) (optional, default `EPSILON`)
+*   `minimumTriangleArea` **[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)?** Minimum area of the resulting triangles (filters out slivers), absolute if no distance provided, relative to distance \* distance otherwise (optional, default `EPSILON`)
 
 Returns **TriangulationToUnique** Triangulation Object with uniquePointIndexTriangles and uniquePoints
 
@@ -101,10 +103,10 @@ Returns **TriangulationToUnique** Triangulation Object with uniquePointIndexTria
 
 For a 10 point polygon (with diameter ~ 200), here are some benchmarks for computing the triangulation with given distances:
 
-*   `triangulate(polygon, 1000)` (no grid points): 154685 ops/s to compute 8 triangles
-*   `triangulate(polygon, 100)`: 120094 ops/s to compute 11 triangles
-*   `triangulate(polygon, 10)`: 6783 ops/s to compute 454 triangles
-*   `triangulate(polygon, 1)`: 61 ops/s to compute 38535 triangles
+*   `triangulate(polygon, 1000)` (no grid points): 100839 ops/s to compute 8 triangles
+*   `triangulate(polygon, 100)`: 87436 ops/s to compute 11 triangles
+*   `triangulate(polygon, 10)`: 5447 ops/s to compute 435 triangles
+*   `triangulate(polygon, 1)`: 56 ops/s to compute 38352 triangles
 
 See [`./bench/index.js`](`./bench/index.js`).
 
