@@ -338,7 +338,7 @@ export function tileCenter(tile: Tile): Point {
  * @param {Tile} tile
  * @returns {Point}
  */
-export function computeResourceTileOriginPoint(tile: Tile): Point {
+export function tileToTileOriginPoint(tile: Tile): Point {
   return [
     tile.column * tile.tileZoomLevel.originalWidth,
     tile.row * tile.tileZoomLevel.originalHeight
@@ -369,7 +369,7 @@ export function resourcePointToTilePoint(
   tile: Tile,
   clip = true
 ): Point | undefined {
-  const resourceTileOriginPoint = computeResourceTileOriginPoint(tile)
+  const resourceTileOriginPoint = tileToTileOriginPoint(tile)
   const tilePoint = [
     (resourcePoint[0] - resourceTileOriginPoint[0]) /
       tile.tileZoomLevel.scaleFactor,
@@ -387,7 +387,7 @@ export function resourcePointToTilePoint(
 }
 
 export function resourcePointInTile(resourcePoint: Point, tile: Tile): boolean {
-  const resourceTileOrigin = computeResourceTileOriginPoint(tile)
+  const resourceTileOrigin = tileToTileOriginPoint(tile)
 
   return (
     resourcePoint[0] >= resourceTileOrigin[0] &&
@@ -412,7 +412,7 @@ export function resourcePointInImage(
 }
 
 export function computeBboxTile(tile: Tile): Bbox {
-  const resourceTileOriginPoint = computeResourceTileOriginPoint(tile)
+  const resourceTileOriginPoint = tileToTileOriginPoint(tile)
 
   const resourceTileMaxX = Math.min(
     resourceTileOriginPoint[0] + tile.tileZoomLevel.originalWidth,
