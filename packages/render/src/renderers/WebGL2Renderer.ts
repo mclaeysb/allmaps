@@ -60,8 +60,8 @@ const THROTTLE_CHANGED_OPTIONS = {
 
 const DEBUG = false // TODO: set using options
 export const RENDER_MAPS = true // TODO: set using options
-export const RENDER_LINES = true // TODO: set using options
-export const RENDER_POINTS = true // TODO: set using options
+export const RENDER_LINES = false // TODO: set using options
+export const RENDER_POINTS = false // TODO: set using options
 
 const DEFAULT_OPACITY = 1
 const DEFAULT_SATURATION = 1
