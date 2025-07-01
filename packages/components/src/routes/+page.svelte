@@ -5,6 +5,7 @@
     createSearchProjectionsWithFuse,
     createSuggestProjectionsWithFlatbush
   } from '$lib/shared/projections/projections.js'
+  import GeoreferencedMaps from '$lib/components/GeoreferencedMaps.svelte'
 
   const projections = projectionsData.map((projectionData) => {
     return {
@@ -34,5 +35,9 @@
       bbox={[4.01001, 50.762522, 4.523621, 51.024121]}
       suggestProjections={suggestProjectionsWithFlatbush}
     ></ProjectionPicker>
+  </section>
+  <section>
+    <h1 class="text-xl font-bold mb-4">Map</h1>
+    <GeoreferencedMaps georeferencedMaps={[]}></GeoreferencedMaps>
   </section>
 </main>

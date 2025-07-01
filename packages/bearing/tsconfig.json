@@ -8,6 +8,7 @@
   "references": [
     { "path": "../annotation" },
     { "path": "../stdlib" },
+    { "path": "../transform" },
     { "path": "../project" },
   ],
   "include": ["./src/**/*"]
