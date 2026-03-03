@@ -16,7 +16,16 @@ const config = {
       fallback: undefined,
       precompress: false,
       strict: true
-    })
+    }),
+    paths: {
+      base: '/viewer'
+    },
+    prerender: {
+      handleHttpError: ({ path, message }) => {
+        if (path === '/favicon.png') return
+        throw new Error(message)
+      }
+    }
   }
 }
 
