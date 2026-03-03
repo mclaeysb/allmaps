@@ -47,6 +47,7 @@
       onRemove={() => removeEntry(entry.id)}
       showAdd={i === entries.length - 1}
       disableRemove={entries.length === 1}
+      focusOnMount={i === entries.length - 1}
     />
   {/each}
 </div>

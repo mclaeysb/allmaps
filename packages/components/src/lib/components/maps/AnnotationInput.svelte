@@ -10,7 +10,8 @@
     onAdd,
     onRemove,
     showAdd = false,
-    disableRemove = false
+    disableRemove = false,
+    focusOnMount = false
   }: {
     ondata: (data: unknown) => void
     onclear: () => void
@@ -18,10 +19,17 @@
     onRemove: () => void
     showAdd?: boolean
     disableRemove?: boolean
+    focusOnMount?: boolean
   } = $props()
 
   let url = $state('')
   let abortController: AbortController | null = null
+
+  let inputEl = $state<HTMLInputElement | null>(null)
+
+  $effect(() => {
+    if (focusOnMount) inputEl?.focus()
+  })
 
   $effect(() => {
     // Establish `url` as the only reactive dependency for this effect
@@ -65,6 +73,7 @@
     bind:value={url}
     class="flex-1 w-80"
     onfocus={(e) => (e.target as HTMLInputElement).select()}
+    bind:ref={inputEl}
   />
 
   <Button
