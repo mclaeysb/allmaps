@@ -81,7 +81,7 @@
 
     map.addControl(
       new maplibregl.AttributionControl({ compact: false }),
-      'bottom-left'
+      'bottom-right'
     )
 
     if (componentOptions.addNavigationControl) {
@@ -158,12 +158,18 @@
       return
     }
 
+    if (georeferencedMaps.length == 0 || georeferencedMaps[0] == undefined) {
+      return
+    }
+
     //TODO: why clear? This also clears cache!
     // warpedMapLayer.clear()
 
     // TODO: remove current?
 
     // TODO: move adding georeferencedmaps to warpedmaplist
+    warpedMapLayer.clear()
+
     Promise.allSettled(
       georeferencedMaps.map((georeferencedMap) =>
         warpedMapLayer?.addGeoreferencedMap(georeferencedMap)

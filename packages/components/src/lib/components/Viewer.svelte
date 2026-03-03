@@ -20,6 +20,7 @@
   import OptionsKeys from './options/OptionsKeys.svelte'
   import MapsCarets from './maps/MapsCarets.svelte'
   import MapsListButton from './maps/MapsListButton.svelte'
+  import MapInput from './maps/MapInput.svelte'
 
   import type { GeoreferencedMap } from '@allmaps/annotation'
   import type { Bbox } from '@allmaps/types'
@@ -34,7 +35,7 @@
     mapOptionsStateByMapId = new Map(),
     componentOptions = {}
   }: {
-    annotations: unknown[]
+    annotations?: unknown[]
     layerOptionsState?: LayerOptionsState
     mapOptionsStateByMapId?: Map<string, MapOptionsState>
     componentOptions?: Partial<ViewerComponentOptions>
@@ -56,6 +57,8 @@
       []
     )
   )
+
+  $inspect(annotations, georeferencedMaps)
 
   const projections = projectionsData.map((projectionData) => {
     return {
@@ -103,7 +106,15 @@
       </ContextMenu.Content>{/if}
   </ContextMenu.Root>
 
-  <div class="absolute top-0 left-0 m-2 ml-12 flex space-x-2">
+  <div class="absolute top-0 left-0 m-2 ml-12 flex space-x-2"></div>
+  <div class="absolute top-0 left-1/2 -translate-x-1/2 m-2 flex space-x-2">
+    <MapInput bind:annotations></MapInput>
+  </div>
+  <div class="absolute top-0 right-0 m-2 flex space-x-2"></div>
+  <div class="absolute bottom-0 left-0 m-2 flex space-x-2">
+    <MapOrImageTabs bind:mapOrImage disabled={selectedMapId === undefined} />
+  </div>
+  <div class="absolute bottom-0 left-1/2 -translate-x-1/2 m-2 flex space-x-2">
     <Menubar class="flex h-11 select-none w-fit">
       <OptionsToggles
         bind:layerOptionsState
@@ -115,13 +126,9 @@
       />
     </Menubar>
   </div>
-  <div class="absolute top-0 right-0 m-2 flex space-x-2">
-    <MapOrImageTabs bind:mapOrImage disabled={selectedMapId === undefined} />
-  </div>
-  <div class="absolute bottom-0 left-0 m-2 flex space-x-2"></div>
   <div class="absolute bottom-0 right-0 m-2 flex space-x-2">
     <MapsCarets {georeferencedMaps} bind:selectedMapId {mapOrImage} />
-    <MapsListButton
+    <!-- <MapsListButton
       {georeferencedMaps}
       bind:selectedMapId
       {mapOptionsStateByMapId}
@@ -129,6 +136,6 @@
       searchProjections={searchProjectionsWithFuse}
       {geoBbox}
       suggestProjections={suggestProjectionsWithFlatbush}
-    />
+    /> -->
   </div>
 </div>
