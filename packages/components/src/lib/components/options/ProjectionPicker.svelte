@@ -2,7 +2,7 @@
   import { Combobox } from 'bits-ui'
   import CaretUpDown from 'phosphor-svelte/lib/CaretUpDown'
   import Check from 'phosphor-svelte/lib/Check'
-  import Globe from 'phosphor-svelte/lib/globe'
+  import Globe from 'phosphor-svelte/lib/Globe'
   import CaretDoubleUp from 'phosphor-svelte/lib/CaretDoubleUp'
   import CaretDoubleDown from 'phosphor-svelte/lib/CaretDoubleDown'
   import { fly } from 'svelte/transition'
