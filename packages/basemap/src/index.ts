@@ -34,7 +34,7 @@ export function basemapStyle(
         type: 'vector',
         url:
           tileJson ||
-          'https://api.protomaps.com/tiles/v4.json?key=ca7652ec836f269a',
+          'https://api.protomaps.com/tiles/v4.json?key=5b2571c646ee3746',
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>'
       }
     },
