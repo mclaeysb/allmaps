@@ -17,6 +17,9 @@ const config = {
       precompress: false,
       strict: true
     }),
+    paths: {
+      base: '/allmaps'
+    },
     prerender: {
       handleHttpError: ({ path, message }) => {
         if (path.endsWith('/favicon.png')) return
