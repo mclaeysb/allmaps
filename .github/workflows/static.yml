@@ -39,6 +39,10 @@ jobs:
       - name: Build packages
         run: pnpm build:packages
 
+      - name: Build
+        working-directory: ./packages/components
+        run: pnpm build
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
