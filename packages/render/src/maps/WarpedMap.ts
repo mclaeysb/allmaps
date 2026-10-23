@@ -932,8 +932,8 @@ export class WarpedMap extends EventTarget {
         }
       }
       this.tileSize = [
-        Math.max(...this.image.tileZoomLevels.map((size) => size.width)),
-        Math.max(...this.image.tileZoomLevels.map((size) => size.height))
+        Math.max(...this.image.tileZoomLevels.map((t) => t.width)),
+        Math.max(...this.image.tileZoomLevels.map((t) => t.height))
       ]
 
       this.imageInfoError = undefined

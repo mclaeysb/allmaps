@@ -1,4 +1,5 @@
 import {
+  isEqualArray,
   lineStringToLines,
   mergeOptions,
   pointsAndPointsToLines,
@@ -175,6 +176,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   cachedTilesResourceOriginPointsAndSizesTexture: WebGLTexture | null = null
   cachedTilesScaleFactorsTexture: WebGLTexture | null = null
   private cachedTilesTextureArrayAllocatedDepth = 0
+  cachedTilesTextureTileSize?: Size
 
   // Slot bookkeeping for incremental texture updates: each resident tile keeps
   // a fixed, packed layer (slot) in the texture array and lookup textures, so
@@ -251,6 +253,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     this.cachedTilesResourceOriginPointsAndSizesTexture =
       this.gl.createTexture()
     this.cachedTilesTextureArrayAllocatedDepth = 0
+    this.cachedTilesTextureTileSize = undefined
 
     // The freshly created textures are empty, so reset the slot bookkeeping.
     this.textureSlotsByTileUrl.clear()
@@ -399,6 +402,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     gl.deleteTexture(this.cachedTilesTextureArray)
     this.cachedTilesTextureArray = gl.createTexture()
     this.cachedTilesTextureArrayAllocatedDepth = 0
+    this.cachedTilesTextureTileSize = undefined
 
     gl.deleteTexture(this.cachedTilesResourceOriginPointsAndSizesTexture)
     this.cachedTilesResourceOriginPointsAndSizesTexture = gl.createTexture()
@@ -1099,10 +1103,25 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       budget > 0 ? cachedTilesToAdd.slice(0, budget) : []
     let addsUploaded = 0
     if (cachedTilesToAddNow.length > 0) {
+      // Checking if texture can handle tiles to add, otherwise reallocat it
+      // Checking if more depth is required
       const requiredDepth =
         this.cachedTilesByTextureSlot.size + cachedTilesToAddNow.length
-      if (requiredDepth > this.cachedTilesTextureArrayAllocatedDepth) {
-        // Grow in steps so single arrivals append into headroom instead of
+
+      // Checking if tile sizes of tiles to be rendered and tiles already in slots fit with texure tile size
+      // Note: only checking size equality here to check if texture is big enough,
+      // could there be cases where tile size differs but e.g. because width is larger and height is smaller?
+      const requiredTileSize = this.getRequiredTileSize(
+        this.cachedTilesForTextureByTileUrl.values(),
+        this.cachedTilesByTextureSlot.values()
+      )
+      const allocatedTileSize = this.cachedTilesTextureTileSize ?? [0, 0]
+
+      if (
+        requiredDepth > this.cachedTilesTextureArrayAllocatedDepth ||
+        !isEqualArray(requiredTileSize, allocatedTileSize)
+      ) {
+        // Grow in steps so single arrivals append into headroom instead of reallocating every time.
         // reallocating every time. reallocateTextures re-uploads the tiles
         // currently in cachedTilesByTextureSlot (the existing residents) into the
         // fresh texture; the tiles in cachedTilesToAddNow are appended (and
@@ -1114,7 +1133,8 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
         const depth =
           Math.ceil(requiredDepth / TEXTURE_ARRAY_DEPTH_GROWTH) *
           TEXTURE_ARRAY_DEPTH_GROWTH
-        this.reallocateTextures(depth)
+
+        this.reallocateTextures(depth, requiredTileSize)
       }
       for (const cachedTile of cachedTilesToAddNow) {
         if (performance.now() >= deadline) {
@@ -1177,15 +1197,13 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   /**
    * (Re)allocate the tiles texture array and the two lookup textures at the
    * given depth, then re-upload all currently resident tiles into their slots.
-   *
-   * texStorage3D is immutable, so growing the depth requires a fresh texture
-   * object. This only runs when the number of resident tiles crosses a
-   * TEXTURE_ARRAY_DEPTH_GROWTH boundary, not on every tile arrival.
    */
-  private reallocateTextures(depth: number) {
+  private reallocateTextures(depth: number, tileSize: Size) {
     const gl = this.gl
-    const width = this.tileSize[0]
-    const height = this.tileSize[1]
+    const width = tileSize[0]
+    const height = tileSize[1]
+
+    this.cachedTilesTextureTileSize = tileSize
 
     // Cached tiles texture array
     gl.deleteTexture(this.cachedTilesTextureArray)
@@ -1280,17 +1298,29 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       throw new Error('Missing resource origin points and sizes')
     }
 
-    // The texture size is the largest available size in the image's
-    // tileZoomLevels (since the image could be served in multiple sizes).
-    // The size of the source is determined when fetching tiles and getting the
-    // optimal tileZoomLevel based on the scale derived from the viewport.
-    // Hence, the source could be smaller then the texture. This is not a
-    // problem in se, but sub-optimal if the difference is large. (Also note
-    // that if the resource is only on part of the image, the source is still
-    // its the full size.)
-    if (source.width > this.tileSize[0] || source.height > this.tileSize[1]) {
-      throw new Error("Cached tile doesn't fit in texture")
+    const textureSize = this.cachedTilesTextureTileSize
+    if (!textureSize) {
+      throw new Error('Texture size not defined')
     }
+
+    // The texture size is set at texture reallocation as computed by getRequiredTileSize()
+    // not from their source (imageBitmap), but from the tileZoomLevel (info.json).
+    // Below tiles are uploaded to the texture, delimited by texture tile size.
+    //
+    // Edge cases to consider:
+    // - A tile on the right or bottom part of the image is to be rendered,
+    //   and the server returns an image smaller than the tileZoomLevel tile size.
+    //   => The worker that creates the tile uses the tileZoomLevel tile size and creates a source of that size,
+    //       so that tile size is considered in getRequiredTileSize, and uploading using texture tile size does not error
+    //       as it would if the source would be smaller than the texture tile size.
+    // - Image server returns a tile larger than the size mentionned in the info.json (e.g. due a to rounding error).
+    //   => In this case source width and/or height are larger than tileZoomLevel width and height
+    //      and hence possibly the texture tile size. Uploading with texture tile size clips the extra part.
+    // - Only tile(s) at high zoomlevels are to be rendered, where the actual image is smaller than one tile.
+    //   => This is detected by getRequiredTileSize and texture is built with this smaller tile size,
+    //      purposefully reducing the reserved webgl buffer.
+    // - A map's info.json mentions multiple tile sizes
+    //   => The first tile size is picked and used to request all tiles.
 
     // Cached tiles texture array
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4)
@@ -1304,8 +1334,8 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       0,
       0,
       slot,
-      source.width,
-      source.height,
+      textureSize[0],
+      textureSize[1],
       1,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
@@ -1447,6 +1477,39 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     }
 
     return cachedTiles
+  }
+
+  private getRequiredTileSize(
+    ...cachedTilesSets: Iterable<CachedTile<ImageBitmap>>[]
+  ): Size {
+    let width = 0
+    let height = 0
+
+    for (const cachedTiles of cachedTilesSets) {
+      for (const cachedTile of cachedTiles) {
+        const { imageSize, tileZoomLevel } = cachedTile.fetchableTile.tile
+        const { scaleFactor } = tileZoomLevel
+
+        // By comparing the full imageSize, scaled down by the scaleFactor,
+        // to the tileSize, we detect whether the image fits on less then one tile
+        // and it that case return a required tileSize
+        // smaller then the tilesize mentionned in the info.json and tileZoomLevel
+
+        const w = Math.min(
+          tileZoomLevel.width,
+          Math.ceil(imageSize[0] / scaleFactor)
+        )
+        const h = Math.min(
+          tileZoomLevel.height,
+          Math.ceil(imageSize[1] / scaleFactor)
+        )
+
+        if (w > width) width = w
+        if (h > height) height = h
+      }
+    }
+
+    return [width, height]
   }
 
   // Lookup by tileKey (zoomlevel, row, column) instead of tileUrl
