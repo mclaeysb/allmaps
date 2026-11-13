@@ -12,9 +12,9 @@ import {
   type RawJpegData
 } from '../tilecache/CacheableRawJpegTile.js'
 import {
-  applyHomogeneousTransform,
-  invertHomogeneousTransform
-} from '../shared/homogeneous-transform.js'
+  affineTransformPoint,
+  invertAffineTransform
+} from '../shared/affine-transform.js'
 
 import type { BaseRenderOptions, Renderer } from '../shared/types.js'
 import type { CachedTile } from '../tilecache/CacheableTile.js'
@@ -276,10 +276,11 @@ export class WasmRenderer
     )
     renderContext.set_interpolation(this.interpolation)
 
-    // Get canvas-to-geo transform (same for all maps)
-    const geoToCanvas = viewport.projectedGeoToCanvasHomogeneousTransform
-    const canvasToGeo = new Float64Array(
-      invertHomogeneousTransform(geoToCanvas)
+    // Get canvas-to-projected-geo transform (same for all maps)
+    const projectedGeoToCanvasAffineTransform =
+      viewport.projectedGeoToCanvasAffineTransform
+    const canvasToProjectedGeoAffineTransform = new Float64Array(
+      invertAffineTransform(projectedGeoToCanvasAffineTransform)
     )
 
     // Iterate over all warped maps and render each that intersects the viewport
@@ -327,7 +328,7 @@ export class WasmRenderer
         this.#renderMapInto(
           warpedMap,
           cachedTiles,
-          canvasToGeo,
+          canvasToProjectedGeoAffineTransform,
           renderContext,
           outputWidth,
           outputHeight,
@@ -363,8 +364,8 @@ export class WasmRenderer
     let maxY = -Infinity
 
     for (const projectedGeoPoint of warpedMap.projectedGeoMask) {
-      const canvasPoint = applyHomogeneousTransform(
-        this.viewport.projectedGeoToCanvasHomogeneousTransform,
+      const canvasPoint = affineTransformPoint(
+        this.viewport.projectedGeoToCanvasAffineTransform,
         projectedGeoPoint
       )
 
@@ -501,7 +502,7 @@ export class WasmRenderer
   #renderMapInto(
     warpedMap: TriangulatedWarpedMap,
     cachedTiles: CachedTile<RawJpegData>[],
-    canvasToGeo: Float64Array,
+    canvasToProjectedGeoAffineTransform: Float64Array,
     renderContext: WasmRenderContext,
     outputWidth: number,
     outputHeight: number,
@@ -543,7 +544,7 @@ export class WasmRenderer
       weights,
       sourcePoints,
       maskPolygon,
-      canvasToGeo,
+      canvasToProjectedGeoAffineTransform,
       renderBounds.minX,
       renderBounds.minY,
       renderBounds.maxX,
@@ -578,8 +579,8 @@ export class WasmRenderer
         if (!this.viewport) {
           throw new Error('Cannot render without viewport')
         }
-        const canvasPoint = applyHomogeneousTransform(
-          this.viewport.projectedGeoToCanvasHomogeneousTransform,
+        const canvasPoint = affineTransformPoint(
+          this.viewport.projectedGeoToCanvasAffineTransform,
           point
         )
         return [canvasPoint[0], canvasPoint[1]]
@@ -641,8 +642,8 @@ export class WasmRenderer
         if (!this.viewport) {
           throw new Error('Cannot render without viewport')
         }
-        const canvasPoint = applyHomogeneousTransform(
-          this.viewport.projectedGeoToCanvasHomogeneousTransform,
+        const canvasPoint = affineTransformPoint(
+          this.viewport.projectedGeoToCanvasAffineTransform,
           point
         )
         return [canvasPoint[0], canvasPoint[1]]

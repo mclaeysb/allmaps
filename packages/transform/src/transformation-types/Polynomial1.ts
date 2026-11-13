@@ -1,6 +1,6 @@
 import { BasePolynomialTransformation } from './BasePolynomialTransformation.js'
 
-import type { HomogeneousTransform, Point } from '@allmaps/types'
+import type { AffineTransform, Point } from '@allmaps/types'
 
 import type { Polynomial1Measures } from '../shared/types.js'
 
@@ -41,7 +41,7 @@ export class Polynomial1 extends BasePolynomialTransformation {
     return [1, sourcePoint[0], sourcePoint[1]]
   }
 
-  getHomogeneousTransform(): HomogeneousTransform | undefined {
+  getAffineTransform(): AffineTransform | undefined {
     const weightsArrays = this.getWeightsArrays()
 
     return [
@@ -54,20 +54,10 @@ export class Polynomial1 extends BasePolynomialTransformation {
     ]
   }
 
-  setWeightsArraysFromHomogeneousTransform(
-    homogeneousTransform: HomogeneousTransform
-  ): void {
+  setWeightsArraysFromAffineTransform(affineTransform: AffineTransform): void {
     this.weightsArrays = [
-      [
-        homogeneousTransform[4],
-        homogeneousTransform[0],
-        homogeneousTransform[2]
-      ],
-      [
-        homogeneousTransform[5],
-        homogeneousTransform[1],
-        homogeneousTransform[3]
-      ]
+      [affineTransform[4], affineTransform[0], affineTransform[2]],
+      [affineTransform[5], affineTransform[1], affineTransform[3]]
     ]
     this.measures = undefined
   }

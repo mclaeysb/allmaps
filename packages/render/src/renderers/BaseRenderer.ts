@@ -46,6 +46,11 @@ import type {
   BatchMapResult,
   BatchOptions
 } from '../shared/types.js'
+import {
+  affineTransformPoint,
+  affineTransformPoints,
+  invertAffineTransform
+} from '../shared/affine-transform.js'
 
 /**
  * Abstract base class for renderers
@@ -788,7 +793,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     // This is what assureProjection() takes care of, but is worth noting here.
     // (It's also why we don't need to pass a projection in the lookup function)
     const projectedGeoBufferedViewportRectangleBbox = computeBbox(
-      this.viewport.getProjectedGeoBufferedRectangle(viewportBufferRatio)
+      viewport.getProjectedGeoBufferedRectangle(viewportBufferRatio)
     )
 
     if (superset) {

@@ -118,7 +118,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
         'applyMask',
         'transformationType',
         'internalProjection',
-        'distortionMeasure'
+        'distortionMeasure',
+        'projectedGeoAffineTransform'
       ],
       projection: webMercatorProjection,
       warpedMapFactory: createWarpedMapFactory<W>(),

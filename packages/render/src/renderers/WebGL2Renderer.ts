@@ -18,10 +18,10 @@ import {
   WarpedMapEventType
 } from '../shared/events.js'
 import {
-  multiplyHomogeneousTransform,
-  invertHomogeneousTransform,
-  homogeneousTransformToMatrix4
-} from '../shared/homogeneous-transform.js'
+  multiplyAffineTransform,
+  invertAffineTransform,
+  affineTransformToMatrix4
+} from '../shared/affine-transform.js'
 import { createShader, createProgram } from '../shared/webgl2.js'
 import {
   getCachedFractionalOpaqueRgba,
@@ -455,7 +455,7 @@ export class WebGL2Renderer
     const webgl2WarpedMaps = this.warpedMapList.getWarpedMaps({ mapIds })
     for (const webgl2WarpedMap of webgl2WarpedMaps) {
       webgl2WarpedMap.updateVertexBuffers(
-        this.viewport.projectedGeoToClipHomogeneousTransform
+        this.viewport.projectedGeoToClipAffineTransform
       )
     }
   }
@@ -630,19 +630,19 @@ export class WebGL2Renderer
     gl.useProgram(program)
 
     // Render Transform
-    const renderHomogeneousTransform = multiplyHomogeneousTransform(
-      this.viewport.projectedGeoToClipHomogeneousTransform,
-      webgl2WarpedMap.invertedRenderHomogeneousTransform
+    const renderAffineTransform = multiplyAffineTransform(
+      this.viewport.projectedGeoToClipAffineTransform,
+      webgl2WarpedMap.invertedRenderAffineTransform
     )
-    const renderHomogeneousTransformLocation = this.#getUniformLocation(
+    const renderAffineTransformLocation = this.#getUniformLocation(
       gl,
       program,
-      'u_renderHomogeneousTransform'
+      'u_renderAffineTransform'
     )
     gl.uniformMatrix4fv(
-      renderHomogeneousTransformLocation,
+      renderAffineTransformLocation,
       false,
-      homogeneousTransformToMatrix4(renderHomogeneousTransform)
+      affineTransformToMatrix4(renderAffineTransform)
     )
 
     // Visible
@@ -972,32 +972,28 @@ export class WebGL2Renderer
     gl.useProgram(program)
 
     // ViewportToClip Transform
-    const viewportToClipHomogeneousTransformLocation = this.#getUniformLocation(
+    const viewportToClipAffineTransformLocation = this.#getUniformLocation(
       gl,
       program,
-      'u_viewportToClipHomogeneousTransform'
+      'u_viewportToClipAffineTransform'
     )
     gl.uniformMatrix4fv(
-      viewportToClipHomogeneousTransformLocation,
+      viewportToClipAffineTransformLocation,
       false,
-      homogeneousTransformToMatrix4(
-        this.viewport.viewportToClipHomogeneousTransform
-      )
+      affineTransformToMatrix4(this.viewport.viewportToClipAffineTransform)
     )
 
     // clipToViewport Transform
-    const clipToViewportHomogeneousTransformLocation = this.#getUniformLocation(
+    const clipToViewportAffineTransformLocation = this.#getUniformLocation(
       gl,
       program,
-      'u_clipToViewportHomogeneousTransform'
+      'u_clipToViewportAffineTransform'
     )
     gl.uniformMatrix4fv(
-      clipToViewportHomogeneousTransformLocation,
+      clipToViewportAffineTransformLocation,
       false,
-      homogeneousTransformToMatrix4(
-        invertHomogeneousTransform(
-          this.viewport.viewportToClipHomogeneousTransform
-        )
+      affineTransformToMatrix4(
+        invertAffineTransform(this.viewport.viewportToClipAffineTransform)
       )
     )
 
@@ -1020,19 +1016,19 @@ export class WebGL2Renderer
     gl.useProgram(program)
 
     // Render Transform
-    const renderHomogeneousTransform = multiplyHomogeneousTransform(
-      this.viewport.projectedGeoToClipHomogeneousTransform,
-      webgl2WarpedMap.invertedRenderHomogeneousTransform
+    const renderAffineTransform = multiplyAffineTransform(
+      this.viewport.projectedGeoToClipAffineTransform,
+      webgl2WarpedMap.invertedRenderAffineTransform
     )
-    const renderHomogeneousTransformLocation = this.#getUniformLocation(
+    const renderAffineTransformLocation = this.#getUniformLocation(
       gl,
       program,
-      'u_renderHomogeneousTransform'
+      'u_renderAffineTransform'
     )
     gl.uniformMatrix4fv(
-      renderHomogeneousTransformLocation,
+      renderAffineTransformLocation,
       false,
-      homogeneousTransformToMatrix4(renderHomogeneousTransform)
+      affineTransformToMatrix4(renderAffineTransform)
     )
   }
 
@@ -1072,19 +1068,19 @@ export class WebGL2Renderer
     gl.useProgram(program)
 
     // Render Transform
-    const renderHomogeneousTransform = multiplyHomogeneousTransform(
-      this.viewport.projectedGeoToClipHomogeneousTransform,
-      webgl2WarpedMap.invertedRenderHomogeneousTransform
+    const renderAffineTransform = multiplyAffineTransform(
+      this.viewport.projectedGeoToClipAffineTransform,
+      webgl2WarpedMap.invertedRenderAffineTransform
     )
-    const renderHomogeneousTransformLocation = this.#getUniformLocation(
+    const renderAffineTransformLocation = this.#getUniformLocation(
       gl,
       program,
-      'u_renderHomogeneousTransform'
+      'u_renderAffineTransform'
     )
     gl.uniformMatrix4fv(
-      renderHomogeneousTransformLocation,
+      renderAffineTransformLocation,
       false,
-      homogeneousTransformToMatrix4(renderHomogeneousTransform)
+      affineTransformToMatrix4(renderAffineTransform)
     )
   }
 

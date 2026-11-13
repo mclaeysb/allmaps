@@ -8,7 +8,8 @@ import type {
   TileZoomLevel,
   Ring,
   Gcp,
-  ImageRequest
+  ImageRequest,
+  AffineTransform
 } from '@allmaps/types'
 import type { DistortionMeasure, TransformationType } from '@allmaps/transform'
 import type { Projection } from '@allmaps/project'
@@ -88,6 +89,7 @@ export type WarpedMapOptions = {
   overviewTilesMaxResolution: number | undefined
   applyMask: boolean
   distortionMeasure: DistortionMeasure | undefined
+  projectedGeoAffineTransform: AffineTransform
 }
 export type WarpedMapWithoutGeoreferencedMapOptions = Omit<
   WarpedMapOptions,

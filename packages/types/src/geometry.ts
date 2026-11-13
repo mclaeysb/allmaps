@@ -86,7 +86,7 @@ export type Size = [number, number]
 export type Fit = 'cover' | 'contain' | 'equal'
 
 /**
- * Weights array of a 2D Homogeneous Transform Matrix
+ * Weights array of a 2D Affine Transform Matrix
  *
  * These coefficients are used in the same order in multiple places
  * - CSS Transform defined by a 2D matrix. Use `toString()` before using this as input for a CSS `matrix()` function.
@@ -98,14 +98,7 @@ export type Fit = 'cover' | 'contain' | 'equal'
  *
  * Note: The weights array of a Polynomial1 Transformation has a different order. See the corresponding conversion functions.
  */
-export type HomogeneousTransform = [
-  number,
-  number,
-  number,
-  number,
-  number,
-  number
-]
+export type AffineTransform = [number, number, number, number, number, number]
 
 export type Matrix4 = [
   number,

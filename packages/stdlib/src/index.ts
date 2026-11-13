@@ -153,6 +153,7 @@ export {
   mixNumbers,
   mixPoints,
   mixLineStrings,
+  mixAffineTransform,
   midPoint,
   lineAngle,
   stepDistanceAngle,

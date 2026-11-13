@@ -21,10 +21,14 @@ import {
   objectDifference,
   omit,
   mergePartialOptions,
-  mixNumbers
+  mixNumbers,
+  mixAffineTransform
 } from '@allmaps/stdlib'
 
-import { applyHomogeneousTransform } from '../shared/homogeneous-transform.js'
+import {
+  affineTransformPoint,
+  identityAffineTransform
+} from '../shared/affine-transform.js'
 import {
   WarpedMapErrorEvent,
   WarpedMapEvent,
@@ -38,7 +42,8 @@ import type {
   Rectangle,
   Bbox,
   TileZoomLevel,
-  Size
+  Size,
+  AffineTransform
 } from '@allmaps/types'
 import type {
   Helmert,
@@ -75,7 +80,8 @@ export const DEFAULT_WARPED_MAP_OPTIONS: WarpedMapOptions = {
   overviewTilesMaxResolution: undefined, // Used to be 1024 * 1024 to support one such tile, e.g. for Rotterdam map.
   overviewTilesSelection: 'lowest',
   applyMask: true,
-  distortionMeasure: undefined
+  distortionMeasure: undefined,
+  projectedGeoAffineTransform: identityAffineTransform
 }
 
 const DEFAULT_SPECIFIC_PROJECTED_GCP_TRANSFORMER_OPTIONS = {
@@ -180,6 +186,8 @@ export function createWarpedMapFactory<W extends WarpedMap>() {
  * @param projectedGeoAppliedMask - resourceAppliedMask in projected geospatial coordinates
  * @param projectedGeoAppliedMaskBbox - Bbox of the projectedGeoAppliedMask
  * @param projectedGeoAppliedMaskRectangle - resourceAppliedMaskRectangle in projected geospatial coordinates
+ * @param projectedGeoAffineTransform - Additional Affine Transform applied in projected geospatial coordinates before rendering
+ * @param projectedPreviousGeoAffineTransform - Previous additional Affine Transform applied in projected geospatial coordinates before rendering
  * @param resourceToProjectedGeoScale - Scale of the warped map, in resource pixels per projected geospatial coordinates
  * @param distortionMeasure - Distortion measure displayed for this map
  * @param previousDistortionMeasure - Previous distortion measure displayed for this map
@@ -276,6 +284,8 @@ export class WarpedMap extends EventTarget {
   projectedGeoAppliedMask!: Ring
   projectedGeoAppliedMaskBbox!: Bbox
   projectedGeoAppliedMaskRectangle!: Rectangle
+  projectedGeoAffineTransform!: AffineTransform
+  projectedGeoPreviousAffineTransform!: AffineTransform
 
   resourceToProjectedGeoScale!: number
 
@@ -414,8 +424,8 @@ export class WarpedMap extends EventTarget {
     return rectanglesToScale(
       this.resourceMaskRectangle,
       this.projectedGeoMaskRectangle.map((point) => {
-        return applyHomogeneousTransform(
-          viewport.projectedGeoToViewportHomogeneousTransform,
+        return affineTransformPoint(
+          viewport.projectedGeoToViewportAffineTransform,
           point
         )
       }) as Rectangle
@@ -612,6 +622,11 @@ export class WarpedMap extends EventTarget {
       this.projection = this.options.projection
 
       this.updateProjectedTransformerProperties()
+
+      this.projectedGeoAffineTransform =
+        this.options.projectedGeoAffineTransform
+      this.projectedGeoPreviousAffineTransform =
+        this.projectedGeoAffineTransform
     } else {
       if ('visible' in changedOptions) {
         this.visible = this.options.visible
@@ -645,6 +660,11 @@ export class WarpedMap extends EventTarget {
         'distortionMeasures' in changedOptions
       ) {
         this.setDistortionMeasure(this.options.distortionMeasure)
+      }
+
+      if ('projectedGeoAffineTransform' in changedOptions) {
+        this.projectedGeoAffineTransform =
+          this.options.projectedGeoAffineTransform
       }
     }
 
@@ -857,6 +877,7 @@ export class WarpedMap extends EventTarget {
     this.projectedPreviousTransformer = this.projectedTransformer
     this.projectedGeoPreviousTransformedResourcePoints =
       this.projectedGeoTransformedResourcePoints
+    this.projectedGeoPreviousAffineTransform = this.projectedGeoAffineTransform
   }
 
   /**
@@ -885,6 +906,11 @@ export class WarpedMap extends EventTarget {
     this.projectedGeoPreviousTransformedResourcePoints = mixLineStrings(
       this.projectedGeoTransformedResourcePoints,
       this.projectedGeoPreviousTransformedResourcePoints,
+      t
+    )
+    this.projectedGeoPreviousAffineTransform = mixAffineTransform(
+      this.projectedGeoAffineTransform,
+      this.projectedGeoPreviousAffineTransform,
       t
     )
   }

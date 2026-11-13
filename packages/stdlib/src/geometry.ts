@@ -25,7 +25,8 @@ import type {
   SvgPolygon,
   SvgGeometry,
   Size,
-  MultiGeometryOptions
+  MultiGeometryOptions,
+  AffineTransform
 } from '@allmaps/types'
 
 // Assert
@@ -454,6 +455,21 @@ export function mixLineStrings(
   return lineString0.map((point, index) => {
     return mixPoints(point, lineString1[index], t)
   })
+}
+
+export function mixAffineTransform(
+  affineTransform0: AffineTransform,
+  affineTransform1: AffineTransform,
+  t: number
+): AffineTransform {
+  return [
+    mixNumbers(affineTransform0[0], affineTransform1[0], t),
+    mixNumbers(affineTransform0[1], affineTransform1[1], t),
+    mixNumbers(affineTransform0[2], affineTransform1[2], t),
+    mixNumbers(affineTransform0[3], affineTransform1[3], t),
+    mixNumbers(affineTransform0[4], affineTransform1[4], t),
+    mixNumbers(affineTransform0[5], affineTransform1[5], t)
+  ]
 }
 
 // Compute

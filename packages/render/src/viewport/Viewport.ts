@@ -24,10 +24,10 @@ import {
 import { lonLatProjection, webMercatorProjection } from '@allmaps/project'
 
 import {
-  composeHomogeneousTransform,
-  applyHomogeneousTransform,
-  invertHomogeneousTransform
-} from '../shared/homogeneous-transform.js'
+  composeAffineTransform,
+  affineTransformPoint,
+  invertAffineTransform
+} from '../shared/affine-transform.js'
 import { WarpedMapList } from '../maps/WarpedMapList.js'
 
 import type {
@@ -35,7 +35,7 @@ import type {
   Rectangle,
   Size,
   Bbox,
-  HomogeneousTransform,
+  AffineTransform,
   Fit,
   Polygon
 } from '@allmaps/types'
@@ -98,10 +98,10 @@ const defaultFitOptions = {
  * @property canvasResolution - Resolution of the canvas in canvas pixels (viewportSize*devicePixelRatio), as width * height.
  * @property canvasBbox - Bounding box of the canvas, in canvas pixels.
  * @property projectedGeoPerCanvasScale - Scale of the viewport, in projected geospatial coordinates per canvas pixel (projectedGeoPerViewportScale/devicePixelRatio).
- * @property projectedGeoToViewportHomogeneousTransform - Homogeneous Transform from projected geo coordinates to viewport pixels. Equivalent to OpenLayers coordinateToPixelTransform.
- * @property projectedGeoToCanvasHomogeneousTransform - Homogeneous Transform from projected geo coordinates to canvas pixels.
- * @property projectedGeoToClipHomogeneousTransform - Homogeneous Transform from projected geo coordinates to WebGL coordinates in the [-1, 1] range. Equivalent to OpenLayers projectionTransform.
- * @property viewportToClipHomogeneousTransform - Homogeneous Transform from viewport coordinates to WebGL coordinates in the [-1, 1] range.
+ * @property projectedGeoToViewportAffineTransform - Affine Transform from projected geo coordinates to viewport pixels. Equivalent to OpenLayers coordinateToPixelTransform.
+ * @property projectedGeoToCanvasAffineTransform - Affine Transform from projected geo coordinates to canvas pixels.
+ * @property projectedGeoToClipAffineTransform - Affine Transform from projected geo coordinates to WebGL coordinates in the [-1, 1] range. Equivalent to OpenLayers projectionTransform.
+ * @property viewportToClipAffineTransform - Affine Transform from viewport coordinates to WebGL coordinates in the [-1, 1] range.
  */
 export class Viewport {
   geoCenter: Point
@@ -135,16 +135,10 @@ export class Viewport {
   canvasBbox: Bbox
 
   projectedGeoPerCanvasScale: number
-  projectedGeoToViewportHomogeneousTransform: HomogeneousTransform = [
-    1, 0, 0, 1, 0, 0
-  ]
-  projectedGeoToCanvasHomogeneousTransform: HomogeneousTransform = [
-    1, 0, 0, 1, 0, 0
-  ]
-  projectedGeoToClipHomogeneousTransform: HomogeneousTransform = [
-    1, 0, 0, 1, 0, 0
-  ]
-  viewportToClipHomogeneousTransform: HomogeneousTransform = [1, 0, 0, 1, 0, 0]
+  projectedGeoToViewportAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
+  projectedGeoToCanvasAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
+  projectedGeoToClipAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
+  viewportToClipAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
 
   /**
    * Creates a new Viewport
@@ -219,14 +213,14 @@ export class Viewport {
     this.projectedGeoPerCanvasScale =
       this.projectedGeoPerViewportScale / this.devicePixelRatio
 
-    this.projectedGeoToViewportHomogeneousTransform =
-      this.#composeProjectedGeoToViewportHomogeneousTransform()
-    this.projectedGeoToCanvasHomogeneousTransform =
-      this.#composeProjectedGeoToCanvasHomogeneousTransform()
-    this.projectedGeoToClipHomogeneousTransform =
-      this.#composeProjectedGeoToClipHomogeneousTransform()
-    this.viewportToClipHomogeneousTransform =
-      this.#composeViewportToClipHomogeneousTransform()
+    this.projectedGeoToViewportAffineTransform =
+      this.#composeProjectedGeoToViewportAffineTransform()
+    this.projectedGeoToCanvasAffineTransform =
+      this.#composeProjectedGeoToCanvasAffineTransform()
+    this.projectedGeoToClipAffineTransform =
+      this.#composeProjectedGeoToClipAffineTransform()
+    this.viewportToClipAffineTransform =
+      this.#composeViewportToClipAffineTransform()
   }
 
   /**
@@ -477,10 +471,8 @@ export class Viewport {
     )
     const viewportBufferedRectangle = bboxToRectangle(viewportBufferedBbox)
     return viewportBufferedRectangle.map((point) =>
-      applyHomogeneousTransform(
-        invertHomogeneousTransform(
-          this.projectedGeoToViewportHomogeneousTransform
-        ),
+      affineTransformPoint(
+        invertAffineTransform(this.projectedGeoToViewportAffineTransform),
         point
       )
     ) as Rectangle
@@ -492,8 +484,8 @@ export class Viewport {
     ) as Rectangle
   }
 
-  #composeProjectedGeoToViewportHomogeneousTransform(): HomogeneousTransform {
-    return composeHomogeneousTransform(
+  #composeProjectedGeoToViewportAffineTransform(): AffineTransform {
+    return composeAffineTransform(
       this.viewportCenter[0],
       this.viewportCenter[1],
       1 / this.projectedGeoPerViewportScale,
@@ -504,8 +496,8 @@ export class Viewport {
     )
   }
 
-  #composeProjectedGeoToCanvasHomogeneousTransform(): HomogeneousTransform {
-    return composeHomogeneousTransform(
+  #composeProjectedGeoToCanvasAffineTransform(): AffineTransform {
+    return composeAffineTransform(
       this.canvasCenter[0],
       this.canvasCenter[1],
       1 / this.projectedGeoPerCanvasScale,
@@ -516,8 +508,8 @@ export class Viewport {
     )
   }
 
-  #composeProjectedGeoToClipHomogeneousTransform(): HomogeneousTransform {
-    return composeHomogeneousTransform(
+  #composeProjectedGeoToClipAffineTransform(): AffineTransform {
+    return composeAffineTransform(
       0,
       0,
       2 / (this.projectedGeoPerViewportScale * this.viewportSize[0]),
@@ -528,8 +520,8 @@ export class Viewport {
     )
   }
 
-  #composeViewportToClipHomogeneousTransform(): HomogeneousTransform {
-    return composeHomogeneousTransform(
+  #composeViewportToClipAffineTransform(): AffineTransform {
+    return composeAffineTransform(
       0,
       0,
       2 / this.viewportSize[0],

@@ -129,6 +129,13 @@
   <div class="absolute bottom-0 right-0 m-2">
     <button
       onclick={() => {
+        warpedMapLayer?.setLayerOptions({
+          projectedGeoAffineTransform: [4, 0, 0, 4, 0, 0]
+        })
+      }}>Affine transform</button
+    >
+    <button
+      onclick={() => {
         showComponents = !showComponents
       }}>⛶</button
     >
