@@ -6,7 +6,10 @@ import {
   bboxToRectangle,
   doBboxesIntersect,
   mergeOptions,
-  mergePartialOptions
+  mergePartialOptions,
+  affineTransformPoints,
+  getAffineTransformScale,
+  invertAffineTransform
 } from '@allmaps/stdlib'
 import { isEqualProjection } from '@allmaps/project'
 
@@ -46,11 +49,6 @@ import type {
   BatchMapResult,
   BatchOptions
 } from '../shared/types.js'
-import {
-  affineTransformPoints,
-  getAffineTransformScale,
-  invertAffineTransform
-} from '../shared/affine-transform.js'
 
 /**
  * Abstract base class for renderers

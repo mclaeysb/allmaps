@@ -2,7 +2,11 @@ import {
   lineStringToLines,
   mergeOptions,
   pointsAndPointsToLines,
-  subSetArray
+  subSetArray,
+  affineTransformPoints,
+  createAffineTransform,
+  invertAffineTransform,
+  multiplyAffineTransform
 } from '@allmaps/stdlib'
 import { GeoreferencedMap } from '@allmaps/annotation'
 import {
@@ -17,13 +21,6 @@ import {
 } from '@allmaps/tailwind'
 
 import { TriangulatedWarpedMap } from './TriangulatedWarpedMap.js'
-import {
-  affineTransformPoint,
-  affineTransformPoints,
-  createAffineTransform,
-  invertAffineTransform,
-  multiplyAffineTransform
-} from '../shared/affine-transform.js'
 import { createBuffer } from '../shared/webgl2.js'
 import { getTilesAtOtherScaleFactors, tileKey } from '../shared/tiles.js'
 import { getCachedFractionalOpaqueRgba } from '../shared/colors-cache.js'

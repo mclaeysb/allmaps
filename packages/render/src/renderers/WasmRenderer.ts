@@ -1,4 +1,9 @@
-import { doBboxesIntersect, mergePartialOptions } from '@allmaps/stdlib'
+import {
+  doBboxesIntersect,
+  mergePartialOptions,
+  affineTransformPoint,
+  invertAffineTransform
+} from '@allmaps/stdlib'
 import { isEqualProjection } from '@allmaps/project'
 
 import { BaseRenderer } from './BaseRenderer.js'
@@ -11,10 +16,6 @@ import {
   CacheableRawJpegTile,
   type RawJpegData
 } from '../tilecache/CacheableRawJpegTile.js'
-import {
-  affineTransformPoint,
-  invertAffineTransform
-} from '../shared/affine-transform.js'
 
 import type { BaseRenderOptions, Renderer } from '../shared/types.js'
 import type { CachedTile } from '../tilecache/CacheableTile.js'

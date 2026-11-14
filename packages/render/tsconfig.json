@@ -18,5 +18,5 @@
     { "path": "../triangulate" },
     { "path": "../types" }
   ],
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*", "../stdlib/src/affine-transform.ts"]
 }

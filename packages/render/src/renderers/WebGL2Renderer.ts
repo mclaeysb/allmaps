@@ -2,7 +2,13 @@ import { throttle } from 'lodash-es'
 
 // TODO: convert colors to fractional rgb
 // when setting options, not every render call
-import { mergeOptions, squaredDistance } from '@allmaps/stdlib'
+import {
+  mergeOptions,
+  squaredDistance,
+  multiplyAffineTransform,
+  invertAffineTransform,
+  affineTransformToMatrix4
+} from '@allmaps/stdlib'
 import { supportedDistortionMeasures } from '@allmaps/transform'
 
 import { BaseRenderer } from './BaseRenderer.js'
@@ -17,11 +23,6 @@ import {
   WarpedMapEvent,
   WarpedMapEventType
 } from '../shared/events.js'
-import {
-  multiplyAffineTransform,
-  invertAffineTransform,
-  affineTransformToMatrix4
-} from '../shared/affine-transform.js'
 import { createShader, createProgram } from '../shared/webgl2.js'
 import {
   getCachedFractionalOpaqueRgba,

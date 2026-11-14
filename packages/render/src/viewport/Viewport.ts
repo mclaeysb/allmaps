@@ -19,15 +19,13 @@ import {
   scalePoints,
   rotatePoint,
   mergeOptions,
-  mergePartialOptions
-} from '@allmaps/stdlib'
-import { lonLatProjection, webMercatorProjection } from '@allmaps/project'
-
-import {
+  mergePartialOptions,
   composeAffineTransform,
   invertAffineTransform,
   affineTransformPoints
-} from '../shared/affine-transform.js'
+} from '@allmaps/stdlib'
+import { lonLatProjection, webMercatorProjection } from '@allmaps/project'
+
 import { WarpedMapList } from '../maps/WarpedMapList.js'
 
 import type {

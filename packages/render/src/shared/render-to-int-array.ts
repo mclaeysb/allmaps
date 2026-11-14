@@ -4,7 +4,9 @@ import {
   doBboxesIntersect,
   pixelToIntArrayIndex,
   pointToPixel,
-  closeRing
+  closeRing,
+  affineTransformPoint,
+  invertAffineTransform
 } from '@allmaps/stdlib'
 
 import { GetImageDataValue, GetImageDataSize } from './types.js'
@@ -13,10 +15,6 @@ import {
   tileToTileOriginPoint,
   clipTilePointToTile
 } from './tiles.js'
-import {
-  affineTransformPoint,
-  invertAffineTransform
-} from './affine-transform.js'
 
 import type { Point } from '@allmaps/types'
 

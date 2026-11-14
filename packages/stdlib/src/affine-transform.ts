@@ -86,6 +86,17 @@ export function translateAffineTransform(
   return multiplyAffineTransform(affineTransform, [1, 0, 0, 1, dx, dy])
 }
 
+export function recenterAffineTransform(
+  affineTransform: AffineTransform,
+  dx: number,
+  dy: number
+): AffineTransform {
+  return multiplyAffineTransform(
+    multiplyAffineTransform([1, 0, 0, 1, dx, dy], affineTransform),
+    [1, 0, 0, 1, -dx, -dy]
+  )
+}
+
 export function composeAffineTransform(
   dx1: number,
   dy1: number,

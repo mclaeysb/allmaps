@@ -1,15 +1,28 @@
 export {
+  identityAffineTransform, // constant, not a function
+  affineTransformPoint,
+  affineTransformPoints,
+  createAffineTransform,
+  multiplyAffineTransform,
+  rotateAffineTransform,
+  scaleAffineTransform,
+  translateAffineTransform,
+  recenterAffineTransform,
+  composeAffineTransform,
+  invertAffineTransform,
+  getAffineTransformDeterminant,
+  getAffineTransformScaleX,
+  getAffineTransformScaleY,
+  getAffineTransformScales,
+  getAffineTransformScale,
+  affineTransformToMatrix4
+} from './affine-transform.js' // adjust to the actual file path
+
+export {
   fetchAnnotationsFromApi,
   getMapQueryCredentials,
   PUBLIC_API_MAX_LIMIT
 } from './api.js'
-
-// export {
-//   getImageData,
-//   getColorsArray,
-//   getColorHistogram,
-//   getMaxOccurringColor
-// } from './background-color.js'
 
 export {
   computeMinMax,

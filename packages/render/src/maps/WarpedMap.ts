@@ -22,13 +22,11 @@ import {
   omit,
   mergePartialOptions,
   mixNumbers,
-  mixAffineTransform
-} from '@allmaps/stdlib'
-
-import {
+  mixAffineTransform,
   affineTransformPoints,
   identityAffineTransform
-} from '../shared/affine-transform.js'
+} from '@allmaps/stdlib'
+
 import {
   WarpedMapErrorEvent,
   WarpedMapEvent,
