@@ -80,16 +80,14 @@ export function scaleAffineTransform(
 
 export function translateAffineTransform(
   affineTransform: AffineTransform,
-  dx: number,
-  dy: number
+  [dx, dy]: Point
 ): AffineTransform {
   return multiplyAffineTransform(affineTransform, [1, 0, 0, 1, dx, dy])
 }
 
 export function recenterAffineTransform(
   affineTransform: AffineTransform,
-  dx: number,
-  dy: number
+  [dx, dy]: Point
 ): AffineTransform {
   return multiplyAffineTransform(
     multiplyAffineTransform([1, 0, 0, 1, dx, dy], affineTransform),
