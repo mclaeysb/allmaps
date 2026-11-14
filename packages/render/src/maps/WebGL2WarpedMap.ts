@@ -373,32 +373,14 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       projectedGeoToClipAffineTransform
     )
 
-    const projectedGeoToClipPreviousAffineTransform = multiplyAffineTransform(
-      projectedGeoToClipAffineTransform,
-      this.projectedGeoPreviousAffineTransform
-    )
-    projectedGeoToClipAffineTransform = multiplyAffineTransform(
-      projectedGeoToClipAffineTransform,
-      this.projectedGeoAffineTransform
-    )
-
     if (this.shouldRenderMap()) {
-      this.updateVertexBuffersMap(
-        projectedGeoToClipAffineTransform,
-        projectedGeoToClipPreviousAffineTransform
-      )
+      this.updateVertexBuffersMap(projectedGeoToClipAffineTransform)
     }
     if (this.shouldRenderLines()) {
-      this.updateVertexBuffersLines(
-        projectedGeoToClipAffineTransform,
-        projectedGeoToClipPreviousAffineTransform
-      )
+      this.updateVertexBuffersLines(projectedGeoToClipAffineTransform)
     }
     if (this.shouldRenderPoints()) {
-      this.updateVertexBuffersPoints(
-        projectedGeoToClipAffineTransform,
-        projectedGeoToClipPreviousAffineTransform
-      )
+      this.updateVertexBuffersPoints(projectedGeoToClipAffineTransform)
     }
   }
 
@@ -478,10 +460,16 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     if (this.options.renderFullMask) {
       this.lineGroups.push({
         projectedGeoLines: lineStringToLines(
-          this.projectedGeoTriangulationFullMask
+          affineTransformPoints(
+            this.projectedGeoAffineTransform,
+            this.projectedGeoTriangulationFullMask
+          )
         ),
         projectedGeoPreviousLines: lineStringToLines(
-          this.projectedGeoPreviousTriangulationFullMask
+          affineTransformPoints(
+            this.projectedGeoPreviousAffineTransform,
+            this.projectedGeoPreviousTriangulationFullMask
+          )
         ),
         viewportSize: this.options.renderFullMaskSize,
         color: this.options.renderFullMaskColor,
@@ -493,10 +481,16 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     if (this.options.renderAppliedMask) {
       this.lineGroups.push({
         projectedGeoLines: lineStringToLines(
-          this.projectedGeoTriangulationAppliedMask
+          affineTransformPoints(
+            this.projectedGeoAffineTransform,
+            this.projectedGeoTriangulationAppliedMask
+          )
         ),
         projectedGeoPreviousLines: lineStringToLines(
-          this.projectedGeoPreviousTriangulationAppliedMask
+          affineTransformPoints(
+            this.projectedGeoPreviousAffineTransform,
+            this.projectedGeoPreviousTriangulationAppliedMask
+          )
         ),
         viewportSize: this.options.renderAppliedMaskSize,
         color: this.options.renderAppliedMaskColor,
@@ -508,10 +502,16 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     if (this.options.renderMask) {
       this.lineGroups.push({
         projectedGeoLines: lineStringToLines(
-          this.projectedGeoTriangulationMask
+          affineTransformPoints(
+            this.projectedGeoAffineTransform,
+            this.projectedGeoTriangulationMask
+          )
         ),
         projectedGeoPreviousLines: lineStringToLines(
-          this.projectedGeoPreviousTriangulationMask
+          affineTransformPoints(
+            this.projectedGeoPreviousAffineTransform,
+            this.projectedGeoPreviousTriangulationMask
+          )
         ),
         viewportSize: this.options.renderMaskSize,
         color: this.options.renderMaskColor,
@@ -524,11 +524,17 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       this.lineGroups.push({
         projectedGeoLines: pointsAndPointsToLines(
           this.projectedGeoPoints,
-          this.projectedGeoTransformedResourcePoints
+          affineTransformPoints(
+            this.projectedGeoAffineTransform,
+            this.projectedGeoTransformedResourcePoints
+          )
         ),
         projectedGeoPreviousLines: pointsAndPointsToLines(
           this.projectedGeoPoints,
-          this.projectedGeoPreviousTransformedResourcePoints
+          affineTransformPoints(
+            this.projectedGeoPreviousAffineTransform,
+            this.projectedGeoPreviousTransformedResourcePoints
+          )
         ),
         viewportSize: this.options.renderVectorsSize,
         color: this.options.renderVectorsColor,
@@ -553,9 +559,14 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     if (this.options.renderTransformedGcps) {
       this.pointGroups.push({
-        projectedGeoPoints: this.projectedGeoTransformedResourcePoints,
-        projectedGeoPreviousPoints:
-          this.projectedGeoPreviousTransformedResourcePoints,
+        projectedGeoPoints: affineTransformPoints(
+          this.projectedGeoAffineTransform,
+          this.projectedGeoTransformedResourcePoints
+        ),
+        projectedGeoPreviousPoints: affineTransformPoints(
+          this.projectedGeoPreviousAffineTransform,
+          this.projectedGeoPreviousTransformedResourcePoints
+        ),
         viewportSize: this.options.renderTransformedGcpsSize,
         color: this.options.renderTransformedGcpsColor,
         viewportBorderSize: this.options.renderTransformedGcpsBorderSize,
@@ -565,8 +576,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersMap(
-    projectedGeoToClipAffineTransform: AffineTransform,
-    projectedGeoToClipPreviousAffineTransform: AffineTransform
+    projectedGeoToClipAffineTransform: AffineTransform
   ) {
     if (!this.mapVao) {
       return
@@ -589,7 +599,10 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     const clipTrianglePointsFlat = new Float32Array(
       affineTransformPoints(
-        projectedGeoToClipAffineTransform,
+        multiplyAffineTransform(
+          projectedGeoToClipAffineTransform,
+          this.projectedGeoAffineTransform
+        ),
         this.projectedGeoTrianglePoints
       ).flat()
     )
@@ -597,7 +610,10 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     const clipPreviousTrianglePointsFlat = new Float32Array(
       affineTransformPoints(
-        projectedGeoToClipPreviousAffineTransform,
+        multiplyAffineTransform(
+          projectedGeoToClipAffineTransform,
+          this.projectedGeoPreviousAffineTransform
+        ),
         this.projectedGeoPreviousTrianglePoints
       ).flat()
     )
@@ -655,8 +671,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersLines(
-    projectedGeoToClipAffineTransform: AffineTransform,
-    projectedGeoToClipPreviousAffineTransform: AffineTransform
+    projectedGeoToClipAffineTransform: AffineTransform
   ) {
     if (!this.linesVao) {
       return
@@ -715,7 +730,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
 
     const clipSixPreviousPoints = affineTransformPoints(
-      projectedGeoToClipPreviousAffineTransform,
+      projectedGeoToClipAffineTransform,
       projectedGeoPreviousLines.flatMap(([start, end]) => [
         start,
         start,
@@ -734,7 +749,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
 
     const clipSixPreviousOtherPoints = affineTransformPoints(
-      projectedGeoToClipPreviousAffineTransform,
+      projectedGeoToClipAffineTransform,
       projectedGeoPreviousLines.flatMap(([start, end]) => [
         end,
         end,
@@ -864,8 +879,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersPoints(
-    projectedGeoToClipAffineTransform: AffineTransform,
-    projectedGeoToClipPreviousAffineTransform: AffineTransform
+    projectedGeoToClipAffineTransform: AffineTransform
   ) {
     if (!this.pointsVao) {
       return
@@ -874,6 +888,15 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     const gl = this.gl
     const program = this.pointsProgram
     gl.bindVertexArray(this.pointsVao)
+
+    // const projectedGeoToClipPreviousAffineTransform = multiplyAffineTransform(
+    //   projectedGeoToClipAffineTransform,
+    //   this.projectedGeoPreviousAffineTransform
+    // )
+    // projectedGeoToClipAffineTransform = multiplyAffineTransform(
+    //   projectedGeoToClipAffineTransform,
+    //   this.projectedGeoAffineTransform
+    // )
 
     this.setPointGroups()
 
@@ -898,7 +921,7 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     )
 
     const clipPreviousPoints = affineTransformPoints(
-      projectedGeoToClipPreviousAffineTransform,
+      projectedGeoToClipAffineTransform,
       projectedGeoPreviousPoints
     )
     createBuffer(
