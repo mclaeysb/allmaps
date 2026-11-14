@@ -26,7 +26,7 @@ import {
 } from '@allmaps/stdlib'
 
 import {
-  affineTransformPoint,
+  affineTransformPoints,
   identityAffineTransform
 } from '../shared/affine-transform.js'
 import {
@@ -423,12 +423,10 @@ export class WarpedMap extends EventTarget {
   getResourceToViewportScale(viewport: Viewport): number {
     return rectanglesToScale(
       this.resourceMaskRectangle,
-      this.projectedGeoMaskRectangle.map((point) => {
-        return affineTransformPoint(
-          viewport.projectedGeoToViewportAffineTransform,
-          point
-        )
-      }) as Rectangle
+      affineTransformPoints(
+        viewport.projectedGeoToViewportAffineTransform,
+        this.projectedGeoMaskRectangle
+      )
     )
   }
 

@@ -17,7 +17,7 @@ export function invertStraightMeasures(
   const translation = translatePoint(
     midPoint(...sourcePointsForward),
     scalePoint(midPoint(...destinationPointsForward), scale),
-    'substract'
+    'subtract'
   )
 
   return {

@@ -57,7 +57,7 @@ export class Straight extends BaseTransformation {
       const translation = translatePoint(
         midPoint(...this.destinationPoints),
         scalePoint(midPoint(...this.sourcePoints), scale),
-        'substract'
+        'subtract'
       )
 
       this.measures = { scale, translation }

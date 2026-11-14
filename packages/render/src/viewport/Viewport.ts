@@ -25,8 +25,8 @@ import { lonLatProjection, webMercatorProjection } from '@allmaps/project'
 
 import {
   composeAffineTransform,
-  affineTransformPoint,
-  invertAffineTransform
+  invertAffineTransform,
+  affineTransformPoints
 } from '../shared/affine-transform.js'
 import { WarpedMapList } from '../maps/WarpedMapList.js'
 
@@ -470,12 +470,10 @@ export class Viewport {
       bufferFraction
     )
     const viewportBufferedRectangle = bboxToRectangle(viewportBufferedBbox)
-    return viewportBufferedRectangle.map((point) =>
-      affineTransformPoint(
-        invertAffineTransform(this.projectedGeoToViewportAffineTransform),
-        point
-      )
-    ) as Rectangle
+    return affineTransformPoints(
+      invertAffineTransform(this.projectedGeoToViewportAffineTransform),
+      viewportBufferedRectangle
+    )
   }
 
   getGeoBufferedRectangle(bufferFraction?: number): Rectangle {
@@ -556,7 +554,7 @@ export class Viewport {
     const centered = translatePoints(
       rectangle,
       midPoint(...rectangle),
-      'substract'
+      'subtract'
     ) as Rectangle
     const rotated = rotatePoints(centered, rotation) as Rectangle
     const translated = translatePoints(rotated, projectedGeoCenter) as Rectangle

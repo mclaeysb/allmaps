@@ -47,8 +47,8 @@ import type {
   BatchOptions
 } from '../shared/types.js'
 import {
-  affineTransformPoint,
   affineTransformPoints,
+  getAffineTransformScale,
   invertAffineTransform
 } from '../shared/affine-transform.js'
 
@@ -882,7 +882,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     // - warpedMap.resourceToProjectedGeoScale * this.viewport.projectedGeoPerViewportScale
     const tileZoomLevel = getTileZoomLevelForScale(
       warpedMap.image.tileZoomLevels,
-      warpedMap.getResourceToViewportScale(viewport),
+      warpedMap.getResourceToViewportScale(viewport) /
+        getAffineTransformScale(warpedMap.projectedGeoAffineTransform),
       this.options.scaleFactorCorrection,
       this.options.log2ScaleFactorCorrection
     )
@@ -895,12 +896,16 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     }
     // This can be expensive at high maxDepth and seems to work fine with maxDepth = 0
     // If an internal projection is present, some refinement is needed.
-    const projectedGeoBufferedViewportRectangle =
+    let projectedGeoBufferedViewportRectangle =
       viewport.getProjectedGeoBufferedRectangle(
         this.options.anticipateInteraction
           ? this.options.requestViewportBufferRatio
           : 1
       )
+    // projectedGeoBufferedViewportRectangle = affineTransformPoints(
+    //   invertAffineTransform(warpedMap.projectedGeoAffineTransform),
+    //   projectedGeoBufferedViewportRectangle
+    // )
     // Compute viewport in resource
     // Note: since the backward transformation is not the exact inverse of the forward
     // there is an inherent imperfection in this computation

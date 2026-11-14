@@ -19,6 +19,7 @@ import {
 import { TriangulatedWarpedMap } from './TriangulatedWarpedMap.js'
 import {
   affineTransformPoint,
+  affineTransformPoints,
   createAffineTransform,
   invertAffineTransform,
   multiplyAffineTransform
@@ -28,7 +29,7 @@ import { getTilesAtOtherScaleFactors, tileKey } from '../shared/tiles.js'
 import { getCachedFractionalOpaqueRgba } from '../shared/colors-cache.js'
 
 import type { Image } from '@allmaps/iiif-parser'
-import type { Line, Point, Tile, AffineTransform, Size } from '@allmaps/types'
+import type { Tile, AffineTransform, Size } from '@allmaps/types'
 
 import type {
   LineGroup,
@@ -372,14 +373,32 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       projectedGeoToClipAffineTransform
     )
 
+    const projectedGeoToClipPreviousAffineTransform = multiplyAffineTransform(
+      projectedGeoToClipAffineTransform,
+      this.projectedGeoPreviousAffineTransform
+    )
+    projectedGeoToClipAffineTransform = multiplyAffineTransform(
+      projectedGeoToClipAffineTransform,
+      this.projectedGeoAffineTransform
+    )
+
     if (this.shouldRenderMap()) {
-      this.updateVertexBuffersMap(projectedGeoToClipAffineTransform)
+      this.updateVertexBuffersMap(
+        projectedGeoToClipAffineTransform,
+        projectedGeoToClipPreviousAffineTransform
+      )
     }
     if (this.shouldRenderLines()) {
-      this.updateVertexBuffersLines(projectedGeoToClipAffineTransform)
+      this.updateVertexBuffersLines(
+        projectedGeoToClipAffineTransform,
+        projectedGeoToClipPreviousAffineTransform
+      )
     }
     if (this.shouldRenderPoints()) {
-      this.updateVertexBuffersPoints(projectedGeoToClipAffineTransform)
+      this.updateVertexBuffersPoints(
+        projectedGeoToClipAffineTransform,
+        projectedGeoToClipPreviousAffineTransform
+      )
     }
   }
 
@@ -546,7 +565,8 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersMap(
-    projectedGeoToClipAffineTransform: AffineTransform
+    projectedGeoToClipAffineTransform: AffineTransform,
+    projectedGeoToClipPreviousAffineTransform: AffineTransform
   ) {
     if (!this.mapVao) {
       return
@@ -557,13 +577,8 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     gl.bindVertexArray(this.mapVao)
 
     const resourceTrianglePointsFlat = new Float32Array(
-      this.resourceTrianglePoints.length * 2
+      this.resourceTrianglePoints.flat()
     )
-    for (let i = 0; i < this.resourceTrianglePoints.length; i++) {
-      const p = this.resourceTrianglePoints[i]
-      resourceTrianglePointsFlat[i * 2] = p[0]
-      resourceTrianglePointsFlat[i * 2 + 1] = p[1]
-    }
     createBuffer(
       gl,
       program,
@@ -572,20 +587,20 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       'a_resourceTrianglePoint'
     )
 
-    const clipPreviousTrianglePointsFlat = new Float32Array(
-      this.projectedGeoPreviousTrianglePoints.length * 2
+    const clipTrianglePointsFlat = new Float32Array(
+      affineTransformPoints(
+        projectedGeoToClipAffineTransform,
+        this.projectedGeoTrianglePoints
+      ).flat()
     )
-    for (let i = 0; i < this.projectedGeoPreviousTrianglePoints.length; i++) {
-      const transformed = affineTransformPoint(
-        multiplyAffineTransform(
-          this.projectedGeoPreviousAffineTransform,
-          projectedGeoToClipAffineTransform
-        ),
-        this.projectedGeoPreviousTrianglePoints[i]
-      )
-      clipPreviousTrianglePointsFlat[i * 2] = transformed[0]
-      clipPreviousTrianglePointsFlat[i * 2 + 1] = transformed[1]
-    }
+    createBuffer(gl, program, clipTrianglePointsFlat, 2, 'a_clipTrianglePoint')
+
+    const clipPreviousTrianglePointsFlat = new Float32Array(
+      affineTransformPoints(
+        projectedGeoToClipPreviousAffineTransform,
+        this.projectedGeoPreviousTrianglePoints
+      ).flat()
+    )
     createBuffer(
       gl,
       program,
@@ -594,21 +609,13 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       'a_clipPreviousTrianglePoint'
     )
 
-    const clipTrianglePointsFlat = new Float32Array(
-      this.projectedGeoTrianglePoints.length * 2
+    createBuffer(
+      gl,
+      program,
+      new Float32Array(this.trianglePointsDistortion),
+      1,
+      'a_trianglePointDistortion'
     )
-    for (let i = 0; i < this.projectedGeoTrianglePoints.length; i++) {
-      const transformed = affineTransformPoint(
-        multiplyAffineTransform(
-          this.projectedGeoAffineTransform,
-          projectedGeoToClipAffineTransform
-        ),
-        this.projectedGeoTrianglePoints[i]
-      )
-      clipTrianglePointsFlat[i * 2] = transformed[0]
-      clipTrianglePointsFlat[i * 2 + 1] = transformed[1]
-    }
-    createBuffer(gl, program, clipTrianglePointsFlat, 2, 'a_clipTrianglePoint')
 
     createBuffer(
       gl,
@@ -616,14 +623,6 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       new Float32Array(this.previousTrianglePointsDistortion),
       1,
       'a_previousTrianglePointDistortion'
-    )
-
-    createBuffer(
-      gl,
-      program,
-      new Float32Array(this.trianglePointsDistortion),
-      1,
-      'a_trianglePointDistortion'
     )
 
     const trianglePointsTriangleIndex = new Float32Array(
@@ -656,7 +655,8 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersLines(
-    projectedGeoToClipAffineTransform: AffineTransform
+    projectedGeoToClipAffineTransform: AffineTransform,
+    projectedGeoToClipPreviousAffineTransform: AffineTransform
   ) {
     if (!this.linesVao) {
       return
@@ -668,24 +668,25 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     this.setLineGroups()
 
-    const clipSixPoints = this.lineGroups
-      .reduce(
-        (accumulator: Line[], lineGroup) =>
-          accumulator.concat(lineGroup.projectedGeoLines),
-        []
-      )
-      .map((projectedGeoLine) => [
-        projectedGeoLine[0],
-        projectedGeoLine[0],
-        projectedGeoLine[0],
-        projectedGeoLine[1],
-        projectedGeoLine[1],
-        projectedGeoLine[1]
+    const projectedGeoLines = this.lineGroups.flatMap(
+      (lineGroup) => lineGroup.projectedGeoLines
+    )
+    const projectedGeoPreviousLines = this.lineGroups.flatMap(
+      (lineGroup) =>
+        lineGroup.projectedGeoPreviousLines || lineGroup.projectedGeoLines
+    )
+
+    const clipSixPoints = affineTransformPoints(
+      projectedGeoToClipAffineTransform,
+      projectedGeoLines.flatMap(([start, end]) => [
+        start,
+        start,
+        start,
+        end,
+        end,
+        end
       ])
-      .flat()
-      .map((point) =>
-        affineTransformPoint(projectedGeoToClipAffineTransform, point)
-      )
+    )
     createBuffer(
       gl,
       program,
@@ -694,24 +695,17 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       'a_clipPoint'
     )
 
-    const clipSixOtherPoints = this.lineGroups
-      .reduce(
-        (accumulator: Line[], lineGroup) =>
-          accumulator.concat(lineGroup.projectedGeoLines),
-        []
-      )
-      .map((projectedGeoLine) => [
-        projectedGeoLine[1],
-        projectedGeoLine[1],
-        projectedGeoLine[1],
-        projectedGeoLine[0],
-        projectedGeoLine[0],
-        projectedGeoLine[0]
+    const clipSixOtherPoints = affineTransformPoints(
+      projectedGeoToClipAffineTransform,
+      projectedGeoLines.flatMap(([start, end]) => [
+        end,
+        end,
+        end,
+        start,
+        start,
+        start
       ])
-      .flat()
-      .map((point) =>
-        affineTransformPoint(projectedGeoToClipAffineTransform, point)
-      )
+    )
     createBuffer(
       gl,
       program,
@@ -720,26 +714,17 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       'a_clipOtherPoint'
     )
 
-    const clipSixPreviousPoints = this.lineGroups
-      .reduce(
-        (accumulator: Line[], lineGroup) =>
-          accumulator.concat(
-            lineGroup.projectedGeoPreviousLines || lineGroup.projectedGeoLines
-          ),
-        []
-      )
-      .map((projectedGeoLine) => [
-        projectedGeoLine[0],
-        projectedGeoLine[0],
-        projectedGeoLine[0],
-        projectedGeoLine[1],
-        projectedGeoLine[1],
-        projectedGeoLine[1]
+    const clipSixPreviousPoints = affineTransformPoints(
+      projectedGeoToClipPreviousAffineTransform,
+      projectedGeoPreviousLines.flatMap(([start, end]) => [
+        start,
+        start,
+        start,
+        end,
+        end,
+        end
       ])
-      .flat()
-      .map((point) =>
-        affineTransformPoint(projectedGeoToClipAffineTransform, point)
-      )
+    )
     createBuffer(
       gl,
       program,
@@ -748,26 +733,17 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       'a_clipPreviousPoint'
     )
 
-    const clipSixPreviousOtherPoints = this.lineGroups
-      .reduce(
-        (accumulator: Line[], lineGroup) =>
-          accumulator.concat(
-            lineGroup.projectedGeoPreviousLines || lineGroup.projectedGeoLines
-          ),
-        []
-      )
-      .map((projectedGeoLine) => [
-        projectedGeoLine[1],
-        projectedGeoLine[1],
-        projectedGeoLine[1],
-        projectedGeoLine[0],
-        projectedGeoLine[0],
-        projectedGeoLine[0]
+    const clipSixPreviousOtherPoints = affineTransformPoints(
+      projectedGeoToClipPreviousAffineTransform,
+      projectedGeoPreviousLines.flatMap(([start, end]) => [
+        end,
+        end,
+        end,
+        start,
+        start,
+        start
       ])
-      .flat()
-      .map((point) =>
-        affineTransformPoint(projectedGeoToClipAffineTransform, point)
-      )
+    )
     createBuffer(
       gl,
       program,
@@ -888,7 +864,8 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
   }
 
   private updateVertexBuffersPoints(
-    projectedGeoToClipAffineTransform: AffineTransform
+    projectedGeoToClipAffineTransform: AffineTransform,
+    projectedGeoToClipPreviousAffineTransform: AffineTransform
   ) {
     if (!this.pointsVao) {
       return
@@ -900,15 +877,18 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
 
     this.setPointGroups()
 
-    const clipPoints = this.pointGroups
-      .reduce(
-        (accumulator: Point[], pointGroup) =>
-          accumulator.concat(pointGroup.projectedGeoPoints),
-        []
-      )
-      .map((point) =>
-        affineTransformPoint(projectedGeoToClipAffineTransform, point)
-      )
+    const projectedGeoPoints = this.pointGroups.flatMap(
+      (pointGroup) => pointGroup.projectedGeoPoints
+    )
+    const projectedGeoPreviousPoints = this.pointGroups.flatMap(
+      (pointGroup) =>
+        pointGroup.projectedGeoPreviousPoints || pointGroup.projectedGeoPoints
+    )
+
+    const clipPoints = affineTransformPoints(
+      projectedGeoToClipAffineTransform,
+      projectedGeoPoints
+    )
     createBuffer(
       gl,
       program,
@@ -917,18 +897,10 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
       'a_clipPoint'
     )
 
-    const clipPreviousPoints = this.pointGroups
-      .reduce(
-        (accumulator: Point[], pointGroup) =>
-          accumulator.concat(
-            pointGroup.projectedGeoPreviousPoints ||
-              pointGroup.projectedGeoPoints
-          ),
-        []
-      )
-      .map((point) =>
-        affineTransformPoint(projectedGeoToClipAffineTransform, point)
-      )
+    const clipPreviousPoints = affineTransformPoints(
+      projectedGeoToClipPreviousAffineTransform,
+      projectedGeoPreviousPoints
+    )
     createBuffer(
       gl,
       program,

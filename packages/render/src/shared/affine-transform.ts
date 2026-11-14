@@ -15,21 +15,29 @@ export function affineTransformPoint(
   ]
 }
 
-export function affineTransformPoints(
+export function affineTransformPoints<T extends Point[]>(
   affineTransform: AffineTransform,
-  points: Point[]
-): Point[] {
-  return points.map((point) => affineTransformPoint(affineTransform, point))
+  points: T
+): T {
+  return points.map((point) =>
+    affineTransformPoint(affineTransform, point)
+  ) as T
 }
 
 export function createAffineTransform(): AffineTransform {
   return identityAffineTransform
 }
 
+/**
+ * Returns `affineTransform0 · affineTransform1`: `affineTransform1` is applied first, then `affineTransform0`.
+ */
 export function multiplyAffineTransform(
   affineTransform0: AffineTransform,
   affineTransform1: AffineTransform
 ): AffineTransform {
+  if (affineTransform0 === identityAffineTransform) return affineTransform1
+  if (affineTransform1 === identityAffineTransform) return affineTransform0
+
   const a1 = affineTransform0[0]
   const b1 = affineTransform0[1]
   const c1 = affineTransform0[2]
@@ -103,7 +111,7 @@ export function composeAffineTransform(
 export function invertAffineTransform(
   affineTransform: AffineTransform
 ): AffineTransform {
-  const determinant = getDeterminant(affineTransform)
+  const determinant = getAffineTransformDeterminant(affineTransform)
 
   const a = affineTransform[0]
   const b = affineTransform[1]
@@ -122,11 +130,54 @@ export function invertAffineTransform(
   ]
 }
 
-export function getDeterminant(affineTransform: AffineTransform): number {
+export function getAffineTransformDeterminant(
+  affineTransform: AffineTransform
+): number {
   return (
     affineTransform[0] * affineTransform[3] -
     affineTransform[1] * affineTransform[2]
   )
+}
+
+/**
+ * Scale along the x-axis of the input space: the length of the
+ * transformed unit x-vector (a, b).
+ */
+export function getAffineTransformScaleX(
+  affineTransform: AffineTransform
+): number {
+  return Math.hypot(affineTransform[0], affineTransform[1])
+}
+
+/**
+ * Scale along the y-axis of the input space: the length of the
+ * transformed unit y-vector (c, d).
+ */
+export function getAffineTransformScaleY(
+  affineTransform: AffineTransform
+): number {
+  return Math.hypot(affineTransform[2], affineTransform[3])
+}
+
+export function getAffineTransformScales(
+  affineTransform: AffineTransform
+): [number, number] {
+  return [
+    getAffineTransformScaleX(affineTransform),
+    getAffineTransformScaleY(affineTransform)
+  ]
+}
+
+/**
+ * Overall (uniform) scale: the square root of the area scale factor.
+ * Exact for similarity transforms (e.g. Helmert); for non-uniform
+ * transforms it's the geometric mean of the min and max scale.
+ */
+export function getAffineTransformScale(
+  affineTransform: AffineTransform
+): number {
+  if (affineTransform == identityAffineTransform) return 1
+  return Math.sqrt(Math.abs(getAffineTransformDeterminant(affineTransform)))
 }
 
 export function affineTransformToMatrix4(

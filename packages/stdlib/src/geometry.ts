@@ -541,8 +541,8 @@ export function invertPoint(point: Point): Point {
   return [-point[0], -point[1]]
 }
 
-export function invertPoints(points: Point[]): Point[] {
-  return points.map((point) => invertPoint(point))
+export function invertPoints<T extends Point[]>(points: T): T {
+  return points.map((point) => invertPoint(point)) as T
 }
 
 export function scalePoint(point: Point, scale: number): Point {
@@ -553,35 +553,35 @@ export function scalePoint(point: Point, scale: number): Point {
   return [point[0] * scale, point[1] * scale]
 }
 
-export function scalePoints(points: Point[], scale: number): Point[] {
+export function scalePoints<T extends Point[]>(points: T, scale: number): T {
   if (scale === 1) {
     return points
   }
-  return points.map((point) => scalePoint(point, scale))
+  return points.map((point) => scalePoint(point, scale)) as T
 }
 
 export function translatePoint(
   point: Point,
   translationPoint: Point,
-  addOrSubstract: 'add' | 'substract' = 'add'
+  addOrSubtract: 'add' | 'subtract' = 'add'
 ): Point {
-  if (addOrSubstract === 'add') {
+  if (addOrSubtract === 'add') {
     return [point[0] + translationPoint[0], point[1] + translationPoint[1]]
   } else {
     return [point[0] - translationPoint[0], point[1] - translationPoint[1]]
   }
 }
 
-export function translatePoints(
-  points: Point[],
+export function translatePoints<T extends Point[]>(
+  points: T,
   point: Point,
-  addOrSubstract: 'add' | 'substract' = 'add'
-): Point[] {
+  addOrSubtract: 'add' | 'subtract' = 'add'
+): T {
   if (isEqualPoint(point, [0, 0])) {
     return points
   }
 
-  return points.map((p) => translatePoint(p, point, addOrSubstract))
+  return points.map((p) => translatePoint(p, point, addOrSubtract)) as T
 }
 
 // Rotate point in positive (counterclockwise) direction
@@ -600,7 +600,7 @@ export function rotatePoint(
   if (pivot) {
     return translatePoint(
       rotatePoint(
-        translatePoint(point, pivot, 'substract'),
+        translatePoint(point, pivot, 'subtract'),
         angle,
         undefined,
         cosAngle,
@@ -619,12 +619,12 @@ export function rotatePoint(
   }
 }
 
-export function rotatePoints(
-  points: Point[],
+export function rotatePoints<T extends Point[]>(
+  points: T,
   angle = 0,
-  pivot: Point | undefined = undefined
-): Point[] {
-  if (angle === 0 || angle === undefined) {
+  pivot?: Point
+): T {
+  if (angle === 0) {
     return points
   }
 
@@ -633,7 +633,7 @@ export function rotatePoints(
 
   return points.map((point) =>
     rotatePoint(point, angle, pivot, cosAngle, sinAngle)
-  )
+  ) as T
 }
 
 export function triangleAngles(triangle: Triangle): [number, number, number] {
