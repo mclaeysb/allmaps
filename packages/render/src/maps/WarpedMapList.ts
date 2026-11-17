@@ -54,7 +54,8 @@ import type {
 
 const DEFAULT_SELECTION_OPTIONS: SelectionOptions = {
   applyMask: true,
-  sorted: true
+  sorted: true,
+  affineTransformed: false
 }
 export const DEFAULT_ANIMATION_OPTIONS: AnimationOptions = {
   animate: true,
