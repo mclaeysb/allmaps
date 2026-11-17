@@ -22,7 +22,8 @@ import {
   mergePartialOptions,
   composeAffineTransform,
   invertAffineTransform,
-  affineTransformPoints
+  affineTransformPoints,
+  identityAffineTransform
 } from '@allmaps/stdlib'
 import { lonLatProjection, webMercatorProjection } from '@allmaps/project'
 
@@ -133,10 +134,11 @@ export class Viewport {
   canvasBbox: Bbox
 
   projectedGeoPerCanvasScale: number
-  projectedGeoToViewportAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
-  projectedGeoToCanvasAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
-  projectedGeoToClipAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
-  viewportToClipAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
+  projectedGeoToViewportAffineTransform: AffineTransform =
+    identityAffineTransform
+  projectedGeoToCanvasAffineTransform: AffineTransform = identityAffineTransform
+  projectedGeoToClipAffineTransform: AffineTransform = identityAffineTransform
+  viewportToClipAffineTransform: AffineTransform = identityAffineTransform
 
   /**
    * Creates a new Viewport

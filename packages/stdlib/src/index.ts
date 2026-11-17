@@ -1,13 +1,17 @@
 export {
-  identityAffineTransform, // constant, not a function
+  identityAffineTransform,
   affineTransformPoint,
   affineTransformPoints,
+  affineTransformBbox,
   createAffineTransform,
   multiplyAffineTransform,
+  rotationAffineTransform,
   rotateAffineTransform,
+  scalingAffineTransform,
   scaleAffineTransform,
+  translationAffineTransform,
   translateAffineTransform,
-  recenterAffineTransform,
+  rebaseAffineTransform,
   composeAffineTransform,
   invertAffineTransform,
   getAffineTransformDeterminant,
@@ -16,7 +20,7 @@ export {
   getAffineTransformScales,
   getAffineTransformScale,
   affineTransformToMatrix4
-} from './affine-transform.js' // adjust to the actual file path
+} from './affine-transform.js'
 
 export {
   fetchAnnotationsFromApi,

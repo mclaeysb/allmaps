@@ -886,15 +886,6 @@ export class WebGL2WarpedMap extends TriangulatedWarpedMap {
     const program = this.pointsProgram
     gl.bindVertexArray(this.pointsVao)
 
-    // const projectedGeoToClipPreviousAffineTransform = multiplyAffineTransform(
-    //   projectedGeoToClipAffineTransform,
-    //   this.projectedGeoPreviousAffineTransform
-    // )
-    // projectedGeoToClipAffineTransform = multiplyAffineTransform(
-    //   projectedGeoToClipAffineTransform,
-    //   this.projectedGeoAffineTransform
-    // )
-
     this.setPointGroups()
 
     const projectedGeoPoints = this.pointGroups.flatMap(

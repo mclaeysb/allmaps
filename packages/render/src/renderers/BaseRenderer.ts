@@ -7,8 +7,9 @@ import {
   doBboxesIntersect,
   mergeOptions,
   mergePartialOptions,
-  affineTransformPoints,
   getAffineTransformScale,
+  affineTransformPoints,
+  affineTransformBbox,
   invertAffineTransform
 } from '@allmaps/stdlib'
 import { isEqualProjection } from '@allmaps/project'
@@ -229,6 +230,13 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     ])
 
     return promise
+  }
+
+  /**
+   * Get the viewport
+   */
+  getViewport(): Viewport | undefined {
+    return this.viewport
   }
 
   /**
@@ -570,10 +578,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     if (!this.viewport) {
       return []
     }
+    const viewport = this.viewport
 
     // Same comment on viewport and warpedMapList being in same projection as below
     const projectedGeoBufferedViewportRectangleBbox = computeBbox(
-      this.viewport.getProjectedGeoBufferedRectangle()
+      viewport.getProjectedGeoBufferedRectangle()
     )
 
     return this.warpedMapList
@@ -617,15 +626,16 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     if (!this.viewport) {
       return
     }
+    const viewport = this.viewport
 
     if (
       !isEqualProjection(
         this.warpedMapList.options.projection,
-        this.viewport.projection
+        viewport.projection
       )
     ) {
       this.warpedMapList.setListOptions({
-        projection: this.viewport.projection
+        projection: viewport.projection
       })
     }
   }
@@ -802,7 +812,10 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
           warpedMap &&
           doBboxesIntersect(
             warpedMap.projectedGeoFullMaskBbox,
-            projectedGeoBufferedViewportRectangleBbox
+            affineTransformBbox(
+              warpedMap.projectedGeoAffineTransform,
+              projectedGeoBufferedViewportRectangleBbox
+            )
           )
         ) {
           mapIds.add(mapId)
@@ -876,8 +889,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
 
     // Find TileZoomLevel for the current viewport
     // Note the equivalence of the following two:
-    // - warpedMap.getApproxResourceToViewportScale(this.viewport)
-    // - warpedMap.resourceToProjectedGeoScale * this.viewport.projectedGeoPerViewportScale
+    // - warpedMap.getApproxResourceToViewportScale(viewport)
+    // - warpedMap.resourceToProjectedGeoScale * viewport.projectedGeoPerViewportScale
     const tileZoomLevel = getTileZoomLevelForScale(
       warpedMap.image.tileZoomLevels,
       warpedMap.getResourceToViewportScale(viewport) /
@@ -900,10 +913,10 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
           ? this.options.requestViewportBufferRatio
           : 1
       )
-    // projectedGeoBufferedViewportRectangle = affineTransformPoints(
-    //   invertAffineTransform(warpedMap.projectedGeoAffineTransform),
-    //   projectedGeoBufferedViewportRectangle
-    // )
+    projectedGeoBufferedViewportRectangle = affineTransformPoints(
+      invertAffineTransform(warpedMap.projectedGeoAffineTransform),
+      projectedGeoBufferedViewportRectangle
+    )
     // Compute viewport in resource
     // Note: since the backward transformation is not the exact inverse of the forward
     // there is an inherent imperfection in this computation
@@ -1133,13 +1146,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
       this.warpedMapList.getMapIds({ onlyVisible: true })
     )
 
-    const {
-      mapsForViewportEntering: mapsInListEntering,
-      mapsForViewportLeaving: mapsInListLeaving
-    } = this.mapsInViewportsToEnteringAndLeaving(
-      Array.from(this.previousVisibleMapsInList),
-      Array.from(this.visibleMapsInList)
-    )
+    const { mapsEntering: mapsInListEntering, mapsLeaving: mapsInListLeaving } =
+      this.mapsAndPreviousToEnteringAndLeaving(
+        Array.from(this.previousVisibleMapsInList),
+        Array.from(this.visibleMapsInList)
+      )
 
     this.mapsWithFetchableTilesForPreviousViewport =
       this.mapsWithFetchableTilesForViewport
@@ -1155,17 +1166,17 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     this.mapsInViewport = this.findMapsInViewport()
 
     const {
-      mapsForViewportEntering: mapsWithFetchableTilesForViewportEntering,
-      mapsForViewportLeaving: mapsWithFetchableTilesForViewportLeaving
-    } = this.mapsInViewportsToEnteringAndLeaving(
+      mapsEntering: mapsWithFetchableTilesForViewportEntering,
+      mapsLeaving: mapsWithFetchableTilesForViewportLeaving
+    } = this.mapsAndPreviousToEnteringAndLeaving(
       Array.from(this.mapsWithFetchableTilesForPreviousViewport),
       Array.from(this.mapsWithFetchableTilesForViewport)
     )
 
     const {
-      mapsForViewportEntering: mapsInViewportEntering,
-      mapsForViewportLeaving: mapsInViewportLeaving
-    } = this.mapsInViewportsToEnteringAndLeaving(
+      mapsEntering: mapsInViewportEntering,
+      mapsLeaving: mapsInViewportLeaving
+    } = this.mapsAndPreviousToEnteringAndLeaving(
       Array.from(this.mapsInPreviousViewport),
       Array.from(this.mapsInViewport)
     )
@@ -1199,25 +1210,21 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     }
   }
 
-  protected mapsInViewportsToEnteringAndLeaving(
-    mapsForPreviousViewport: string[],
-    mapsForViewport: string[]
+  protected mapsAndPreviousToEnteringAndLeaving(
+    previousMaps: string[],
+    maps: string[]
   ): {
-    mapsForViewportEntering: string[]
-    mapsForViewportLeaving: string[]
+    mapsEntering: string[]
+    mapsLeaving: string[]
   } {
     // TODO: handle everything as Set() once JS supports filter on sets.
     // And speed up with anonymous functions with the Set.prototype.difference() once broadly supported
-    const mapsForViewportEntering = mapsForViewport.filter(
-      (mapId) => !mapsForPreviousViewport.includes(mapId)
-    )
-    const mapsForViewportLeaving = mapsForPreviousViewport.filter(
-      (mapId) => !mapsForViewport.includes(mapId)
-    )
+    const mapsEntering = maps.filter((mapId) => !previousMaps.includes(mapId))
+    const mapsLeaving = previousMaps.filter((mapId) => !maps.includes(mapId))
 
     return {
-      mapsForViewportEntering,
-      mapsForViewportLeaving
+      mapsEntering: mapsEntering,
+      mapsLeaving: mapsLeaving
     }
   }
 

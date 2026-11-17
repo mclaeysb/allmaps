@@ -1,4 +1,6 @@
-import type { AffineTransform, Point, Matrix4 } from '@allmaps/types'
+import { bboxToRectangle, computeBbox } from './bbox.js'
+
+import type { AffineTransform, Point, Matrix4, Bbox } from '@allmaps/types'
 
 export const identityAffineTransform: AffineTransform = [1, 0, 0, 1, 0, 0]
 
@@ -6,6 +8,10 @@ export function affineTransformPoint(
   affineTransform: AffineTransform,
   point: Point
 ): Point {
+  if (affineTransform === identityAffineTransform) {
+    return point
+  }
+
   const x = point[0]
   const y = point[1]
 
@@ -19,9 +25,26 @@ export function affineTransformPoints<T extends Point[]>(
   affineTransform: AffineTransform,
   points: T
 ): T {
+  if (affineTransform === identityAffineTransform) {
+    return points
+  }
+
   return points.map((point) =>
     affineTransformPoint(affineTransform, point)
   ) as T
+}
+
+export function affineTransformBbox(
+  affineTransform: AffineTransform,
+  bbox: Bbox
+): Bbox {
+  if (affineTransform === identityAffineTransform) {
+    return bbox
+  }
+
+  return computeBbox(
+    affineTransformPoints(affineTransform, bboxToRectangle(bbox))
+  )
 }
 
 export function createAffineTransform(): AffineTransform {
@@ -61,37 +84,71 @@ export function multiplyAffineTransform(
   ]
 }
 
+export function rotationAffineTransform(angle: number): AffineTransform {
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  return [cos, sin, -sin, cos, 0, 0]
+}
+
 export function rotateAffineTransform(
   affineTransform: AffineTransform,
   angle: number
 ): AffineTransform {
-  const cos = Math.cos(angle)
-  const sin = Math.sin(angle)
-  return multiplyAffineTransform(affineTransform, [cos, sin, -sin, cos, 0, 0])
+  return multiplyAffineTransform(
+    affineTransform,
+    rotationAffineTransform(angle)
+  )
+}
+
+export function scalingAffineTransform(x: number, y?: number): AffineTransform {
+  return [x, 0, 0, y || x, 0, 0]
 }
 
 export function scaleAffineTransform(
   affineTransform: AffineTransform,
-  x: number,
-  y: number
+  sx: number,
+  sy?: number
 ): AffineTransform {
-  return multiplyAffineTransform(affineTransform, [x, 0, 0, y, 0, 0])
+  return multiplyAffineTransform(
+    affineTransform,
+    scalingAffineTransform(sx, sy)
+  )
+}
+
+export function translationAffineTransform(
+  dx: number,
+  dy: number
+): AffineTransform {
+  return [1, 0, 0, 1, dx, dy]
 }
 
 export function translateAffineTransform(
   affineTransform: AffineTransform,
-  [dx, dy]: Point
-): AffineTransform {
-  return multiplyAffineTransform(affineTransform, [1, 0, 0, 1, dx, dy])
-}
-
-export function recenterAffineTransform(
-  affineTransform: AffineTransform,
-  [dx, dy]: Point
+  dx: number,
+  dy: number
 ): AffineTransform {
   return multiplyAffineTransform(
-    multiplyAffineTransform([1, 0, 0, 1, dx, dy], affineTransform),
-    [1, 0, 0, 1, -dx, -dy]
+    affineTransform,
+    translationAffineTransform(dx, dy)
+  )
+}
+
+/**
+ * Express oldAffineTransform w.r.t. a new bases,
+ * with newToOldAffineTransform describing how to transform from the new to this old basis
+ *
+ * This is usefull to express a rotation or scaling w.r.t. a different basis.
+ */
+export function rebaseAffineTransform(
+  oldAffineTransform: AffineTransform,
+  newToOldAffineTransform: AffineTransform
+): AffineTransform {
+  return multiplyAffineTransform(
+    multiplyAffineTransform(
+      invertAffineTransform(newToOldAffineTransform),
+      oldAffineTransform
+    ),
+    newToOldAffineTransform
   )
 }
 
