@@ -463,8 +463,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       } else if (options.projectedGeoPoint) {
         // Select by projectedGeoPoint
         const projectedGeoPoint = WarpedMapList.projectPointIfNeeded(
-          this.options.projection,
           options.projection,
+          this.options.projection,
           options.projectedGeoPoint
         )
         if (options.applyMask) {
@@ -489,8 +489,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       } else if (options.projectedGeoBbox) {
         // Select by projectedGeoBbox
         const projectedGeoBbox = WarpedMapList.projectBboxIfNeeded(
-          this.options.projection,
           options.projection,
+          this.options.projection,
           options.projectedGeoBbox
         )
         if (options.applyMask) {
