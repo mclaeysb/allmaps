@@ -1,6 +1,8 @@
-import proj4 from 'proj4'
-
-import { lonLatProjection, isEqualProjection } from '@allmaps/project'
+import {
+  lonLatProjection,
+  isEqualProjection,
+  projectPoint
+} from '@allmaps/project'
 import { mergeOptionsUnlessUndefined } from '@allmaps/stdlib'
 
 import { supportedGcpFileFormatsWithResourceYAxisUp } from '../shared/constants.js'
@@ -138,9 +140,9 @@ export function parseGcps(
     if (!isEqualProjection(mergedOptions.gcpProjection, lonLatProjection)) {
       gcp = {
         resource: gcp.resource,
-        geo: proj4(
-          mergedOptions.gcpProjection.definition,
-          lonLatProjection.definition,
+        geo: projectPoint(
+          mergedOptions.gcpProjection,
+          lonLatProjection,
           gcp.geo
         )
       }

@@ -7,7 +7,13 @@
   import { WarpedMapList } from '@allmaps/render'
   import { WebGL2WarpedMap } from '@allmaps/render/webgl2'
   import { basemapStyle } from '@allmaps/basemap'
-  import { mergeOptions } from '@allmaps/stdlib'
+  import {
+    mergeOptions,
+    multiplyAffineTransform,
+    rebaseAffineTransform,
+    rebaseOriginAffineTransform,
+    rotationAffineTransform
+  } from '@allmaps/stdlib'
   import { lonLatProjection, webMercatorProjection } from '@allmaps/project'
 
   import OptionInputs from '$lib/components/OptionInputs.svelte'
@@ -27,7 +33,7 @@
   let warpedMapList: WarpedMapList<WebGL2WarpedMap>
   let warpedMapLayer = $state<WarpedMapLayer>()
   let annotationUrl = $state(
-    'https://annotations.allmaps.org/manifests/02c7b8df6fac1378'
+    'https://annotations.allmaps.org/images/f6033bee94f7763e'
   )
   let annotation = $state.raw()
   let options = $state<WebGL2WarpedMapWithoutGeoreferencedMapOptions>(
@@ -129,10 +135,72 @@
   <div class="absolute bottom-0 right-0 m-2">
     <button
       onclick={() => {
-        warpedMapLayer?.setLayerOptions({
-          projectedGeoAffineTransform: [4, 0, 0, 4, 0, 0]
+        warpedMapLayer?.resetLayerOptions(['projectedGeoAffineTransform'])
+      }}>Zoom 1</button
+    >
+    <button
+      onclick={() => {
+        const projectedGeoCenter = warpedMapLayer?.getCenter({
+          projection: { definition: 'EPSG:3857' }
         })
-      }}>Affine transform</button
+        if (!projectedGeoCenter) {
+          return
+        }
+        warpedMapLayer?.setLayerOptions({
+          projectedGeoAffineTransform: rebaseOriginAffineTransform(
+            [1 / 2, 0, 0, 1 / 2, 0, 0],
+            projectedGeoCenter
+          )
+        })
+      }}>Zoom out 2</button
+    >
+    <button
+      onclick={() => {
+        const projectedGeoCenter = warpedMapLayer?.getCenter({
+          projection: { definition: 'EPSG:3857' }
+        }) || [0, 0]
+        warpedMapLayer?.setLayerOptions({
+          projectedGeoAffineTransform: rebaseOriginAffineTransform(
+            [2, 0, 0, 2, 0, 0],
+            projectedGeoCenter
+          )
+        })
+      }}>Zoom in 2</button
+    >
+    <button
+      onclick={() => {
+        const projectedGeoCenter = warpedMapLayer?.getCenter({
+          projection: { definition: 'EPSG:3857' }
+        }) || [0, 0]
+        warpedMapLayer?.setLayerOptions({
+          projectedGeoAffineTransform: rebaseOriginAffineTransform(
+            rotationAffineTransform(90 * (Math.PI / 80)),
+            projectedGeoCenter
+          )
+        })
+      }}>Rotate</button
+    >
+    <button
+      onclick={() => {
+        warpedMapLayer?.setLayerOptions({
+          projectedGeoAffineTransform: multiplyAffineTransform(
+            rebaseOriginAffineTransform([1, 0, 0, 1, 0, 1000000], [0, 0]),
+            rebaseAffineTransform(
+              rebaseOriginAffineTransform([1, 0, 0, 1, 100, 0], [0, 0]),
+              warpedMapLayer?.renderer?.getViewport()
+                ?.projectedGeoToViewportAffineTransform
+            )
+          )
+        })
+      }}>Shift</button
+    >
+    <button
+      onclick={() => {
+        const centerZoomBearing = warpedMapLayer?.getCenterZoomBearing({
+          applyAffineTransformation: true
+        })
+        if (centerZoomBearing) map.jumpTo(centerZoomBearing)
+      }}>CenterZoomBearing</button
     >
     <button
       onclick={() => {

@@ -1,10 +1,10 @@
 import { GeoreferencedMap } from '@allmaps/annotation'
 import { Image } from '@allmaps/iiif-parser'
 import {
-  ProjectedGcpTransformer,
-  ProjectedGcpTransformerOptions,
-  Projection,
-  webMercatorProjection
+  lonLatProjection,
+  projectPoints,
+  webMercatorProjection,
+  ProjectedGcpTransformer
 } from '@allmaps/project'
 import {
   computeBbox,
@@ -48,6 +48,10 @@ import type {
   TransformationType,
   DistortionMeasure
 } from '@allmaps/transform'
+import type {
+  ProjectedGcpTransformerOptions,
+  Projection
+} from '@allmaps/project'
 
 import type {
   AnimationOptions,
@@ -57,7 +61,8 @@ import type {
   WarpedMapListOptions,
   WarpedMapOptions,
   ShouldRenderOptions,
-  WarpedMapWithoutGeoreferencedMapOptions
+  WarpedMapWithoutGeoreferencedMapOptions,
+  MaskOptions
 } from '../shared/types.js'
 import type { Viewport } from '../viewport/Viewport.js'
 import type { FetchableTile } from '../tilecache/FetchableTile.js'
@@ -366,10 +371,10 @@ export class WarpedMap extends EventTarget {
   /**
    * Get the resource applied mask, mask or full mask, based on an input option.
    */
-  getResourceAppliedMask(applyMask?: boolean): Ring {
-    if (applyMask === undefined) {
+  getResourceMask(options?: Partial<MaskOptions>): Ring {
+    if (options?.applyMask === undefined) {
       return this.resourceAppliedMask
-    } else if (applyMask) {
+    } else if (options.applyMask) {
       return this.resourceMask
     } else {
       return this.resourceFullMask
@@ -379,27 +384,45 @@ export class WarpedMap extends EventTarget {
   /**
    * Get the geo applied mask, mask or full mask, based on an input option.
    */
-  getGeoAppliedMask(applyMask?: boolean): Ring {
-    if (applyMask === undefined) {
-      return this.geoAppliedMask
-    } else if (applyMask) {
-      return this.geoMask
+  getGeoMask(options?: Partial<MaskOptions>): Ring {
+    if (options?.applyAffineTransformation) {
+      return projectPoints(
+        this.projection,
+        lonLatProjection,
+        this.getProjectedGeoMask(options)
+      )
     } else {
-      return this.geoFullMask
+      if (options?.applyMask === undefined) {
+        return this.geoAppliedMask
+      } else if (options.applyMask) {
+        return this.geoMask
+      } else {
+        return this.geoFullMask
+      }
     }
   }
 
   /**
    * Get the projected geo applied mask, mask or full mask, based on an input option.
    */
-  getProjectedGeoAppliedMask(applyMask?: boolean): Ring {
-    if (applyMask === undefined) {
-      return this.projectedGeoAppliedMask
-    } else if (applyMask) {
-      return this.projectedGeoMask
+  getProjectedGeoMask(options?: Partial<MaskOptions>): Ring {
+    let projectedGeoMask: Ring
+
+    if (options?.applyMask === undefined) {
+      projectedGeoMask = this.projectedGeoAppliedMask
+    } else if (options.applyMask) {
+      projectedGeoMask = this.projectedGeoMask
     } else {
-      return this.projectedGeoFullMask
+      projectedGeoMask = this.projectedGeoFullMask
     }
+
+    if (options?.applyAffineTransformation) {
+      projectedGeoMask = affineTransformPoints(
+        this.projectedGeoAffineTransform,
+        projectedGeoMask
+      )
+    }
+    return projectedGeoMask
   }
 
   /**
@@ -1009,7 +1032,7 @@ export class WarpedMap extends EventTarget {
     )
   }
 
-  private getResourceFullMask() {
+  private getResourceFullMask(): Rectangle {
     const resourceWidth = this.georeferencedMap.resource.width
     const resourceHeight = this.georeferencedMap.resource.height
 

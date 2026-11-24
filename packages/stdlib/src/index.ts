@@ -12,6 +12,7 @@ export {
   translationAffineTransform,
   translateAffineTransform,
   rebaseAffineTransform,
+  rebaseOriginAffineTransform,
   composeAffineTransform,
   invertAffineTransform,
   getAffineTransformDeterminant,

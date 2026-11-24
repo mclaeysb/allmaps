@@ -271,7 +271,7 @@ export class WarpedMapLayer
     // Note: bearing is in clockwise direction and rotation functions
     // go in counter-clockwise direction so no minus sign needed.
     const projectedGeoMasks = warpedMaps.map((warpedMap) =>
-      warpedMap.getProjectedGeoAppliedMask(options.applyMask)
+      warpedMap.getProjectedGeoMask(options)
     )
     const rotatedBboxProperties = computeRotatedBboxProperties(
       projectedGeoMasks,

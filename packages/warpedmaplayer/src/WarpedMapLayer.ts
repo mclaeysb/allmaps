@@ -6,11 +6,11 @@ import type {
   AnimationOptions,
   MaskOptions,
   ProjectionOptions,
-  BaseRenderOptions,
   Sprite,
   WarpedMapListOptions,
   BatchMapResult,
-  BatchOptions
+  BatchOptions,
+  BaseRenderOptions
 } from '@allmaps/render'
 import type { Point, Bbox, Ring, Gcp, Size } from '@allmaps/types'
 import type { TransformationType } from '@allmaps/transform'
@@ -801,31 +801,6 @@ export abstract class BaseWarpedMapLayer<
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndLayerOptions(
-    mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
-    layerOptions?: Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
-    animationOptions?: Partial<AnimationOptions>
-  ): void
-  setMapsAndLayerOptions(
-    mapsOptionsCallbackFn: (
-      mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
-    layerOptions?: Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
-    animationOptions?: Partial<AnimationOptions>
-  ): void
-  setMapsAndLayerOptions(
-    firstArgument:
-      | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      | Partial<WebGL2WarpedMapOptions>
-      | Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
-    thirdArgument?:
-      | Partial<WarpedMapListOptions<WebGL2WarpedMap>>
-      | Partial<AnimationOptions>,
-    fourthArgument?: Partial<AnimationOptions>
-  ): void
-  setMapsAndLayerOptions(
     firstArgument:
       | string[]
       | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
@@ -858,7 +833,7 @@ export abstract class BaseWarpedMapLayer<
    * @param animationOptions - Animation options
    */
   resetLayerOptions(
-    layerOptionKeys?: string[],
+    layerOptionKeys?: Array<keyof WarpedMapListOptions<WebGL2WarpedMap>>,
     animationOptions?: Partial<AnimationOptions>
   ) {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
@@ -894,14 +869,6 @@ export abstract class BaseWarpedMapLayer<
       mapId: string
     ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
     animationOptions?: Partial<AnimationOptions>
-  ): void
-  resetMapsOptions(
-    firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
-    thirdArgument?: Partial<AnimationOptions>
   ): void
   resetMapsOptions(
     firstArgument?:

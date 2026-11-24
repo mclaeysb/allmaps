@@ -1160,31 +1160,6 @@ export class WarpedMapLayer
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndLayerOptions(
-    mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
-    layerOptions?: Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
-    animationOptions?: Partial<AnimationOptions>
-  ): void
-  setMapsAndLayerOptions(
-    mapsOptionsCallbackFn: (
-      mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
-    layerOptions?: Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
-    animationOptions?: Partial<AnimationOptions>
-  ): void
-  setMapsAndLayerOptions(
-    firstArgument:
-      | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      | Partial<WebGL2WarpedMapOptions>
-      | Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
-    thirdArgument?:
-      | Partial<WarpedMapListOptions<WebGL2WarpedMap>>
-      | Partial<AnimationOptions>,
-    fourthArgument?: Partial<AnimationOptions>
-  ): void
-  setMapsAndLayerOptions(
     firstArgument:
       | string[]
       | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
@@ -1217,7 +1192,7 @@ export class WarpedMapLayer
    * @param animationOptions - Animation options
    */
   resetLayerOptions(
-    layerOptionKeys?: string[],
+    layerOptionKeys?: Array<keyof WarpedMapListOptions<WebGL2WarpedMap>>,
     animationOptions?: Partial<AnimationOptions>
   ) {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
@@ -1253,14 +1228,6 @@ export class WarpedMapLayer
       mapId: string
     ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
     animationOptions?: Partial<AnimationOptions>
-  ): void
-  resetMapsOptions(
-    firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
-    thirdArgument?: Partial<AnimationOptions>
   ): void
   resetMapsOptions(
     firstArgument?:

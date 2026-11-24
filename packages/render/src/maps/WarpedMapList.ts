@@ -1,4 +1,3 @@
-import proj4 from 'proj4'
 import inside from 'point-in-polygon-hao'
 
 import { generateChecksum } from '@allmaps/id/sync'
@@ -8,9 +7,11 @@ import {
   type GeoreferencedMap
 } from '@allmaps/annotation'
 import {
-  isEqualProjection,
   lonLatProjection,
-  webMercatorProjection
+  webMercatorProjection,
+  projectPoint,
+  projectPoints,
+  projectBbox
 } from '@allmaps/project'
 import { Image } from '@allmaps/iiif-parser'
 
@@ -19,8 +20,8 @@ import { createWarpedMapFactory, WarpedMap } from './WarpedMap.js'
 import { WebGL2WarpedMap } from './WebGL2WarpedMap.js'
 
 import {
+  affineTransformPoints,
   bboxToCenter,
-  bboxToLine,
   closePolygon,
   computeBbox,
   convexHull,
@@ -37,7 +38,6 @@ import {
 } from '../shared/events.js'
 
 import type { Ring, Bbox, Point } from '@allmaps/types'
-import type { Projection } from '@allmaps/project'
 
 import type {
   BatchMapResult,
@@ -53,9 +53,9 @@ import type {
 } from '../shared/types.js'
 
 const DEFAULT_SELECTION_OPTIONS: SelectionOptions = {
-  applyMask: true,
   sorted: true,
-  affineTransformed: false
+  applyMask: true,
+  applyAffineTransformation: false
 }
 export const DEFAULT_ANIMATION_OPTIONS: AnimationOptions = {
   animate: true,
@@ -87,8 +87,12 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
 
   geoMaskRTree?: RTree
   geoFullMaskRTree?: RTree
+  geoAffineTransformedMaskRTree?: RTree
+  geoAffineTransformedFullMaskRTree?: RTree
   projectedGeoMaskRTree?: RTree
   projectedGeoFullMaskRTree?: RTree
+  projectedGeoAffineTransformedMaskRTree?: RTree
+  projectedGeoAffineTransformedFullMaskRTree?: RTree
 
   options: WarpedMapListOptions<W>
 
@@ -112,7 +116,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
         'resourceMask',
         'transformationType',
         'internalProjection',
-        'projection'
+        'projection',
+        'projectedGeoAffineTransform'
       ],
       animatedOptions: [
         'visible',
@@ -141,8 +146,12 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     if (this.options.createRTree) {
       this.geoMaskRTree = new RTree()
       this.geoFullMaskRTree = new RTree()
+      this.geoAffineTransformedMaskRTree = new RTree()
+      this.geoAffineTransformedFullMaskRTree = new RTree()
       this.projectedGeoMaskRTree = new RTree()
       this.projectedGeoFullMaskRTree = new RTree()
+      this.projectedGeoAffineTransformedMaskRTree = new RTree()
+      this.projectedGeoAffineTransformedFullMaskRTree = new RTree()
     }
   }
 
@@ -424,90 +433,63 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
 
     let mapIds
     if (options.mapIds === undefined) {
+      const geoRTree = options.applyMask
+        ? options.applyAffineTransformation
+          ? this.geoAffineTransformedMaskRTree
+          : this.geoMaskRTree
+        : options.applyAffineTransformation
+          ? this.geoAffineTransformedFullMaskRTree
+          : this.geoFullMaskRTree
+      const projectedGeoRTree = options.applyMask
+        ? options.applyAffineTransformation
+          ? this.projectedGeoAffineTransformedMaskRTree
+          : this.projectedGeoMaskRTree
+        : options.applyAffineTransformation
+          ? this.projectedGeoAffineTransformedFullMaskRTree
+          : this.projectedGeoFullMaskRTree
+
       if (options.geoPoint) {
         // Select by geoPoint
-        if (options.applyMask) {
-          mapIds =
-            this.geoMaskRTree?.searchFromPoint(options.geoPoint) ??
-            this.#getMapIdsFromPoint(
-              options.geoPoint,
-              (warpedMap) => warpedMap.geoMaskBbox,
-              (warpedMap) => warpedMap.geoMask
-            )
-        } else {
-          mapIds =
-            this.geoFullMaskRTree?.searchFromPoint(options.geoPoint) ??
-            this.#getMapIdsFromPoint(
-              options.geoPoint,
-              (warpedMap) => warpedMap.geoFullMaskBbox,
-              (warpedMap) => warpedMap.geoFullMask
-            )
-        }
+        mapIds =
+          geoRTree?.searchFromPoint(options.geoPoint) ??
+          this.#getMapIdsFromPoint(
+            options.geoPoint,
+            (warpedMap) => computeBbox(warpedMap.getGeoMask(options)),
+            (warpedMap) => warpedMap.getGeoMask(options)
+          )
       } else if (options.geoBbox) {
         // Select by geoBbox
-        if (options.applyMask) {
-          mapIds =
-            this.geoMaskRTree?.searchFromBbox(options.geoBbox) ??
-            this.#getMapIdsFromBbox(
-              options.geoBbox,
-              (warpedMap) => warpedMap.geoMaskBbox
-            )
-        } else {
-          mapIds =
-            this.geoFullMaskRTree?.searchFromBbox(options.geoBbox) ??
-            this.#getMapIdsFromBbox(
-              options.geoBbox,
-              (warpedMap) => warpedMap.geoFullMaskBbox
-            )
-        }
+        mapIds =
+          geoRTree?.searchFromBbox(options.geoBbox) ??
+          this.#getMapIdsFromBbox(options.geoBbox, (warpedMap) =>
+            computeBbox(warpedMap.getGeoMask(options))
+          )
       } else if (options.projectedGeoPoint) {
         // Select by projectedGeoPoint
-        const projectedGeoPoint = WarpedMapList.projectPointIfNeeded(
+        const projectedGeoPoint = projectPoint(
           options.projection,
           this.options.projection,
           options.projectedGeoPoint
         )
-        if (options.applyMask) {
-          mapIds =
-            this.projectedGeoMaskRTree?.searchFromPoint(projectedGeoPoint) ??
-            this.#getMapIdsFromPoint(
-              projectedGeoPoint,
-              (warpedMap) => warpedMap.projectedGeoMaskBbox,
-              (warpedMap) => warpedMap.projectedGeoMask
-            )
-        } else {
-          mapIds =
-            this.projectedGeoFullMaskRTree?.searchFromPoint(
-              projectedGeoPoint
-            ) ??
-            this.#getMapIdsFromPoint(
-              projectedGeoPoint,
-              (warpedMap) => warpedMap.projectedGeoFullMaskBbox,
-              (warpedMap) => warpedMap.projectedGeoFullMask
-            )
-        }
+        mapIds =
+          projectedGeoRTree?.searchFromPoint(projectedGeoPoint) ??
+          this.#getMapIdsFromPoint(
+            projectedGeoPoint,
+            (warpedMap) => computeBbox(warpedMap.getProjectedGeoMask(options)),
+            (warpedMap) => warpedMap.getProjectedGeoMask(options)
+          )
       } else if (options.projectedGeoBbox) {
         // Select by projectedGeoBbox
-        const projectedGeoBbox = WarpedMapList.projectBboxIfNeeded(
+        const projectedGeoBbox = projectBbox(
           options.projection,
           this.options.projection,
           options.projectedGeoBbox
         )
-        if (options.applyMask) {
-          mapIds =
-            this.projectedGeoMaskRTree?.searchFromBbox(projectedGeoBbox) ??
-            this.#getMapIdsFromBbox(
-              projectedGeoBbox,
-              (warpedMap) => warpedMap.projectedGeoMaskBbox
-            )
-        } else {
-          mapIds =
-            this.projectedGeoFullMaskRTree?.searchFromBbox(projectedGeoBbox) ??
-            this.#getMapIdsFromBbox(
-              projectedGeoBbox,
-              (warpedMap) => warpedMap.projectedGeoFullMaskBbox
-            )
-        }
+        mapIds =
+          projectedGeoRTree?.searchFromBbox(projectedGeoBbox) ??
+          this.#getMapIdsFromBbox(projectedGeoBbox, (warpedMap) =>
+            computeBbox(warpedMap.getProjectedGeoMask(options))
+          )
       } else {
         // Select all
         mapIds = Array.from(this.warpedMapsById.keys())
@@ -1169,8 +1151,12 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     this.zIndices = new Map()
     this.geoMaskRTree?.clear()
     this.geoFullMaskRTree?.clear()
+    this.geoAffineTransformedMaskRTree?.clear()
+    this.geoAffineTransformedFullMaskRTree?.clear()
     this.projectedGeoMaskRTree?.clear()
     this.projectedGeoFullMaskRTree?.clear()
+    this.projectedGeoAffineTransformedMaskRTree?.clear()
+    this.projectedGeoAffineTransformedFullMaskRTree?.clear()
     this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CLEARED))
   }
 
@@ -1313,21 +1299,19 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   ): Point[] {
     const warpedMaps = this.getWarpedMaps(options)
 
-    const geoMaskPoints: Point[] = []
+    const projectedGeoMaskPoints: Point[] = []
     for (const warpedMap of warpedMaps) {
-      geoMaskPoints.push(...warpedMap.getGeoAppliedMask(options?.applyMask))
+      projectedGeoMaskPoints.push(...warpedMap.getProjectedGeoMask(options))
     }
 
-    // If a projection is specified in options, project the geoMaskPoints using projection
-    // otherwise (by default) use available geoMask, i.e. use lonLatProjection
-    const projection = options?.projection
-    return projection
-      ? WarpedMapList.projectPointsIfNeeded(
-          lonLatProjection,
-          projection,
-          geoMaskPoints
-        )
-      : geoMaskPoints
+    // If a projection is specified in options, project the projectedGeoMaskPoints using projection
+    // otherwise (by default) using lonLatProjection
+    const projection = options?.projection ?? lonLatProjection
+    return projectPoints(
+      this.options.projection,
+      projection,
+      projectedGeoMaskPoints
+    )
   }
 
   /**
@@ -1490,6 +1474,30 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     if (this.geoFullMaskRTree) {
       this.geoFullMaskRTree.addItem(warpedMap.mapId, [warpedMap.geoFullMask])
     }
+    if (this.geoAffineTransformedMaskRTree) {
+      this.geoAffineTransformedMaskRTree.addItem(warpedMap.mapId, [
+        projectPoints(
+          warpedMap.projection,
+          lonLatProjection,
+          affineTransformPoints(
+            warpedMap.projectedGeoAffineTransform,
+            warpedMap.projectedGeoMask
+          )
+        )
+      ])
+    }
+    if (this.geoAffineTransformedFullMaskRTree) {
+      this.geoAffineTransformedFullMaskRTree.addItem(warpedMap.mapId, [
+        projectPoints(
+          warpedMap.projection,
+          lonLatProjection,
+          affineTransformPoints(
+            warpedMap.projectedGeoAffineTransform,
+            warpedMap.projectedGeoFullMask
+          )
+        )
+      ])
+    }
     if (this.projectedGeoMaskRTree) {
       this.projectedGeoMaskRTree.addItem(warpedMap.mapId, [
         warpedMap.projectedGeoMask
@@ -1498,6 +1506,22 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     if (this.projectedGeoFullMaskRTree) {
       this.projectedGeoFullMaskRTree.addItem(warpedMap.mapId, [
         warpedMap.projectedGeoFullMask
+      ])
+    }
+    if (this.projectedGeoAffineTransformedMaskRTree) {
+      this.projectedGeoAffineTransformedMaskRTree.addItem(warpedMap.mapId, [
+        affineTransformPoints(
+          warpedMap.projectedGeoAffineTransform,
+          warpedMap.projectedGeoMask
+        )
+      ])
+    }
+    if (this.projectedGeoAffineTransformedFullMaskRTree) {
+      this.projectedGeoAffineTransformedFullMaskRTree.addItem(warpedMap.mapId, [
+        affineTransformPoints(
+          warpedMap.projectedGeoAffineTransform,
+          warpedMap.projectedGeoFullMask
+        )
       ])
     }
   }
@@ -1529,11 +1553,25 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     if (this.geoFullMaskRTree) {
       this.geoFullMaskRTree.removeItem(warpedMap.mapId)
     }
+    if (this.geoAffineTransformedMaskRTree) {
+      this.geoAffineTransformedMaskRTree.removeItem(warpedMap.mapId)
+    }
+    if (this.geoAffineTransformedFullMaskRTree) {
+      this.geoAffineTransformedFullMaskRTree.removeItem(warpedMap.mapId)
+    }
     if (this.projectedGeoMaskRTree) {
       this.projectedGeoMaskRTree.removeItem(warpedMap.mapId)
     }
     if (this.projectedGeoFullMaskRTree) {
       this.projectedGeoFullMaskRTree.removeItem(warpedMap.mapId)
+    }
+    if (this.projectedGeoAffineTransformedMaskRTree) {
+      this.projectedGeoAffineTransformedMaskRTree.removeItem(warpedMap.mapId)
+    }
+    if (this.projectedGeoAffineTransformedFullMaskRTree) {
+      this.projectedGeoAffineTransformedFullMaskRTree.removeItem(
+        warpedMap.mapId
+      )
     }
   }
 
@@ -1613,39 +1651,5 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       )
       this.#boundImageInfoFetchErrorByMapId.delete(warpedMap.mapId)
     }
-  }
-
-  // Helper function to only project if different projection
-  // TODO: Consider to move to @allmaps/project. But then would this replace the general usage of proj4() everywhere?
-  static projectPointIfNeeded(
-    projectionFrom: Projection,
-    projectionTo: Projection,
-    point: Point
-  ): Point {
-    return isEqualProjection(projectionFrom, projectionTo)
-      ? point
-      : proj4(projectionFrom?.definition, projectionTo?.definition, point)
-  }
-
-  static projectPointsIfNeeded(
-    projectionFrom: Projection,
-    projectionTo: Projection,
-    points: Point[]
-  ): Point[] {
-    return isEqualProjection(projectionFrom, projectionTo)
-      ? points
-      : points.map((point) =>
-          proj4(projectionFrom?.definition, projectionTo?.definition, point)
-        )
-  }
-
-  static projectBboxIfNeeded(
-    projectionFrom: Projection,
-    projectionTo: Projection,
-    bbox: Bbox
-  ): Bbox {
-    return computeBbox(
-      this.projectPointsIfNeeded(projectionFrom, projectionTo, bboxToLine(bbox))
-    )
   }
 }

@@ -172,6 +172,7 @@
     <div class="field">
       <label for="internalProjection">Internal Projection</label>
       <select
+        id="internalProjection"
         value={options.internalProjection?.name}
         onchange={(e) =>
           (options.internalProjection = projections.find(
@@ -187,6 +188,7 @@
     <div class="field">
       <label for="projection">Projection</label>
       <select
+        id="projection"
         value={options.projection?.name}
         onchange={(e) =>
           (options.projection = projections.find(
@@ -345,7 +347,7 @@
     font-size: 0.7rem;
     font-family: ui-monospace, monospace;
     display: block;
-    columns: 160px; /* min column width — adds a 2nd column when panel is wide enough */
+    columns: 260px; /* min column width — adds a 2nd column when panel is wide enough */
     column-gap: 0.3rem;
     max-height: 100vh;
   }

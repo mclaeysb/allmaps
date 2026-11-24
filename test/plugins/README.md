@@ -5,8 +5,8 @@ This directory contains a Svelte application with separate pages for each of the
 The main pipelines run as follows:
 
 - MapLibre: [@allmaps/render](../../packages/render/) → [@allmaps/warpedmaplayer](../../packages/warpedmaplayer/) → [@allmaps/maplibre](../../packages/maplibre/)
-- Leaflet: [@allmaps/render](../../packages/render/) → [@allmaps/leaflet](../../packages/leaflet/)
-- OpenLayers: [@allmaps/render](../../packages/openlayers/) → [@allmaps/leaflet](../../packages/openlayers/)
+- Leaflet: [@allmaps/render](../../packages/render/) → [@allmaps/warpedmaplayer](../../packages/warpedmaplayer/) → [@allmaps/leaflet](../../packages/leaflet/)
+- OpenLayers: [@allmaps/render](../../packages/openlayers/) → [@allmaps/warpedmaplayer](../../packages/warpedmaplayer/) → [@allmaps/leaflet](../../packages/openlayers/)
 
 With [@allmaps/render](../../packages/render/) relying of most other Allmaps packages, including:
 
@@ -14,7 +14,6 @@ With [@allmaps/render](../../packages/render/) relying of most other Allmaps pac
 - [@allmaps/iiif-parser](../../packages/iiif-parser/)
 - [@allmaps/project](../../packages/project/)
 - [@allmaps/stdlib](../../packages/stdlib/)
-- [@allmaps/tailwind](../../packages/tailwind/)
 - [@allmaps/transform](../../packages/transform/)
 - [@allmaps/triangulate](../../packages/triangulate/)
 - [@allmaps/types](../../packages/types/)

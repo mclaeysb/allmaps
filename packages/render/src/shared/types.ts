@@ -38,6 +38,7 @@ export type SelectionOptions = MaskOptions & {
 
 export type MaskOptions = {
   applyMask: boolean
+  applyAffineTransformation: boolean
 }
 
 export type ProjectionOptions = {
@@ -87,8 +88,8 @@ export type WarpedMapOptions = {
   anticipateVisibility: boolean
   overviewTilesSelection: 'highest' | 'lowest'
   overviewTilesMaxResolution: number | undefined
-  applyMask: boolean
   distortionMeasure: DistortionMeasure | undefined
+  applyMask: boolean
   projectedGeoAffineTransform: AffineTransform
 }
 export type WarpedMapWithoutGeoreferencedMapOptions = Omit<

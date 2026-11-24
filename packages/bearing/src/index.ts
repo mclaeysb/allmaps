@@ -3,10 +3,13 @@ import {
   ProjectedGcpTransformerOptions
 } from '@allmaps/project'
 import {
+  affineTransformPoint,
   angle,
   angularMean,
   computeBbox,
+  identityAffineTransform,
   mergeOptions,
+  mergePartialOptions,
   midPoint,
   radiansToDegrees,
   sizeToRectangle
@@ -14,14 +17,17 @@ import {
 
 import type { GeoreferencedMap } from '@allmaps/annotation'
 import type { TransformationTypeInputs } from '@allmaps/transform'
-import type { Point, Ring } from '@allmaps/types'
+import type { AffineTransform, Point, Ring } from '@allmaps/types'
 import type { MaskOptions, WarpedMap } from '@allmaps/render'
 
 export type BearingOptions = Partial<MaskOptions> & {
   orientation?: 'horizontal' | 'vertical'
+  projectedGeoAffineTransform: AffineTransform
 }
 
-export const DEFAULT_BEARING_OPTIONS: BearingOptions = {}
+export const DEFAULT_BEARING_OPTIONS: BearingOptions = {
+  projectedGeoAffineTransform: identityAffineTransform
+}
 
 /**
  * Compute the bearing of a Georeferenced Map.
@@ -83,9 +89,11 @@ export function computeWarpedMapBearing(
   )
 
   return computeBearingInternal(
-    warpedMap.getResourceAppliedMask(options?.applyMask),
+    warpedMap.getResourceMask(options),
     projectedTransformer,
-    options
+    mergePartialOptions(options, {
+      projectedGeoAffineTransform: warpedMap.projectedGeoAffineTransform
+    })
   )
 }
 
@@ -109,17 +117,37 @@ function computeBearingInternal(
 
   const resourceTopCenter = midPoint(resourceTopLeft, resourceTopRight)
   const resourceBottomCenter = midPoint(resourceBottomLeft, resourceBottomRight)
-  const projectedGeoTopCenter =
+  let projectedGeoTopCenter =
     projectedTransformer.transformToProjectedGeo(resourceTopCenter)
-  const projectedGeoBottomCenter =
+  let projectedGeoBottomCenter =
     projectedTransformer.transformToProjectedGeo(resourceBottomCenter)
+  if (options.applyAffineTransformation) {
+  }
+  projectedGeoTopCenter = affineTransformPoint(
+    options.projectedGeoAffineTransform,
+    projectedGeoTopCenter
+  )
+  projectedGeoBottomCenter = affineTransformPoint(
+    options.projectedGeoAffineTransform,
+    projectedGeoBottomCenter
+  )
 
   const resourceCenterRight = midPoint(resourceTopRight, resourceBottomRight)
   const resourceCenterLeft = midPoint(resourceTopLeft, resourceBottomLeft)
-  const projectedGeoCenterLeft =
+  let projectedGeoCenterLeft =
     projectedTransformer.transformToProjectedGeo(resourceCenterLeft)
-  const projectedGeoCenterRight =
+  let projectedGeoCenterRight =
     projectedTransformer.transformToProjectedGeo(resourceCenterRight)
+  if (options.applyAffineTransformation) {
+  }
+  projectedGeoCenterLeft = affineTransformPoint(
+    options.projectedGeoAffineTransform,
+    projectedGeoCenterLeft
+  )
+  projectedGeoCenterRight = affineTransformPoint(
+    options.projectedGeoAffineTransform,
+    projectedGeoCenterRight
+  )
 
   const verticalAngle = angle([projectedGeoBottomCenter, projectedGeoTopCenter])
 

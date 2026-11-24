@@ -14,6 +14,12 @@ export {
   getWebMercatorDefinition
 } from './shared/project-functions.js'
 
+export {
+  projectPoint,
+  projectPoints,
+  projectBbox
+} from './shared/projection-function.js'
+
 export type {
   ProjectionDefinition,
   Projection,

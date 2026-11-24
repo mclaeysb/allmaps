@@ -134,21 +134,41 @@ export function translateAffineTransform(
 }
 
 /**
- * Express oldAffineTransform w.r.t. a new bases,
+ * Express affineTransform w.r.t. a new bases,
  * with newToOldAffineTransform describing how to transform from the new to this old basis
  *
  * This is usefull to express a rotation or scaling w.r.t. a different basis.
  */
 export function rebaseAffineTransform(
-  oldAffineTransform: AffineTransform,
-  newToOldAffineTransform: AffineTransform
+  affineTransform: AffineTransform,
+  newToOldAffineTransform?: AffineTransform
 ): AffineTransform {
+  if (!newToOldAffineTransform) return affineTransform
+
   return multiplyAffineTransform(
     multiplyAffineTransform(
       invertAffineTransform(newToOldAffineTransform),
-      oldAffineTransform
+      affineTransform
     ),
     newToOldAffineTransform
+  )
+}
+
+/**
+ * Express affineTransform w.r.t. a new origin,
+ * with oldNewOrigin describing the new origin in old coordinates
+ *
+ * This is usefull to express a rotation or scaling w.r.t. a different origin.
+ */
+export function rebaseOriginAffineTransform(
+  affineTransform: AffineTransform,
+  origin?: Point
+): AffineTransform {
+  if (!origin) return affineTransform
+
+  return rebaseAffineTransform(
+    affineTransform,
+    invertAffineTransform(translationAffineTransform(...origin))
   )
 }
 
