@@ -6,7 +6,7 @@ import { OLWarpedMapEvent } from './OLWarpedMapEvent.js'
 import { WebGL2Renderer } from '@allmaps/render/webgl2'
 import { Viewport, WarpedMapEvent, WarpedMapEventType } from '@allmaps/render'
 import { BaseWarpedMapLayer } from '@allmaps/warpedmaplayer'
-import { mergeOptions, mergePartialOptions } from '@allmaps/stdlib'
+import { fetchJson, mergeOptions, mergePartialOptions } from '@allmaps/stdlib'
 import { projectionDefinitionToAntialiasedDefinition } from '@allmaps/project'
 
 import type { FrameState } from 'ol/Map.js'
@@ -65,6 +65,10 @@ export class WarpedMapLayer
   canvasSize: [number, number] = [0, 0]
 
   registeredProjections: Map<string, Projection>
+
+  boundPassWarpedMapEvent = (event: Event) =>
+    this.nativePassWarpedMapEvent(event)
+  boundUpdate = () => this.nativeUpdate()
 
   #resizeObserver: ResizeObserver
 
@@ -296,7 +300,7 @@ export class WarpedMapLayer
   }
 
   // Normal functions
-  // These function are copied automatically from @allmaps/warpedmaplayer's WarpedMapLayer.ts
+  // These functions are copied automatically from @allmaps/warpedmaplayer's WarpedMapLayer.ts
 
   // START_AUTOMATED_COPY
 
@@ -305,6 +309,7 @@ export class WarpedMapLayer
    *
    * @param annotation - Georeference Annotation
    * @param mapOptions - Map options
+   * @param batchOptions - Batch options
    * @returns Map IDs of the maps that were added, or an error per map
    */
   addGeoreferenceAnnotation(
@@ -328,6 +333,7 @@ export class WarpedMapLayer
    * Removes a Georeference Annotation
    *
    * @param annotation - Georeference Annotation
+   * @param batchOptions - Batch options
    * @returns Map IDs of the maps that were removed, or an error per map
    */
   removeGeoreferenceAnnotation(
@@ -350,6 +356,7 @@ export class WarpedMapLayer
    *
    * @param annotationUrl - URL of a Georeference Annotation
    * @param mapOptions - Map options
+   * @param batchOptions - Batch options
    * @returns Map IDs of the maps that were added, or an error per map
    */
   async addGeoreferenceAnnotationByUrl(
@@ -357,26 +364,22 @@ export class WarpedMapLayer
     mapOptions?: Partial<WebGL2WarpedMapOptions>,
     batchOptions?: Partial<BatchOptions>
   ): Promise<BatchMapResult[]> {
-    const annotation = await fetch(annotationUrl).then((response) =>
-      response.json()
-    )
+    const annotation = await fetchJson(annotationUrl)
 
     return this.addGeoreferenceAnnotation(annotation, mapOptions, batchOptions)
   }
-
   /**
    * Removes a Georeference Annotation by URL
    *
    * @param annotationUrl - URL of a Georeference Annotation
+   * @param batchOptions - Batch options
    * @returns Map IDs of the maps that were removed, or an error per map
    */
   async removeGeoreferenceAnnotationByUrl(
     annotationUrl: string,
     batchOptions?: Partial<BatchOptions>
   ): Promise<BatchMapResult[]> {
-    const annotation = await fetch(annotationUrl).then((response) =>
-      response.json()
-    )
+    const annotation = await fetchJson(annotationUrl)
     return this.removeGeoreferenceAnnotation(annotation, batchOptions)
   }
 
@@ -467,8 +470,6 @@ export class WarpedMapLayer
 
     await this.renderer.addSprites(sprites, imageUrl, imageSize)
     this.nativeUpdate()
-
-    return
   }
 
   /**
@@ -563,7 +564,7 @@ export class WarpedMapLayer
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
     return this.renderer.warpedMapList.getMapsCenter(
-      mergePartialOptions({ mapIds }, options)
+      mergePartialOptions(options, { mapIds })
     )
   }
 
@@ -599,7 +600,7 @@ export class WarpedMapLayer
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
     return this.renderer.warpedMapList.getMapsBbox(
-      mergePartialOptions({ mapIds }, options)
+      mergePartialOptions(options, { mapIds })
     )
   }
 
@@ -608,7 +609,6 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param mapIds - Map IDs
    * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The convex hull of all maps, in the chosen projection, or undefined if there were no maps.
    */
@@ -621,7 +621,7 @@ export class WarpedMapLayer
   }
 
   /**
-   * Get the convex hull of all selected maps maps
+   * Get the convex hull of all selected maps
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
@@ -636,7 +636,7 @@ export class WarpedMapLayer
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
     return this.renderer.warpedMapList.getMapsConvexHull(
-      mergePartialOptions({ mapIds }, options)
+      mergePartialOptions(options, { mapIds })
     )
   }
 
@@ -678,7 +678,7 @@ export class WarpedMapLayer
   /**
    * Get the default options of a map
    *
-   * These come from the default option settings for WebGL2WarpedMaps and the map's georeferenced map proporties
+   * These come from the default option settings for WebGL2WarpedMaps and the map's georeferenced map properties
    *
    * @param mapId - Map ID for which the options apply
    */
@@ -692,14 +692,14 @@ export class WarpedMapLayer
    * Get the layer options
    */
   getLayerOptions(): Partial<
-    SpecificWarpedMapLayerOptions & Partial<WebGL2RenderOptions>
+    SpecificWarpedMapLayerOptions & WebGL2RenderOptions
   > {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
     return mergePartialOptions(
-      this.options,
-      this.renderer.getOptions()
-    ) as Partial<SpecificWarpedMapLayerOptions & Partial<WebGL2RenderOptions>>
+      this.renderer.getOptions(),
+      this.options
+    ) as Partial<SpecificWarpedMapLayerOptions & WebGL2RenderOptions>
   }
 
   /**
@@ -744,7 +744,7 @@ export class WarpedMapLayer
   setOptions(
     options?:
       Partial<SpecificWarpedMapLayerOptions> | Partial<WebGL2RenderOptions>
-  ): void {
+  ) {
     this.options = mergeOptions(this.options, options)
   }
 
@@ -755,6 +755,7 @@ export class WarpedMapLayer
    *
    * @param layerOptions - Layer options to set
    * @param animationOptions - Animation options
+   * @example
    * ```js
    * warpedMapLayer.setLayerOptions({ transformationType: 'thinPlateSpline' })
    * ```
@@ -762,7 +763,7 @@ export class WarpedMapLayer
   setLayerOptions(
     layerOptions?: Partial<WarpedMapListOptions<WebGL2WarpedMap>>,
     animationOptions?: Partial<AnimationOptions>
-  ): void {
+  ) {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
     this.renderer.setListOptions(layerOptions, animationOptions)
@@ -778,10 +779,7 @@ export class WarpedMapLayer
     transformationType?: TransformationType,
     animationOptions?: Partial<AnimationOptions>
   ) {
-    return this.setLayerOptions(
-      { transformationType: transformationType },
-      animationOptions
-    )
+    return this.setLayerOptions({ transformationType }, animationOptions)
   }
 
   /**
@@ -847,11 +845,7 @@ export class WarpedMapLayer
     transformationType?: TransformationType,
     animationOptions?: Partial<AnimationOptions>
   ) {
-    return this.setMapOptions(
-      mapId,
-      { transformationType: transformationType },
-      animationOptions
-    )
+    return this.setMapOptions(mapId, { transformationType }, animationOptions)
   }
 
   /**
@@ -873,11 +867,7 @@ export class WarpedMapLayer
     transformationType?: TransformationType,
     animationOptions?: Partial<AnimationOptions>
   ) {
-    return this.setMapsOptions(
-      mapIds,
-      { transformationType: transformationType },
-      animationOptions
-    )
+    return this.setMapsOptions(mapIds, { transformationType }, animationOptions)
   }
 
   /**
@@ -1019,7 +1009,7 @@ export class WarpedMapLayer
    * @param animationOptions - Animation options
    * @example
    * ```js
-   * warpedMapLayer.setMapsOptions((mapId) => mapId == myMapId ? { transformationType: 'thinPlateSpline' } : undefined, {visible: true})
+   * warpedMapLayer.setMapsAndLayerOptions((mapId) => mapId == myMapId ? { transformationType: 'thinPlateSpline' } : undefined, {visible: true})
    * ```
    */
   setMapsAndLayerOptions(
@@ -1126,7 +1116,7 @@ export class WarpedMapLayer
   resetMapsAndListOptions(
     mapIds: string[],
     mapsOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
-    layerOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    layerOptionKeys?: Array<keyof WarpedMapListOptions<WebGL2WarpedMap>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   /**
@@ -1146,25 +1136,19 @@ export class WarpedMapLayer
     mapsOptionKeysCallbackFn: (
       mapId: string
     ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
-    layerOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    layerOptionKeys?: Array<keyof WarpedMapListOptions<WebGL2WarpedMap>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
       | string[]
       | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?: Array<keyof WebGL2WarpedMapOptions>,
+    secondArgument?:
+      | Array<keyof WebGL2WarpedMapOptions>
+      | Array<keyof WarpedMapListOptions<WebGL2WarpedMap>>,
     thirdArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
-    fourthArgument?: Partial<AnimationOptions>
-  ): void
-  resetMapsAndListOptions(
-    firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?: Array<keyof WebGL2WarpedMapOptions>,
-    thirdArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      | Array<keyof WarpedMapListOptions<WebGL2WarpedMap>>
+      | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
   ): void {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
@@ -1192,7 +1176,7 @@ export class WarpedMapLayer
    * Send maps to back
    * @param mapIds - IDs of the maps
    */
-  sendMapsToBack(mapIds: string[]) {
+  sendMapsToBack(mapIds: Iterable<string>) {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
     this.renderer.warpedMapList.sendMapsToBack(mapIds)
@@ -1248,103 +1232,100 @@ export class WarpedMapLayer
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.IMAGEINFOSADDED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.WARPEDMAPADDED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.WARPEDMAPREMOVED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.addEventListener(
       WarpedMapEventType.WARPEDMAPENTERED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.addEventListener(
       WarpedMapEventType.WARPEDMAPLEFT,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.addEventListener(
       WarpedMapEventType.IMAGELOADED,
-      this.nativeUpdate.bind(this)
+      this.boundUpdate
     )
 
     this.renderer.addEventListener(
       WarpedMapEventType.IMAGEINFOFETCHERROR,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.addEventListener(
       WarpedMapEventType.ERROR,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.addEventListener(
       WarpedMapEventType.MAPTILELOADED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.addEventListener(
       WarpedMapEventType.TILEFETCHERROR,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.spritesTileCache.addEventListener(
       WarpedMapEventType.MAPTILESLOADEDFROMSPRITES,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.addEventListener(
       WarpedMapEventType.MAPTILEDELETED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.addEventListener(
       WarpedMapEventType.FIRSTMAPTILELOADED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.addEventListener(
       WarpedMapEventType.REQUESTEDTILESLOADING,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.addEventListener(
       WarpedMapEventType.ALLREQUESTEDTILESLOADED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.CLEARED,
-      this.nativeUpdate.bind(this)
+      this.boundUpdate
     )
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.PREPARECHANGE,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.IMMEDIATECHANGE,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.addEventListener(
       WarpedMapEventType.ANIMATEDCHANGE,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
-    this.renderer.addEventListener(
-      WarpedMapEventType.CHANGED,
-      this.nativeUpdate.bind(this)
-    )
+    this.renderer.addEventListener(WarpedMapEventType.CHANGED, this.boundUpdate)
   }
 
   removeEventListeners() {
@@ -1354,102 +1335,102 @@ export class WarpedMapLayer
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.IMAGEINFOSADDED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.WARPEDMAPADDED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.WARPEDMAPREMOVED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.removeEventListener(
       WarpedMapEventType.WARPEDMAPENTERED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.removeEventListener(
       WarpedMapEventType.WARPEDMAPLEFT,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.removeEventListener(
       WarpedMapEventType.IMAGELOADED,
-      this.nativeUpdate.bind(this)
+      this.boundUpdate
     )
 
     this.renderer.removeEventListener(
       WarpedMapEventType.IMAGEINFOFETCHERROR,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.removeEventListener(
       WarpedMapEventType.ERROR,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.removeEventListener(
       WarpedMapEventType.MAPTILELOADED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.removeEventListener(
       WarpedMapEventType.TILEFETCHERROR,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.spritesTileCache.removeEventListener(
       WarpedMapEventType.MAPTILESLOADEDFROMSPRITES,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.removeEventListener(
       WarpedMapEventType.MAPTILEDELETED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.removeEventListener(
       WarpedMapEventType.FIRSTMAPTILELOADED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.removeEventListener(
       WarpedMapEventType.REQUESTEDTILESLOADING,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.tileCache.removeEventListener(
       WarpedMapEventType.ALLREQUESTEDTILESLOADED,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.CLEARED,
-      this.nativeUpdate.bind(this)
+      this.boundUpdate
     )
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.PREPARECHANGE,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.IMMEDIATECHANGE,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.ANIMATEDCHANGE,
-      this.nativePassWarpedMapEvent.bind(this)
+      this.boundPassWarpedMapEvent
     )
 
     this.renderer.removeEventListener(
       WarpedMapEventType.CHANGED,
-      this.nativeUpdate.bind(this)
+      this.boundUpdate
     )
   }
 

@@ -455,7 +455,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    * @param animationOptions - Animation options
    */
   resetListOptions(
-    listOptionKeys?: string[],
+    listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ) {
     this.warpedMapList.resetListOptions(listOptionKeys, animationOptions)
@@ -527,7 +527,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   resetMapsAndListOptions(
     mapIds: string[],
     mapsOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
-    listOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   /**
@@ -545,25 +545,29 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     mapsOptionKeysCallbackFn: (
       mapId: string
     ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
-    listOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
       | string[]
       | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?: Array<keyof WebGL2WarpedMapOptions>,
+    secondArgument?:
+      | Array<keyof WebGL2WarpedMapOptions>
+      | Array<keyof WarpedMapListOptions<W>>,
     thirdArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      Array<keyof WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
       | string[]
       | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?: Array<keyof WebGL2WarpedMapOptions>,
+    secondArgument?:
+      | Array<keyof WebGL2WarpedMapOptions>
+      | Array<keyof WarpedMapListOptions<W>>,
     thirdArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      Array<keyof WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
   ): void {
     this.warpedMapList.resetMapsAndListOptions(
