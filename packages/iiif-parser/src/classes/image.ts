@@ -429,6 +429,10 @@ export class Image extends EmbeddedImage {
       { width: this.width, height: this.height },
       tilesets,
       profileProperties.supportsAnyRegionAndSize
+    ).sort(
+      (tileZoomLevel0, tileZoomLevel1) =>
+        tileZoomLevel1.scaleFactor - tileZoomLevel0.scaleFactor
+      // Enforcing default decending order, e.g. from 16 to 1
     )
 
     if ('sizes' in parsedImage) {

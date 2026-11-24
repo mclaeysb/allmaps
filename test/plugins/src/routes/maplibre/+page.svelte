@@ -197,7 +197,7 @@
     <button
       onclick={() => {
         const centerZoomBearing = warpedMapLayer?.getCenterZoomBearing({
-          applyAffineTransformation: true
+          applyAffineTransform: true
         })
         if (centerZoomBearing) map.jumpTo(centerZoomBearing)
       }}>CenterZoomBearing</button

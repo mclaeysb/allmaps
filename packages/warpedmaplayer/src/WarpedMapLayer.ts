@@ -83,7 +83,7 @@ export abstract class BaseWarpedMapLayer<
    * @param annotation - Georeference Annotation
    * @param mapOptions - Map options
    * @param batchOptions - Batch options
-   * @returns Map IDs of the maps that were added, or an error per map
+   * @returns Batch results of the maps that were added
    */
   addGeoreferenceAnnotation(
     annotation: unknown,
@@ -107,7 +107,7 @@ export abstract class BaseWarpedMapLayer<
    *
    * @param annotation - Georeference Annotation
    * @param batchOptions - Batch options
-   * @returns Map IDs of the maps that were removed, or an error per map
+   * @returns Batch results of the maps that were removed
    */
   removeGeoreferenceAnnotation(
     annotation: unknown,
@@ -115,7 +115,7 @@ export abstract class BaseWarpedMapLayer<
   ): BatchMapResult[] {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
-    const results = this.renderer.warpedMapList.removeGeoreferenceAnnotation(
+    const results = this.renderer.removeGeoreferenceAnnotation(
       annotation,
       batchOptions
     )
@@ -130,7 +130,7 @@ export abstract class BaseWarpedMapLayer<
    * @param annotationUrl - URL of a Georeference Annotation
    * @param mapOptions - Map options
    * @param batchOptions - Batch options
-   * @returns Map IDs of the maps that were added, or an error per map
+   * @returns Batch results of the maps that were added
    */
   async addGeoreferenceAnnotationByUrl(
     annotationUrl: string,
@@ -146,7 +146,7 @@ export abstract class BaseWarpedMapLayer<
    *
    * @param annotationUrl - URL of a Georeference Annotation
    * @param batchOptions - Batch options
-   * @returns Map IDs of the maps that were removed, or an error per map
+   * @returns Batch results of the maps that were removed
    */
   async removeGeoreferenceAnnotationByUrl(
     annotationUrl: string,

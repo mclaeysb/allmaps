@@ -49,7 +49,8 @@ import type {
   WarpedMapListOptions,
   AnimationInternalOptions,
   AnimationStage,
-  WebGL2WarpedMapOptions
+  WebGL2WarpedMapOptions,
+  GetWarpedMapOptionKeys
 } from '../shared/types.js'
 
 const DEFAULT_SELECTION_OPTIONS: SelectionOptions = {
@@ -186,11 +187,19 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     return results
   }
 
+  /**
+   * Adds georeferenced maps
+   *
+   * @param georeferencedMaps - Georeferenced Maps
+   * @param mapOptions - Map options
+   * @param batchOptions - Batch options
+   * @returns Batch results of the maps that were added
+   */
   addGeoreferencedMaps(
     georeferencedMaps: unknown,
     mapOptions?: Partial<GetWarpedMapOptions<W>>,
     batchOptions?: Partial<BatchOptions>
-  ) {
+  ): BatchMapResult[] {
     const validatedGeoreferencedMapOrMaps =
       validateGeoreferencedMap(georeferencedMaps)
 
@@ -260,7 +269,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    * Removes a georeferenced map from the list by its ID
    *
    * @param mapId - Map ID
-   * @returns Map ID of the removed map, or an error
+   * @returns Map ID of the removed map
    */
   removeGeoreferencedMapById(mapId: string): string {
     const result = this.#removeGeoreferencedMapByIdInternal(mapId)
@@ -273,13 +282,14 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * @param annotation - Annotation
    * @param mapOptions - Map options
-   * @returns Map IDs of the maps that were added, or an error per map
+   * @param batchOptions - Batch options
+   * @returns Batch results of the maps that were added
    */
   addGeoreferenceAnnotation(
     annotation: unknown,
     mapOptions?: Partial<GetWarpedMapOptions<W>>,
     batchOptions?: Partial<BatchOptions>
-  ) {
+  ): BatchMapResult[] {
     const maps = parseAnnotation(annotation)
     const results = this.#addGeoreferencedMapsInternal(
       maps,
@@ -294,7 +304,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    * Parses an annotation and removes its georeferenced map from this list
    *
    * @param annotation
-   * @returns Map IDs of the maps that were removed, or an error per map
+   * @param batchOptions - Batch options
+   * @returns Batch results of the maps that were removed
    */
   removeGeoreferenceAnnotation(
     annotation: unknown,
@@ -317,6 +328,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * It is import to do this after the event listeners on the warpedmaplist
    * are added to the renderer, so the WARPEDMAPADDED event is passed.
+   *
+   * @param batchOptions - Batch options
    */
   updateWarpedMapsUsingFactory(
     batchOptions?: Partial<BatchOptions>
@@ -714,7 +727,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    */
   setMapsOptions(
     mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
+    mapsOptions?: Partial<GetWarpedMapOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   /**
@@ -732,23 +745,23 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   setMapsOptions(
     mapsOptionsCallbackFn: (
       mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      Partial<GetWarpedMapOptions<W>> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void
   setMapsOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      Partial<GetWarpedMapOptions<W>> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void {
     if (Array.isArray(firstArgument)) {
@@ -783,7 +796,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    */
   setMapsAndListOptions(
     mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
+    mapsOptions?: Partial<GetWarpedMapOptions<W>>,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
@@ -803,29 +816,29 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   setMapsAndListOptions(
     mapsOptionsCallbackFn: (
       mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndListOptions(
     mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
+    mapsOptions?: Partial<GetWarpedMapOptions<W>>,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndListOptions(
     mapsOptionsCallbackFn: (
       mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndListOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<WarpedMapListOptions<W>>,
+      Partial<GetWarpedMapOptions<W>> | Partial<WarpedMapListOptions<W>>,
     thirdArgument?:
       Partial<WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
@@ -833,9 +846,9 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   setMapsAndListOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<WarpedMapListOptions<W>>,
+      Partial<GetWarpedMapOptions<W>> | Partial<WarpedMapListOptions<W>>,
     thirdArgument?:
       Partial<WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
@@ -893,7 +906,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    */
   resetMapsOptions(
     mapIds: string[],
-    mapsOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    mapsOptionKeys?: GetWarpedMapOptionKeys<W>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   /**
@@ -908,29 +921,25 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   resetMapsOptions(
     mapsOptionKeysCallbackFn: (
       mapId: string
-    ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
+    ) => GetWarpedMapOptionKeys<W> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
   resetMapsOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
+    secondArgument?: GetWarpedMapOptionKeys<W> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void
   resetMapsOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
+    secondArgument?: GetWarpedMapOptionKeys<W> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void {
     const defaultWebGL2WarpedMapOptions = WebGL2WarpedMap.getDefaultOptions()
     const defaultWebGL2WarpedMapOptionKeys = Object.keys(
       defaultWebGL2WarpedMapOptions
-    ) as Array<keyof WebGL2WarpedMapOptions>
+    ) as GetWarpedMapOptionKeys<W>
     if (Array.isArray(firstArgument)) {
       if (secondArgument === undefined) {
         secondArgument = defaultWebGL2WarpedMapOptionKeys
@@ -938,8 +947,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       this.setMapsOptions(
         firstArgument,
         optionKeysToUndefinedOptions(
-          secondArgument as Array<keyof WebGL2WarpedMapOptions>
-        ) as Partial<WebGL2WarpedMapOptions>,
+          secondArgument as GetWarpedMapOptionKeys<W>
+        ) as Partial<GetWarpedMapOptions<W>>,
         thirdArgument
       )
     } else {
@@ -948,14 +957,16 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       }
       const mapOptionKeysCallbackFn = firstArgument as (
         mapId: string
-      ) => Array<keyof WebGL2WarpedMapOptions>
+      ) => GetWarpedMapOptionKeys<W>
       this.setMapsOptions(
         (mapId) => {
           let mapOptionKeys = mapOptionKeysCallbackFn(mapId)
           if (mapOptionKeys === undefined) {
             mapOptionKeys = defaultWebGL2WarpedMapOptionKeys
           }
-          return optionKeysToUndefinedOptions(mapOptionKeys)
+          return optionKeysToUndefinedOptions(mapOptionKeys) as Partial<
+            GetWarpedMapOptions<W>
+          >
         },
         secondArgument as Partial<AnimationOptions> | undefined
       )
@@ -975,7 +986,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    */
   resetMapsAndListOptions(
     mapIds: string[],
-    mapsOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    mapsOptionKeys?: GetWarpedMapOptionKeys<W>,
     listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
@@ -993,28 +1004,24 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   resetMapsAndListOptions(
     mapsOptionKeysCallbackFn: (
       mapId: string
-    ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
+    ) => GetWarpedMapOptionKeys<W> | undefined,
     listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
     secondArgument?:
-      | Array<keyof WebGL2WarpedMapOptions>
-      | Array<keyof WarpedMapListOptions<W>>,
+      GetWarpedMapOptionKeys<W> | Array<keyof WarpedMapListOptions<W>>,
     thirdArgument?:
       Array<keyof WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
     secondArgument?:
-      | Array<keyof WebGL2WarpedMapOptions>
-      | Array<keyof WarpedMapListOptions<W>>,
+      GetWarpedMapOptionKeys<W> | Array<keyof WarpedMapListOptions<W>>,
     thirdArgument?:
       Array<keyof WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
@@ -1022,7 +1029,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     const defaultWebGL2WarpedMapOptions = WebGL2WarpedMap.getDefaultOptions()
     const defaultWebGL2WarpedMapOptionKeys = Object.keys(
       defaultWebGL2WarpedMapOptions
-    ) as Array<keyof WebGL2WarpedMapOptions>
+    ) as GetWarpedMapOptionKeys<W>
     if (Array.isArray(firstArgument)) {
       if (secondArgument === undefined) {
         secondArgument = defaultWebGL2WarpedMapOptionKeys
@@ -1033,11 +1040,11 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       this.setMapsAndListOptions(
         firstArgument,
         optionKeysToUndefinedOptions(
-          secondArgument as Array<keyof WebGL2WarpedMapOptions>
-        ) as Partial<WebGL2WarpedMapOptions>,
+          secondArgument as GetWarpedMapOptionKeys<W>
+        ) as Partial<GetWarpedMapOptions<W>>,
         optionKeysToUndefinedOptions(
-          thirdArgument as Array<keyof WebGL2WarpedMapOptions>
-        ) as Partial<WebGL2WarpedMapOptions>,
+          thirdArgument as GetWarpedMapOptionKeys<W>
+        ) as Partial<GetWarpedMapOptions<W>>,
         fourthArgument as Partial<AnimationOptions>
       )
     } else {
@@ -1046,7 +1053,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       }
       const mapOptionKeysCallbackFn = firstArgument as (
         mapId: string
-      ) => Array<keyof WebGL2WarpedMapOptions>
+      ) => GetWarpedMapOptionKeys<W>
       if (secondArgument === undefined) {
         secondArgument = defaultWebGL2WarpedMapOptionKeys
       }
@@ -1056,11 +1063,13 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
           if (mapOptionKeys === undefined) {
             mapOptionKeys = defaultWebGL2WarpedMapOptionKeys
           }
-          return optionKeysToUndefinedOptions(mapOptionKeys)
+          return optionKeysToUndefinedOptions(mapOptionKeys) as Partial<
+            GetWarpedMapOptions<W>
+          >
         },
         optionKeysToUndefinedOptions(
-          secondArgument as Array<keyof WebGL2WarpedMapOptions>
-        ) as Partial<WebGL2WarpedMapOptions>,
+          secondArgument as GetWarpedMapOptionKeys<W>
+        ) as Partial<GetWarpedMapOptions<W>>,
         thirdArgument as Partial<AnimationOptions> | undefined
       )
     }

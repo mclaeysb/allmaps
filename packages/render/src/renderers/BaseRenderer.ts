@@ -9,7 +9,6 @@ import {
   mergePartialOptions,
   getAffineTransformScale,
   affineTransformPoints,
-  affineTransformBbox,
   invertAffineTransform
 } from '@allmaps/stdlib'
 import { isEqualProjection } from '@allmaps/project'
@@ -32,7 +31,7 @@ import {
   getTileResolution
 } from '../shared/tiles.js'
 
-import type { Size, Tile } from '@allmaps/types'
+import type { Rectangle, Size, Tile } from '@allmaps/types'
 
 import type { Viewport } from '../viewport/Viewport.js'
 import type { WarpedMap, WarpedMapWithImage } from '../maps/WarpedMap.js'
@@ -46,9 +45,9 @@ import type {
   SpritesInfo,
   Sprite,
   WarpedMapListOptions,
-  WebGL2WarpedMapOptions,
   BatchMapResult,
-  BatchOptions
+  BatchOptions,
+  GetWarpedMapOptionKeys
 } from '../shared/types.js'
 
 /**
@@ -95,13 +94,13 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
 
       // These buffers should be in growing order
       requestViewportBufferRatio: 1.2,
-      // requestViewportBufferRatio being more then 1 takes care of imperfections
+      // requestViewportBufferRatio being more than 1 takes care of imperfections
       // related to forward and backward TPS transform not being identical
       overviewRequestViewportBufferRatio: 8,
       pruneViewportBufferRatio: 8,
       overviewPruneViewportBufferRatio: 16,
 
-      // 0 = no correction, -1 = shaper, +1 = less sharp
+      // 0 = no correction, -1 = sharper, +1 = less sharp
       // Normal has more effect on smaller scale factors
       // Log2 (i.e. per zoomlevel) has equal effect on all scale factors
       scaleFactorCorrection: 0,
@@ -137,6 +136,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    *
    * @param annotation - Annotation
    * @param mapOptions - Map options
+   * @param batchOptions - Batch options
+   * @returns Batch results of the maps that were added
    */
   addGeoreferenceAnnotation(
     annotation: unknown,
@@ -151,10 +152,28 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   }
 
   /**
+   * Removes a Georeference Annotation
+   *
+   * @param annotation - Georeference Annotation
+   * @param batchOptions - Batch options
+   * @returns Batch results of the maps that were removed
+   */
+  removeGeoreferenceAnnotation(
+    annotation: unknown,
+    batchOptions?: Partial<BatchOptions>
+  ): BatchMapResult[] {
+    return this.warpedMapList.removeGeoreferenceAnnotation(
+      annotation,
+      batchOptions
+    )
+  }
+
+  /**
    * Adds a georeferenced map to this renderer's warped map list
    *
    * @param georeferencedMap - Georeferenced Map
    * @param mapOptions - Map options
+   * @returns Map ID of the map that was added
    */
   addGeoreferencedMap(
     georeferencedMap: unknown,
@@ -163,6 +182,14 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     return this.warpedMapList.addGeoreferencedMap(georeferencedMap, mapOptions)
   }
 
+  /**
+   * Adds georeferenced maps
+   *
+   * @param georeferencedMaps - Georeferenced Maps
+   * @param mapOptions - Map options
+   * @param batchOptions - Batch options
+   * @returns Batch resuls of the maps that were added
+   */
   addGeoreferencedMaps(
     georeferencedMaps: unknown,
     mapOptions?: Partial<GetWarpedMapOptions<W>>,
@@ -252,7 +279,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   /**
    * Get the default options of a map
    *
-   * These come from the default option settings for WebGL2WarpedMaps and the map's georeferenced map proporties
+   * These come from the default option settings for WebGL2WarpedMaps and the map's georeferenced map properties
    *
    * @param mapId - Map ID for which the options apply
    */
@@ -280,7 +307,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    * Get the options of a map
    *
    * These options are the result of merging the default, georeferenced map,
-   * layer and map-specific options of that map.
+   * list and map-specific options of that map.
    *
    * @param mapId - Map ID for which the options apply
    */
@@ -324,7 +351,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    */
   setMapsOptions(
     mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
+    mapsOptions?: Partial<GetWarpedMapOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   /**
@@ -342,23 +369,23 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   setMapsOptions(
     mapsOptionsCallbackFn: (
       mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      Partial<GetWarpedMapOptions<W>> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void
   setMapsOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      Partial<GetWarpedMapOptions<W>> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void {
     this.warpedMapList.setMapsOptions(
@@ -381,7 +408,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    */
   setMapsAndListOptions(
     mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
+    mapsOptions?: Partial<GetWarpedMapOptions<W>>,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
@@ -401,29 +428,23 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   setMapsAndListOptions(
     mapsOptionsCallbackFn: (
       mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
-    listOptions?: Partial<WarpedMapListOptions<W>>,
-    animationOptions?: Partial<AnimationOptions>
-  ): void
-  setMapsAndListOptions(
-    mapIds: string[],
-    mapsOptions?: Partial<WebGL2WarpedMapOptions>,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndListOptions(
     mapsOptionsCallbackFn: (
       mapId: string
-    ) => Partial<WebGL2WarpedMapOptions> | undefined,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   setMapsAndListOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<WarpedMapListOptions<W>>,
+      Partial<GetWarpedMapOptions<W>> | Partial<WarpedMapListOptions<W>>,
     thirdArgument?:
       Partial<WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
@@ -431,9 +452,9 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   setMapsAndListOptions(
     firstArgument:
       | string[]
-      | ((mapId: string) => Partial<WebGL2WarpedMapOptions> | undefined),
+      | ((mapId: string) => Partial<GetWarpedMapOptions<W>> | undefined),
     secondArgument?:
-      Partial<WebGL2WarpedMapOptions> | Partial<WarpedMapListOptions<W>>,
+      Partial<GetWarpedMapOptions<W>> | Partial<WarpedMapListOptions<W>>,
     thirdArgument?:
       Partial<WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
@@ -472,7 +493,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    */
   resetMapsOptions(
     mapIds: string[],
-    mapsOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    mapsOptionKeys?: GetWarpedMapOptionKeys<W>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   /**
@@ -487,23 +508,19 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   resetMapsOptions(
     mapsOptionKeysCallbackFn: (
       mapId: string
-    ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
+    ) => GetWarpedMapOptionKeys<W> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
   resetMapsOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
+    secondArgument?: GetWarpedMapOptionKeys<W> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void
   resetMapsOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
-    secondArgument?:
-      Array<keyof WebGL2WarpedMapOptions> | Partial<AnimationOptions>,
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
+    secondArgument?: GetWarpedMapOptionKeys<W> | Partial<AnimationOptions>,
     thirdArgument?: Partial<AnimationOptions>
   ): void {
     this.warpedMapList.resetMapsOptions(
@@ -526,7 +543,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
    */
   resetMapsAndListOptions(
     mapIds: string[],
-    mapsOptionKeys?: Array<keyof WebGL2WarpedMapOptions>,
+    mapsOptionKeys?: GetWarpedMapOptionKeys<W>,
     listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
@@ -544,28 +561,24 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   resetMapsAndListOptions(
     mapsOptionKeysCallbackFn: (
       mapId: string
-    ) => Array<keyof WebGL2WarpedMapOptions> | undefined,
+    ) => GetWarpedMapOptionKeys<W> | undefined,
     listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
     secondArgument?:
-      | Array<keyof WebGL2WarpedMapOptions>
-      | Array<keyof WarpedMapListOptions<W>>,
+      GetWarpedMapOptionKeys<W> | Array<keyof WarpedMapListOptions<W>>,
     thirdArgument?:
       Array<keyof WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
   ): void
   resetMapsAndListOptions(
     firstArgument?:
-      | string[]
-      | ((mapId: string) => Array<keyof WebGL2WarpedMapOptions> | undefined),
+      string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
     secondArgument?:
-      | Array<keyof WebGL2WarpedMapOptions>
-      | Array<keyof WarpedMapListOptions<W>>,
+      GetWarpedMapOptionKeys<W> | Array<keyof WarpedMapListOptions<W>>,
     thirdArgument?:
       Array<keyof WarpedMapListOptions<W>> | Partial<AnimationOptions>,
     fourthArgument?: Partial<AnimationOptions>
@@ -586,14 +599,17 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
 
     // Same comment on viewport and warpedMapList being in same projection as below
     const projectedGeoBufferedViewportRectangleBbox = computeBbox(
-      viewport.getProjectedGeoBufferedRectangle()
+      viewport.getProjectedGeoBufferedRectangle(
+        this.options.overviewRequestViewportBufferRatio
+      )
     )
 
     return this.warpedMapList
       .getWarpedMaps({
         projectedGeoBbox: projectedGeoBufferedViewportRectangleBbox,
         applyMask: false,
-        applyAffineTransform: true
+        applyAffineTransform: true,
+        sorted: false
       })
       .filter(
         (warpedMap) =>
@@ -617,10 +633,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
           ? this.options.overviewPruneViewportBufferRatio
           : 1
       )
-    )
-      .map((mapId) => this.warpedMapList.getWarpedMap(mapId) as WarpedMap)
-      .map((warpedMap) => warpedMap.hasImage())
-      .some(Boolean)
+    ).some((mapId) => this.warpedMapList.getWarpedMap(mapId)?.hasImage())
   }
 
   protected shouldRequestFetchableTiles() {
@@ -649,6 +662,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     if (!this.shouldRequestFetchableTiles()) {
       return
     }
+
+    if (!this.viewport) {
+      return
+    }
+    const viewport = this.viewport
 
     const fetchableTilesForViewport: FetchableTile[] = []
     const overviewFetchableTilesForViewport: FetchableTile[] = []
@@ -715,9 +733,19 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
 
     // Get fetchable tiles for all maps in viewport with request buffer
     // (and set properties for the current viewport for all maps in viewport with prune buffer)
+    const projectedGeoBufferedViewportRectangle =
+      viewport.getProjectedGeoBufferedRectangle(
+        this.options.anticipateInteraction
+          ? this.options.requestViewportBufferRatio
+          : 1
+      )
     for (const mapId of mapsInViewportForPrune) {
       fetchableTilesForViewport.push(
-        ...this.getMapFetchableTilesForViewport(mapId, mapsInViewportForRequest)
+        ...this.getMapFetchableTilesForViewport(
+          mapId,
+          mapsInViewportForRequest,
+          projectedGeoBufferedViewportRectangle
+        )
       )
     }
 
@@ -816,11 +844,10 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
         if (
           warpedMap &&
           doBboxesIntersect(
-            warpedMap.projectedGeoFullMaskBbox,
-            affineTransformBbox(
-              warpedMap.projectedGeoAffineTransform,
-              projectedGeoBufferedViewportRectangleBbox
-            )
+            computeBbox(
+              warpedMap.getProjectedGeoMask({ applyAffineTransform: true })
+            ),
+            projectedGeoBufferedViewportRectangleBbox
           )
         ) {
           mapIds.add(mapId)
@@ -836,7 +863,6 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
         .getWarpedMaps({
           projectedGeoBbox: projectedGeoBufferedViewportRectangleBbox,
           sorted: false,
-          applyMask: false,
           applyAffineTransform: true
         })
         .map((warpedMap) => {
@@ -869,7 +895,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
 
   protected getMapFetchableTilesForViewport(
     mapId: string,
-    mapsInViewportForRequest: Set<string>
+    mapsInViewportForRequest: Set<string>,
+    projectedGeoBufferedViewportRectangle: Rectangle
   ): FetchableTile[] {
     if (!this.viewport) {
       return []
@@ -906,19 +933,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     )
     warpedMap.setTileZoomLevelForViewport(tileZoomLevel)
 
-    // Transforming the viewport back to resource
-    const transformerOptions = {
-      maxDepth: 2,
-      minOffsetRatio: 0.00001
-    }
-    // This can be expensive at high maxDepth and seems to work fine with maxDepth = 0
-    // If an internal projection is present, some refinement is needed.
-    let projectedGeoBufferedViewportRectangle =
-      viewport.getProjectedGeoBufferedRectangle(
-        this.options.anticipateInteraction
-          ? this.options.requestViewportBufferRatio
-          : 1
-      )
+    // Adapt projectedGeoBufferedViewportRectangle using warpedMap's affine transform
     projectedGeoBufferedViewportRectangle = affineTransformPoints(
       invertAffineTransform(warpedMap.projectedGeoAffineTransform),
       projectedGeoBufferedViewportRectangle
@@ -931,6 +946,13 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     // Note: this is the first time the backwards transformation is computed
     // which can cause unexpected errors (this isn't computed and hence check when adding maps)
     // so we catch such error and pass them to the user as events.
+    // Transforming the viewport back to resource
+    const transformerOptions = {
+      maxDepth: 2,
+      minOffsetRatio: 0.00001
+    }
+    // This can be expensive at high maxDepth and seems to work fine with maxDepth = 0
+    // If an internal projection is present, some refinement is needed.
     let resourceBufferedViewportRing
     try {
       resourceBufferedViewportRing =
@@ -940,8 +962,12 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
         )[0]
     } catch (error) {
       if (error instanceof Error) {
-        error.message = 'Error while transforming to resource: ' + error.message
-        const errorEvent = new WarpedMapErrorEvent(error, { mapIds: [mapId] })
+        const errorEvent = new WarpedMapErrorEvent(
+          new Error('Error while transforming to resource', {
+            cause: error
+          }),
+          { mapIds: [mapId] }
+        )
         this.dispatchEvent(errorEvent)
       }
       // Return no tiles, which will exclude this map from mapsInViewport etc.
@@ -956,9 +982,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     )
     // Assure variables exist on warpedMap, that should be computed by the setters above
     if (!warpedMap.resourceBufferedViewportRingBboxForViewport) {
-      throw new Error(
-        'No resourceBufferedViewportRingBboxForViewport or resourceBufferedViewportRingBboxForViewport'
-      )
+      throw new Error('No resourceBufferedViewportRingBboxForViewport')
     }
 
     // Compute intersection of bboxes of to-resource-back-transformed viewport and resource applied mask
@@ -972,8 +996,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     )
 
     // If this map it outside of the viewport with request buffer, stop here:
-    // in thise case we only ran this function to set the properties for the current viewport
-    // so we can use them relyably while pruning
+    // in this case we only ran this function to set the properties for the current viewport
+    // so we can use them reliable while pruning
     if (!mapsInViewportForRequest.has(mapId)) {
       return []
     }
@@ -1045,7 +1069,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     if (!warpedMap.hasImage()) {
       // Note: don't load image information here
       // this would imply waiting for the first throttling cycle to complete
-      // before acting on a sucessful load
+      // before acting on a successful load
       return []
     }
 
@@ -1073,11 +1097,6 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
           )
         : warpedMap.options.overviewTilesMaxResolution
     const overviewTileZoomLevel = warpedMap.image.tileZoomLevels
-      .sort(
-        (tileZoomLevel0, tileZoomLevel1) =>
-          tileZoomLevel1.scaleFactor - tileZoomLevel0.scaleFactor
-        // Enforcing default decending order, e.g. from 16 to 1
-      )
       .filter(
         (tileZoomLevel, index) =>
           getTileZoomLevelResolution(tileZoomLevel) <=
@@ -1094,7 +1113,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
       )
     warpedMap.setOverviewTileZoomLevelForViewport(overviewTileZoomLevel)
 
-    // If this map it outside of the viewport with overview buffer, or if the map is invisible, stop here:
+    // If this map is outside of the viewport with overview buffer, or if the map is invisible, stop here:
     // in thise case we only ran this function to set the properties for the current viewport
     // so we can use them relyably while pruning
     if (
@@ -1105,7 +1124,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
       return []
     }
 
-    // If the overview tile zoomlevel scalefactor is the same or lower then tile zoom level scalefactor for the current viewport
+    // If the overview tile zoomlevel scalefactor is the same or lower than tile zoom level scalefactor for the current viewport
     // then this is not really an 'overview' tilezoomlevel, so don't proceed
     if (
       !overviewTileZoomLevel ||
@@ -1128,7 +1147,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
       warpedMap
     )
 
-    // Make fechable tiles
+    // Make fetchable tiles
     const overviewFetchableTiles = overviewTiles.map((tile) =>
       FetchableTile.fromWarpedMap(tile, warpedMap)
     )
@@ -1138,7 +1157,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   }
 
   protected updateMapsForViewport(
-    allFechableTilesForViewport: FetchableTile[]
+    allFetchableTilesForViewport: FetchableTile[]
   ): {
     mapsInListEntering: string[]
     mapsInListLeaving: string[]
@@ -1161,11 +1180,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     this.mapsWithFetchableTilesForPreviousViewport =
       this.mapsWithFetchableTilesForViewport
     this.mapsWithFetchableTilesForViewport = new Set(
-      allFechableTilesForViewport
-        .map((tile) => tile.mapId)
-        .sort((mapId0, mapId1) =>
-          this.warpedMapList.orderMapIdsByZIndex(mapId0, mapId1)
-        )
+      Array.from(
+        new Set(allFetchableTilesForViewport.map((t) => t.mapId))
+      ).sort((mapId0, mapId1) =>
+        this.warpedMapList.orderMapIdsByZIndex(mapId0, mapId1)
+      )
     )
 
     this.mapsInPreviousViewport = this.mapsInViewport
@@ -1238,7 +1257,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     // Create pruneInfo for all maps in viewport with prune overview buffer
     const pruneInfoByMapId: Map<string, MapPruneInfo> = new Map()
     for (const warpedMap of this.warpedMapList.getWarpedMaps({
-      mapIds: mapsInViewportForOverviewPrune
+      mapIds: mapsInViewportForOverviewPrune,
+      sorted: false
     })) {
       pruneInfoByMapId.set(warpedMap.mapId, {
         tileZoomLevelForViewport: warpedMap.tileZoomLevelForViewport,
@@ -1255,6 +1275,8 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     tiles: Tile[],
     warpedMap: WarpedMap
   ) {
+    // TODO: review efficiency
+
     const spriteCachedTiles = this.tileCache
       .getMapCachedTiles(warpedMap.mapId)
       .filter((cachedTile) => cachedTile.isTileFromSprites())
@@ -1286,6 +1308,9 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
   destroy() {
     this.tileCache.destroy()
     this.warpedMapList.destroy()
+    this.tileCache.destroy()
+    this.spritesTileCache.destroy()
+    this.removeEventListeners()
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

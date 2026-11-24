@@ -172,6 +172,14 @@ export type GetWarpedMapOptions<W extends WarpedMap> = W extends WebGL2WarpedMap
     : W extends WarpedMap
       ? WarpedMapOptions
       : never
+export type GetWarpedMapOptionKeys<W extends WarpedMap> =
+  W extends WebGL2WarpedMap
+    ? Array<keyof WebGL2WarpedMapOptions>
+    : W extends TriangulatedWarpedMap
+      ? Array<keyof TriangulatedWarpedMapOptions>
+      : W extends WarpedMap
+        ? Array<keyof WarpedMapOptions>
+        : never
 
 export type SpecificWarpedMapListOptions<W extends WarpedMap> = {
   createRTree: boolean
