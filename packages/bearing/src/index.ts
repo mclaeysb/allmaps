@@ -121,7 +121,7 @@ function computeBearingInternal(
     projectedTransformer.transformToProjectedGeo(resourceTopCenter)
   let projectedGeoBottomCenter =
     projectedTransformer.transformToProjectedGeo(resourceBottomCenter)
-  if (options.applyAffineTransformation) {
+  if (options.applyAffineTransform) {
   }
   projectedGeoTopCenter = affineTransformPoint(
     options.projectedGeoAffineTransform,
@@ -138,7 +138,7 @@ function computeBearingInternal(
     projectedTransformer.transformToProjectedGeo(resourceCenterLeft)
   let projectedGeoCenterRight =
     projectedTransformer.transformToProjectedGeo(resourceCenterRight)
-  if (options.applyAffineTransformation) {
+  if (options.applyAffineTransform) {
   }
   projectedGeoCenterLeft = affineTransformPoint(
     options.projectedGeoAffineTransform,

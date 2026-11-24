@@ -385,7 +385,7 @@ export class WarpedMap extends EventTarget {
    * Get the geo applied mask, mask or full mask, based on an input option.
    */
   getGeoMask(options?: Partial<MaskOptions>): Ring {
-    if (options?.applyAffineTransformation) {
+    if (options?.applyAffineTransform) {
       return projectPoints(
         this.projection,
         lonLatProjection,
@@ -416,7 +416,7 @@ export class WarpedMap extends EventTarget {
       projectedGeoMask = this.projectedGeoFullMask
     }
 
-    if (options?.applyAffineTransformation) {
+    if (options?.applyAffineTransform) {
       projectedGeoMask = affineTransformPoints(
         this.projectedGeoAffineTransform,
         projectedGeoMask

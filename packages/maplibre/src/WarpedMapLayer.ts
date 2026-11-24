@@ -236,7 +236,7 @@ export class WarpedMapLayer
     const options = mergeOptions(DEFAULT_BEARING_OPTIONS, partialOptions)
 
     // Get warped maps
-    const warpedMaps = this.getWarpedMaps(mapIds)
+    const warpedMaps = this.getWarpedMaps({ mapIds })
     if (!(warpedMaps.length > 0)) {
       throw new Error('No warped maps')
     }

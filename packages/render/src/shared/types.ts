@@ -38,7 +38,7 @@ export type SelectionOptions = MaskOptions & {
 
 export type MaskOptions = {
   applyMask: boolean
-  applyAffineTransformation: boolean
+  applyAffineTransform: boolean
 }
 
 export type ProjectionOptions = {

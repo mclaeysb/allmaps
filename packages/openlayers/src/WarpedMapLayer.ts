@@ -14,7 +14,7 @@ import type { Extent } from 'ol/extent'
 
 import type {
   BaseRenderOptions,
-  MaskOptions,
+  SelectionOptions,
   ProjectionOptions,
   AnimationOptions,
   WarpedMapList,
@@ -483,30 +483,41 @@ export class WarpedMapLayer
   /**
    * Get mapIds for all maps in the layer
    *
-   * Note: more selection options are available on this function of WarpedMapList
+   * The options allow a.o. to:
+   * - filter for visible maps
+   * - filter for specific mapIds
+   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
+   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns The mapIds of all maps
    */
-  getMapIds(): string[] {
+  getMapIds(
+    partialOptions?: Partial<SelectionOptions & ProjectionOptions>
+  ): string[] {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
-    return this.renderer.warpedMapList.getMapIds()
+    return this.renderer.warpedMapList.getMapIds(partialOptions)
   }
 
   /**
    * Get the WarpedMap instances for all maps, or all selected maps
    *
-   * If no argument is passed, the WarpedMap instance of all maps in the layer is passed
+   * The options allow a.o. to:
+   * - filter for visible maps
+   * - filter for specific mapIds
+   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
-   * @param mapIds - Map IDs
+   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns The WarpedMap instance of all (selected) map
    */
-  getWarpedMaps(mapIds?: string[]): Array<WebGL2WarpedMap> {
+  getWarpedMaps(
+    partialOptions?: Partial<SelectionOptions & ProjectionOptions>
+  ): Array<WebGL2WarpedMap> {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
-    return this.renderer.warpedMapList.getWarpedMaps({ mapIds })
+    return this.renderer.warpedMapList.getWarpedMaps(partialOptions)
   }
 
   /**
@@ -525,13 +536,11 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
-   * @param options - Mask and projection options, defaults to applied mask and current projection
+   * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The center of the bbox of all maps, in the chosen projection, or undefined if there were no maps.
    */
   getCenter(
-    options?: Partial<ProjectionOptions & MaskOptions>
+    options?: Partial<SelectionOptions & ProjectionOptions>
   ): Point | undefined {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
@@ -543,15 +552,13 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
    * @param mapIds - Map IDs
-   * @param options - Mask and projection options, defaults to applied mask and current projection
+   * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The center of the bbox of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsCenter(
     mapIds: string[],
-    options?: Partial<ProjectionOptions & MaskOptions>
+    options?: Partial<SelectionOptions & ProjectionOptions>
   ): Point | undefined {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
@@ -565,13 +572,11 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
-   * @param options - Mask and projection options, defaults to applied mask and current projection
+   * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The bbox of all maps, in the chosen projection, or undefined if there were no maps.
    */
   getBbox(
-    options?: Partial<ProjectionOptions & MaskOptions>
+    options?: Partial<SelectionOptions & ProjectionOptions>
   ): Bbox | undefined {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
@@ -583,15 +588,13 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
    * @param mapIds - Map IDs
-   * @param options - Mask and projection options, defaults to applied mask and current projection
+   * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The bbox of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsBbox(
     mapIds: string[],
-    options?: Partial<ProjectionOptions & MaskOptions>
+    options?: Partial<SelectionOptions & ProjectionOptions>
   ): Bbox | undefined {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
@@ -605,14 +608,12 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
    * @param mapIds - Map IDs
-   * @param options - Mask and projection options, defaults to applied mask and current projection
+   * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The convex hull of all maps, in the chosen projection, or undefined if there were no maps.
    */
   getConvexHull(
-    options?: Partial<ProjectionOptions & MaskOptions>
+    options?: Partial<SelectionOptions & ProjectionOptions>
   ): Ring | undefined {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 
@@ -624,15 +625,13 @@ export class WarpedMapLayer
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * Note: more selection options are available on this function of WarpedMapList
-   *
    * @param mapIds - Map IDs
-   * @param options - Mask and projection options, defaults to applied mask and current projection
+   * @param options - Selection and projection options, defaults to applied mask and current projection
    * @returns The convex hull of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsConvexHull(
     mapIds: string[],
-    options?: Partial<ProjectionOptions & MaskOptions>
+    options?: Partial<SelectionOptions & ProjectionOptions>
   ): Ring | undefined {
     BaseWarpedMapLayer.assertRenderer(this.renderer)
 

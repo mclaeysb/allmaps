@@ -55,7 +55,7 @@ import type {
 const DEFAULT_SELECTION_OPTIONS: SelectionOptions = {
   sorted: true,
   applyMask: true,
-  applyAffineTransformation: false
+  applyAffineTransform: false
 }
 export const DEFAULT_ANIMATION_OPTIONS: AnimationOptions = {
   animate: true,
@@ -396,13 +396,15 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    * The options allow a.o. to:
    * - filter for visible maps
    * - filter for specific mapIds
-   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Optionally specify whether mask should be applied when computing overlap using applyMask.
-   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Optionally specify whether mask should be applied when computing overlap using applyMask.
+   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * @param partialOptions - Selection, mask and projection options, defaults to all visible maps, applied mask and current projection
+   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns mapIds
    */
-  getMapIds(partialOptions?: Partial<SelectionOptions>): string[] {
+  getMapIds(
+    partialOptions?: Partial<SelectionOptions & ProjectionOptions>
+  ): string[] {
     // Enable the same selection options when getting mapIds
     return this.getWarpedMaps(partialOptions).map(
       (warpedMap) => warpedMap.mapId
@@ -415,10 +417,10 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    * The options allow a.o. to:
    * - filter for visible maps
    * - filter for specific mapIds
-   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Optionally specify whether mask should be applied when computing overlap using applyMask.
-   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Optionally specify whether mask should be applied when computing overlap using applyMask.
+   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * @param partialOptions - Selection, mask and projection options, defaults to all visible maps, applied mask and current projection
+   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns WarpedMap instances
    */
   getWarpedMaps(
@@ -434,17 +436,17 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     let mapIds
     if (options.mapIds === undefined) {
       const geoRTree = options.applyMask
-        ? options.applyAffineTransformation
+        ? options.applyAffineTransform
           ? this.geoAffineTransformedMaskRTree
           : this.geoMaskRTree
-        : options.applyAffineTransformation
+        : options.applyAffineTransform
           ? this.geoAffineTransformedFullMaskRTree
           : this.geoFullMaskRTree
       const projectedGeoRTree = options.applyMask
-        ? options.applyAffineTransformation
+        ? options.applyAffineTransform
           ? this.projectedGeoAffineTransformedMaskRTree
           : this.projectedGeoMaskRTree
-        : options.applyAffineTransformation
+        : options.applyAffineTransform
           ? this.projectedGeoAffineTransformedFullMaskRTree
           : this.projectedGeoFullMaskRTree
 
@@ -542,7 +544,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param options - Selection, mask and projection options, defaults to all visible maps, applied mask and current projection
+   * @param options - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns The center of the bbox of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsCenter(
@@ -559,7 +561,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param options - Selection, mask and projection options, defaults to all visible maps, applied mask and current projection
+   * @param options - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns The bbox of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsBbox(
@@ -582,7 +584,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param options - Selection, mask and projection options, defaults to all visible maps, applied mask and current projection
+   * @param options - Selection and projection options, defaults to all visible maps, applied mask and current projection
    * @returns The convex hull of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsConvexHull(

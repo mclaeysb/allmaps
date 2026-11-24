@@ -589,7 +589,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
       .getWarpedMaps({
         projectedGeoBbox: projectedGeoBufferedViewportRectangleBbox,
         applyMask: false,
-        applyAffineTransformation: true
+        applyAffineTransform: true
       })
       .filter(
         (warpedMap) =>
@@ -833,7 +833,7 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
           projectedGeoBbox: projectedGeoBufferedViewportRectangleBbox,
           sorted: false,
           applyMask: false,
-          applyAffineTransformation: true
+          applyAffineTransform: true
         })
         .map((warpedMap) => {
           return {
