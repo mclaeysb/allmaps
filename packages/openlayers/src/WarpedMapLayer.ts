@@ -490,7 +490,7 @@ export class WarpedMapLayer
    * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * @param partialOptions - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns The mapIds of all maps
    */
   getMapIds(
@@ -510,7 +510,7 @@ export class WarpedMapLayer
    * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * @param partialOptions - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns The WarpedMap instance of all (selected) map
    */
   getWarpedMaps(

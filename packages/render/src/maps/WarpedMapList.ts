@@ -49,8 +49,8 @@ import type {
   WarpedMapListOptions,
   AnimationInternalOptions,
   AnimationStage,
-  WebGL2WarpedMapOptions,
-  GetWarpedMapOptionKeys
+  GetWarpedMapOptionKeys,
+  WebGL2WarpedMapOptions
 } from '../shared/types.js'
 
 const DEFAULT_SELECTION_OPTIONS: SelectionOptions = {
@@ -76,9 +76,6 @@ function ensureError(error: unknown): Error {
  * @template W - The type of WarpedMap objects in this list
  */
 export class WarpedMapList<W extends WarpedMap> extends EventTarget {
-  /**
-   * Maps in this list, indexed by their ID
-   */
   DEFAULT_WARPED_MAP_LIST_OPTIONS: WarpedMapListOptions<W>
 
   warpedMapsById: Map<string, W>
@@ -103,8 +100,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   /**
    * Creates an instance of a WarpedMapList
    *
-   * @constructor
-   * @param warpedMapFactory - Factory function for creating WarpedMap objects
    * @param options - Options of this list, which will be set on newly added maps as their list options
    */
   constructor(options?: Partial<WarpedMapListOptions<W>>) {
@@ -222,7 +217,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   /**
    * Removes a georeferenced map from this list
    *
-   * @param georeferencedMap
+   * @param georeferencedMap - Georeferenced Map
    * @returns Map ID of the removed map, or an error
    */
   removeGeoreferencedMap(georeferencedMap: unknown): string {
@@ -231,7 +226,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
 
     if (Array.isArray(validatedGeoreferencedMapOrMaps)) {
       throw new Error(
-        'Expected a single georeferenced map, but got an array of georeferenced maps. Please use addGeoreferencedMaps to add multiple maps at once.'
+        'Expected a single georeferenced map, but got an array of georeferenced maps. Please use removeGeoreferencedMaps to add multiple maps at once.'
       )
     }
 
@@ -243,6 +238,13 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     return results
   }
 
+  /**
+   * Removes georeferenced maps from this list
+   *
+   * @param georeferencedMaps - Georeferenced Maps
+   * @param batchOptions - Batch options
+   * @returns Map ID of the removed map, or an error
+   */
   removeGeoreferencedMaps(
     georeferencedMaps: unknown,
     batchOptions?: Partial<BatchOptions>
@@ -303,7 +305,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   /**
    * Parses an annotation and removes its georeferenced map from this list
    *
-   * @param annotation
+   * @param annotation - Georeference Annotation
    * @param batchOptions - Batch options
    * @returns Batch results of the maps that were removed
    */
@@ -392,8 +394,8 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    */
   addImageInfos(imageInfos: unknown[]): string[] {
     const result = []
-    for (const imageInfo of imageInfos) {
-      const image = Image.parse(imageInfo)
+    const images = imageInfos.map((imageInfo) => Image.parse(imageInfo))
+    for (const image of images) {
       this.imagesById.set(image.uri, image)
       result.push(image.uri)
     }
@@ -406,13 +408,16 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   /**
    * Get mapIds for selected maps
    *
-   * The options allow a.o. to:
-   * - filter for visible maps
-   * - filter for specific mapIds
-   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
-   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * The options allow to select maps in one of the following ways:
+   * - select specific mapIds
+   * - select maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * - select maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * The options also allow to improve the resulting selection:
+   * - filter for visible maps
+   * - sort the result by z-index
+   *
+   * @param partialOptions - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns mapIds
    */
   getMapIds(
@@ -427,13 +432,16 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   /**
    * Get the WarpedMap instances for selected maps
    *
-   * The options allow a.o. to:
-   * - filter for visible maps
-   * - filter for specific mapIds
-   * - filter for maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
-   * - filter for maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * The options allow to select maps in one of the following ways:
+   * - select specific mapIds
+   * - select maps that overlap with a given point. Use geoPoint or projectedGeoPoint. Optionally specify projection for projectedGeoPoint. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
+   * - select maps whose bbox overlap with the specified bbox. Use geoBbox or projectedGeoBbox. Optionally specify projection for projectedGeoBbox. Use applyMask and applyAffineTransform to specify which mask should be used when computing overlap.
    *
-   * @param partialOptions - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * The options also allow to improve the resulting selection:
+   * - filter for visible maps
+   * - sort the result by z-index
+   *
+   * @param partialOptions - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns WarpedMap instances
    */
   getWarpedMaps(
@@ -557,7 +565,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param options - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * @param options - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns The center of the bbox of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsCenter(
@@ -574,7 +582,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param options - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * @param options - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns The bbox of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsBbox(
@@ -597,7 +605,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    *
    * The result is returned in lon-lat `EPSG:4326` by default.
    *
-   * @param options - Selection and projection options, defaults to all visible maps, applied mask and current projection
+   * @param options - Selection and projection options, defaults to all maps, applied mask and current projection
    * @returns The convex hull of all selected maps, in the chosen projection, or undefined if there were no maps matching the selection.
    */
   getMapsConvexHull(
@@ -662,14 +670,14 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   getMapMapOptions(mapId: string): Partial<GetWarpedMapOptions<W>> | undefined {
     const warpedMaps = this.getWarpedMaps({ mapIds: [mapId] })
     const warpedMap = warpedMaps[0]
-    return warpedMap?.mapOptions as GetWarpedMapOptions<W>
+    return warpedMap?.mapOptions as Partial<GetWarpedMapOptions<W>>
   }
 
   /**
    * Get the options of a map
    *
    * These options are the result of merging the default, georeferenced map,
-   * layer and map-specific options of that map.
+   * list and map-specific options of that map.
    *
    * @param mapId - Map ID for which the options apply
    */
@@ -682,6 +690,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   /**
    * Set the options
    *
+   * Note: This doesn't set the list options on the maps and doesn't update the maps. This is done using setListOptions().
    * Note: Map-specific options set here will be passed to newly added maps.
    *
    * @param listOptions - List Options
@@ -767,7 +776,9 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     if (Array.isArray(firstArgument)) {
       this.#setMapsAndListOptionsInternal(
         (mapId: string) =>
-          firstArgument.includes(mapId) ? secondArgument : undefined,
+          firstArgument.includes(mapId)
+            ? (secondArgument as Partial<GetWarpedMapOptions<W>>)
+            : undefined,
         undefined,
         thirdArgument
       )
@@ -856,7 +867,9 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     if (Array.isArray(firstArgument)) {
       this.#setMapsAndListOptionsInternal(
         (mapId: string) =>
-          firstArgument.includes(mapId) ? secondArgument : undefined,
+          firstArgument.includes(mapId)
+            ? (secondArgument as Partial<GetWarpedMapOptions<W>>)
+            : undefined,
         thirdArgument,
         fourthArgument
       )
@@ -881,11 +894,13 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    * @param animationOptions - Animation options
    */
   resetListOptions(
-    listOptionKeys?: string[],
+    listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ) {
     if (listOptionKeys === undefined) {
-      listOptionKeys = Object.keys(WebGL2WarpedMap.getDefaultOptions())
+      listOptionKeys = Object.keys(
+        WebGL2WarpedMap.getDefaultOptions()
+      ) as Array<keyof WebGL2WarpedMapOptions>
     }
     this.setListOptions(
       optionKeysToUndefinedOptions(listOptionKeys) as Partial<
@@ -1044,7 +1059,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
         ) as Partial<GetWarpedMapOptions<W>>,
         optionKeysToUndefinedOptions(
           thirdArgument as GetWarpedMapOptionKeys<W>
-        ) as Partial<GetWarpedMapOptions<W>>,
+        ) as Partial<WarpedMapListOptions<W>>,
         fourthArgument as Partial<AnimationOptions>
       )
     } else {
@@ -1069,7 +1084,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
         },
         optionKeysToUndefinedOptions(
           secondArgument as GetWarpedMapOptionKeys<W>
-        ) as Partial<GetWarpedMapOptions<W>>,
+        ) as Partial<WarpedMapListOptions<W>>,
         thirdArgument as Partial<AnimationOptions> | undefined
       )
     }
@@ -1098,8 +1113,9 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    * @param mapIds - Map IDs
    */
   sendMapsToBack(mapIds: Iterable<string>): void {
-    let newZIndex = -Array.from(mapIds).length
-    for (const mapId of mapIds) {
+    const mapIdsArray = Array.from(mapIds)
+    let newZIndex = -mapIdsArray.length
+    for (const mapId of mapIdsArray) {
       if (this.zIndices.has(mapId)) {
         this.zIndices.set(mapId, newZIndex)
         newZIndex++
@@ -1162,6 +1178,10 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   }
 
   clear(): void {
+    for (const warpedMap of this.warpedMapsById.values()) {
+      this.#removeEventListenersFromWarpedMap(warpedMap)
+      warpedMap.destroy()
+    }
     this.warpedMapsById = new Map()
     this.zIndices = new Map()
     this.geoMaskRTree?.clear()
@@ -1176,11 +1196,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   }
 
   destroy() {
-    for (const warpedMap of this.getWarpedMaps()) {
-      this.#removeEventListenersFromWarpedMap(warpedMap)
-      warpedMap.destroy()
-    }
-
     this.clear()
   }
 
@@ -1189,6 +1204,9 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     mapOptions?: Partial<GetWarpedMapOptions<W>>
   ): string {
     const mapId = this.#getOrComputeMapId(georeferencedMap)
+    if (this.warpedMapsById.has(mapId)) {
+      throw new Error(`A map with ID ${mapId} is already in the list`)
+    }
 
     const warpedMap = this.options.warpedMapFactory(
       mapId,
@@ -1214,13 +1232,10 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   ): BatchMapResult[] {
     const results: BatchMapResult[] = []
     for (const [index, georeferencedMap] of georeferencedMaps.entries()) {
-      const mapId = this.#getOrComputeMapId(georeferencedMap)
+      let mapId: string | undefined
       try {
-        const addedMapId = this.#addGeoreferencedMapInternal(
-          georeferencedMap,
-          mapOptions
-        )
-        results.push({ ok: true, mapId: addedMapId, index })
+        mapId = this.#addGeoreferencedMapInternal(georeferencedMap, mapOptions)
+        results.push({ ok: true, mapId, index })
       } catch (error) {
         const batchError = ensureError(error)
 
@@ -1335,7 +1350,7 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   #setMapsAndListOptionsInternal(
     mapsOptionsCallbackFn?: (
       mapId: string
-    ) => Partial<WarpedMapListOptions<W>> | undefined,
+    ) => Partial<GetWarpedMapOptions<W>> | undefined,
     listOptions?: Partial<WarpedMapListOptions<W>>,
     partialAnimationOptions?:
       | (Partial<AnimationOptions> & Partial<AnimationInternalOptions>)
