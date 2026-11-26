@@ -372,6 +372,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     ) => Partial<GetWarpedMapOptions<W>> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   setMapsOptions(
     firstArgument:
       | string[]
@@ -439,6 +444,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   setMapsAndListOptions(
     firstArgument:
       | string[]
@@ -511,6 +521,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     ) => GetWarpedMapOptionKeys<W> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   resetMapsOptions(
     firstArgument?:
       string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
@@ -565,6 +580,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   resetMapsAndListOptions(
     firstArgument?:
       string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
@@ -1305,7 +1325,22 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
     })
   }
 
+  clear() {
+    this.warpedMapList.clear()
+
+    this.previousVisibleMapsInList = new Set()
+    this.visibleMapsInList = new Set()
+    this.mapsInPreviousViewport = new Set()
+    this.mapsInViewport = new Set()
+    this.mapsWithFetchableTilesForPreviousViewport = new Set()
+    this.mapsWithFetchableTilesForViewport = new Set()
+    this.mapsWithRequestedTilesForViewport = new Set()
+
+    this.tileCache.clear()
+  }
+
   destroy() {
+    this.removeEventListeners()
     this.tileCache.destroy()
     this.warpedMapList.destroy()
     this.tileCache.destroy()
@@ -1354,6 +1389,11 @@ export abstract class BaseRenderer<W extends WarpedMap, D> extends EventTarget {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected animatedChange(event: Event): void {}
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected changed() {
+    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
+  }
 
   protected addEventListeners() {
     this.tileCache.addEventListener(

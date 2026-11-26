@@ -178,7 +178,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       mapOptions
     )
 
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return results
   }
 
@@ -210,7 +209,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       batchOptions
     )
 
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return results
   }
 
@@ -234,7 +232,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     const results = this.#removeGeoreferencedMapInternal(
       validatedGeoreferencedMap
     )
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return results
   }
 
@@ -262,8 +259,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       validatedGeoreferencedMaps,
       batchOptions
     )
-
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return results
   }
 
@@ -275,7 +270,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
    */
   removeGeoreferencedMapById(mapId: string): string {
     const result = this.#removeGeoreferencedMapByIdInternal(mapId)
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return result
   }
 
@@ -298,7 +292,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
       mapOptions,
       batchOptions
     )
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return results
   }
 
@@ -315,7 +308,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
   ): BatchMapResult[] {
     const maps = parseAnnotation(annotation)
     const results = this.#removeGeoreferencedMapsInternal(maps, batchOptions)
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
     return results
   }
 
@@ -757,6 +749,11 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     ) => Partial<GetWarpedMapOptions<W>> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   setMapsOptions(
     firstArgument:
       | string[]
@@ -844,6 +841,11 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     listOptions?: Partial<WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   setMapsAndListOptions(
     firstArgument:
       | string[]
@@ -939,6 +941,11 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     ) => GetWarpedMapOptionKeys<W> | undefined,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   resetMapsOptions(
     firstArgument?:
       string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
@@ -1023,6 +1030,11 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
     listOptionKeys?: Array<keyof WarpedMapListOptions<W>>,
     animationOptions?: Partial<AnimationOptions>
   ): void
+  /**
+   * Combined signature of the overloads above.
+   * It exists because the forwarding code passes a union that matches neither documented overload
+   * @hidden
+   */
   resetMapsAndListOptions(
     firstArgument?:
       string[] | ((mapId: string) => GetWarpedMapOptionKeys<W> | undefined),
@@ -1268,8 +1280,6 @@ export class WarpedMapList<W extends WarpedMap> extends EventTarget {
         })
       )
       this.#removeZIndexHoles()
-      this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
-
       this.#removeEventListenersFromWarpedMap(warpedMap)
       warpedMap.destroy()
     } else {

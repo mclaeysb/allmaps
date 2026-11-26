@@ -1455,6 +1455,11 @@ export class WarpedMapLayer
       this.boundPassWarpedMapEvent
     )
 
+    this.renderer.warpedMapList.addEventListener(
+      WarpedMapEventType.CHANGED,
+      this.boundUpdate
+    )
+
     this.renderer.addEventListener(WarpedMapEventType.CHANGED, this.boundUpdate)
   }
 
@@ -1556,6 +1561,11 @@ export class WarpedMapLayer
     this.renderer.warpedMapList.removeEventListener(
       WarpedMapEventType.ANIMATEDCHANGE,
       this.boundPassWarpedMapEvent
+    )
+
+    this.renderer.warpedMapList.removeEventListener(
+      WarpedMapEventType.CHANGED,
+      this.boundUpdate
     )
 
     this.renderer.removeEventListener(

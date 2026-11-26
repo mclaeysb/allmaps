@@ -1,7 +1,5 @@
 import { throttle } from 'lodash-es'
 
-// TODO: convert colors to fractional rgb
-// when setting options, not every render call
 import {
   mergeOptions,
   squaredDistance,
@@ -39,7 +37,7 @@ import pointsFragmentShaderSource from '../shaders/points/fragment-shader.glsl'
 
 // Using the recommended URL constructor -
 // See https://vite.dev/guide/features.html#import-with-constructors -
-// leads to import errors when publising on platforms like jsdelivr.
+// leads to import errors when publishing on platforms like jsdelivr.
 // Using the inline query parameter solves this.
 import FetchAndGetImageBitmapWorker from '../workers/fetch-and-get-image-bitmap.js?worker&inline'
 import { WorkerPool } from '../workers/PoolWorkers.js'
@@ -58,10 +56,10 @@ import type {
   WebGL2WarpedMapOptions
 } from '../shared/types.js'
 
-const POOL_SIZE = Math.max(
-  1,
-  Math.min((navigator.hardwareConcurrency || 4) - 1, 4)
-)
+const POOL_SIZE =
+  typeof navigator !== 'undefined'
+    ? Math.max(1, Math.min((navigator.hardwareConcurrency || 4) - 1, 4))
+    : 4
 
 const THROTTLE_PREPARE_RENDER_WAIT_MS = 200
 const THROTTLE_PREPARE_RENDER_OPTIONS = {
@@ -135,7 +133,6 @@ export class WebGL2Renderer
   /**
    * Creates an instance of WebGL2Renderer.
    *
-   * @constructor
    * @param gl - WebGL 2 rendering context
    * @param options - options
    */
@@ -226,22 +223,19 @@ export class WebGL2Renderer
     this.#uniformCache = new Map()
     this.#lastMapAppearance = {}
 
-    // Unclear how to remove shaders, possibly already after linking to program, see:
-    // https://stackoverflow.com/questions/9113154/proper-way-to-delete-glsl-shader
-    // https://stackoverflow.com/questions/27237696/webgl-detach-and-delete-shaders-after-linking
     gl.deleteShader(mapVertexShader)
     gl.deleteShader(mapFragmentShader)
-    gl.deleteShader(mapVertexShader)
-    gl.deleteShader(mapFragmentShader)
-    gl.deleteShader(mapVertexShader)
-    gl.deleteShader(mapFragmentShader)
+    gl.deleteShader(linesVertexShader)
+    gl.deleteShader(linesFragmentShader)
+    gl.deleteShader(pointsVertexShader)
+    gl.deleteShader(pointsFragmentShader)
 
     gl.disable(gl.DEPTH_TEST)
 
     this.addEventListeners()
 
     this.#throttledPrepareRenderInternal = throttle(
-      this.#prepareRenderInternal.bind(this),
+      this.#prepareRenderInternal,
       THROTTLE_PREPARE_RENDER_WAIT_MS,
       THROTTLE_PREPARE_RENDER_OPTIONS
     )
@@ -305,7 +299,23 @@ export class WebGL2Renderer
     this.#uniformCache = new Map()
     this.#lastMapAppearance = {}
 
+    gl.deleteShader(mapVertexShader)
+    gl.deleteShader(mapFragmentShader)
+    gl.deleteShader(linesVertexShader)
+    gl.deleteShader(linesFragmentShader)
+    gl.deleteShader(pointsVertexShader)
+    gl.deleteShader(pointsFragmentShader)
+
     gl.disable(gl.DEPTH_TEST)
+
+    this.setOptions({
+      warpedMapFactory: createWebGL2WarpedMapFactory(
+        gl,
+        mapProgram,
+        linesProgram,
+        pointsProgram
+      )
+    })
 
     for (const webgl2WarpedMap of this.warpedMapList.getWarpedMaps()) {
       webgl2WarpedMap.initializeWebGL(mapProgram, linesProgram, pointsProgram)
@@ -326,7 +336,7 @@ export class WebGL2Renderer
    * Render the map for a given viewport.
    *
    * If no viewport is specified the current viewport is rerendered.
-   * If no current viewport is known, a viewport is deduced based on the WarpedMapList and canvas width and hight.
+   * If no current viewport is known, a viewport is deduced based on the WarpedMapList and canvas width and height.
    *
    * @param viewport - the current viewport
    */
@@ -339,7 +349,7 @@ export class WebGL2Renderer
       viewport ||
       this.viewport ||
       Viewport.fromSizeAndMaps(
-        [this.gl.canvas.width, this.gl.canvas.width],
+        [this.gl.canvas.width, this.gl.canvas.height],
         this.warpedMapList
       )
 
@@ -361,12 +371,10 @@ export class WebGL2Renderer
   }
 
   clear() {
-    this.warpedMapList.clear()
-    this.mapsInViewport = new Set()
-    this.mapsWithFetchableTilesForViewport = new Set()
+    super.clear()
     this.#mapsWithTextureToUpdate.clear()
+
     this.gl.clear(this.gl.DEPTH_BUFFER_BIT | this.gl.COLOR_BUFFER_BIT)
-    this.tileCache.clear()
   }
 
   cancelThrottledFunctions() {
@@ -377,6 +385,8 @@ export class WebGL2Renderer
     this.cancelThrottledFunctions()
 
     this.removeEventListeners()
+
+    this.#cancelAnimationFrame()
 
     super.destroy()
 
@@ -420,29 +430,18 @@ export class WebGL2Renderer
     mapsWithFetchableTilesForViewportEntering: string[]
     mapsWithFetchableTilesForViewportLeaving: string[]
   } {
-    const {
-      mapsInListEntering,
-      mapsInListLeaving,
-      mapsWithFetchableTilesForViewportEntering,
-      mapsWithFetchableTilesForViewportLeaving,
-      mapsInViewportEntering,
-      mapsInViewportLeaving
-    } = super.updateMapsForViewport(allFechableTilesForViewport)
+    const result = super.updateMapsForViewport(allFechableTilesForViewport)
 
-    this.updateVertexBuffers(mapsWithFetchableTilesForViewportEntering)
+    this.updateVertexBuffers(result.mapsWithFetchableTilesForViewportEntering)
 
-    return {
-      mapsInListEntering,
-      mapsInListLeaving,
-      mapsWithFetchableTilesForViewportEntering,
-      mapsWithFetchableTilesForViewportLeaving,
-      mapsInViewportEntering,
-      mapsInViewportLeaving
-    }
+    return result
   }
 
-  protected resetPrevious() {
-    const webgl2WarpedMaps = this.warpedMapList.getWarpedMaps()
+  protected resetPrevious(mapIds?: string[]) {
+    const webgl2WarpedMaps = this.warpedMapList.getWarpedMaps({
+      mapIds,
+      sorted: false
+    })
     for (const webgl2WarpedMap of webgl2WarpedMaps) {
       webgl2WarpedMap.resetPrevious()
     }
@@ -453,7 +452,10 @@ export class WebGL2Renderer
       return
     }
 
-    const webgl2WarpedMaps = this.warpedMapList.getWarpedMaps({ mapIds })
+    const webgl2WarpedMaps = this.warpedMapList.getWarpedMaps({
+      mapIds,
+      sorted: false
+    })
     for (const webgl2WarpedMap of webgl2WarpedMaps) {
       webgl2WarpedMap.updateVertexBuffers(
         this.viewport.projectedGeoToClipAffineTransform
@@ -588,7 +590,7 @@ export class WebGL2Renderer
     for (const mapId of this.mapsWithFetchableTilesForViewport) {
       const webgl2WarpedMap = this.warpedMapList.getWarpedMap(mapId)
 
-      if (!webgl2WarpedMap! || !webgl2WarpedMap.shouldRenderPoints()) {
+      if (!webgl2WarpedMap || !webgl2WarpedMap.shouldRenderPoints()) {
         continue
       }
 
@@ -1095,27 +1097,24 @@ export class WebGL2Renderer
     )
 
     // This changed() is needed to prevent a blank canvas flash
-    this.#changed()
+    this.changed()
     // This requestFetchableTiles() is needed to update
     // mapsWithFetchableTilesForViewport when visible is changed
     this.requestFetchableTiles()
     this.updateVertexBuffers(mapIds)
 
-    if (this.lastAnimationFrameRequestId !== undefined) {
-      cancelAnimationFrame(this.lastAnimationFrameRequestId)
-    }
+    this.#cancelAnimationFrame()
 
     this.animating = true
     this.animationProgress = 0
     this.animationStart = undefined
-    this.lastAnimationFrameRequestId = requestAnimationFrame(
-      ((now: number) =>
-        this.#animationFrame(now, mapIds, options.duration)).bind(this)
+    this.lastAnimationFrameRequestId = requestAnimationFrame((now: number) =>
+      this.#animationFrame(now, mapIds, options.duration)
     )
   }
 
   #animationFrame(now: number, mapIds: string[], duration: number) {
-    if (!this.animationStart) {
+    if (this.animationStart === undefined) {
       this.animationStart = now
     }
 
@@ -1125,12 +1124,10 @@ export class WebGL2Renderer
       this.animationProgress = (now - this.animationStart) / duration
 
       // This changed() is needed to trigger the repaint of the canvas
-      this.#changed()
+      this.changed()
 
-      this.lastAnimationFrameRequestId = requestAnimationFrame(
-        ((now: number) => this.#animationFrame(now, mapIds, duration)).bind(
-          this
-        )
+      this.lastAnimationFrameRequestId = requestAnimationFrame((now: number) =>
+        this.#animationFrame(now, mapIds, duration)
       )
     } else {
       // Animation ended
@@ -1139,7 +1136,7 @@ export class WebGL2Renderer
   }
 
   #finishAnimation(mapIds: string[]) {
-    this.resetPrevious()
+    this.resetPrevious(mapIds)
     this.updateVertexBuffers(mapIds)
 
     this.animating = false
@@ -1148,17 +1145,22 @@ export class WebGL2Renderer
 
     this.previousSignificantViewport = this.viewport
 
+    this.#cancelAnimationFrame()
+
     // Unthrottled prepareRenderInternal to avoid flickering when maps are made visible/invisible
     // and render is called before prepareRenderInternal throttled delay would have passed
     this.#prepareRenderInternal()
-    this.#changed()
+    this.changed()
   }
 
-  #changed() {
-    this.dispatchEvent(new WarpedMapEvent(WarpedMapEventType.CHANGED))
+  #cancelAnimationFrame() {
+    if (this.lastAnimationFrameRequestId !== undefined) {
+      cancelAnimationFrame(this.lastAnimationFrameRequestId)
+      this.lastAnimationFrameRequestId = undefined
+    }
   }
 
-  protected imageLoaded(event: Event) {
+  imageLoaded(event: Event) {
     if (event instanceof WarpedMapEvent) {
       this.dispatchEvent(
         new WarpedMapEvent(WarpedMapEventType.IMAGELOADED, event.data)
@@ -1166,7 +1168,7 @@ export class WebGL2Renderer
     }
   }
 
-  protected imageInfoFetchError(event: Event) {
+  imageInfoFetchError(event: Event) {
     if (event instanceof WarpedMapEvent && event.error) {
       this.dispatchEvent(
         new WarpedMapErrorEvent(
@@ -1178,14 +1180,14 @@ export class WebGL2Renderer
     }
   }
 
-  protected clearMap(mapId: string) {
+  clearMap(mapId: string) {
     const webGL2WarpedMap = this.warpedMapList.getWarpedMap(mapId)
     if (webGL2WarpedMap) {
       webGL2WarpedMap.clearTextures()
     }
   }
 
-  protected mapTileLoaded(event: Event) {
+  mapTileLoaded(event: Event) {
     if (event instanceof WarpedMapEvent) {
       if (!event.data?.mapIds || !event.data?.tileUrl) {
         throw new Error('Event data missing')
@@ -1212,7 +1214,7 @@ export class WebGL2Renderer
     }
   }
 
-  protected mapTileDeleted(event: Event) {
+  mapTileDeleted(event: Event) {
     if (event instanceof WarpedMapEvent) {
       if (!event.data?.mapIds || !event.data.tileUrl) {
         throw new Error('Event data missing')
@@ -1231,7 +1233,7 @@ export class WebGL2Renderer
     }
   }
 
-  protected prepareChange(event: Event) {
+  prepareChange(event: Event) {
     if (event instanceof WarpedMapEvent) {
       if (!event.data?.mapIds) {
         throw new Error('Event data missing')
@@ -1247,7 +1249,7 @@ export class WebGL2Renderer
     }
   }
 
-  protected animatedChange(event: Event) {
+  animatedChange(event: Event) {
     if (event instanceof WarpedMapEvent) {
       if (!event.data?.mapIds) {
         throw new Error('Event data missing')
@@ -1257,7 +1259,7 @@ export class WebGL2Renderer
     }
   }
 
-  protected immediateChange(event: Event) {
+  immediateChange(event: Event) {
     if (event instanceof WarpedMapEvent) {
       if (!event.data?.mapIds) {
         throw new Error('Event data missing')
@@ -1276,7 +1278,7 @@ export class WebGL2Renderer
    */
   #markMapWithTextureToUpdate(mapId: string) {
     this.#mapsWithTextureToUpdate.add(mapId)
-    this.#changed()
+    this.changed()
   }
 
   /**
@@ -1312,19 +1314,21 @@ export class WebGL2Renderer
 
     // Deadline reached or maps still have a backlog: continue next frame.
     if (this.#mapsWithTextureToUpdate.size > 0) {
-      this.#changed()
+      this.changed()
     }
   }
 
   contextLost() {
+    this.#cancelAnimationFrame()
+
     this.disableRender = true
 
     this.cancelThrottledFunctions()
 
+    this.tileCache.clear()
+
     // The textures are gone with the context; drop any pending upload work.
     this.#mapsWithTextureToUpdate.clear()
-
-    this.tileCache.clear()
   }
 
   contextRestored() {
